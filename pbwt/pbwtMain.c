@@ -96,7 +96,7 @@ static void exportSiteInfo(PBWT *p, FILE *fp, int f1, int f2)
         if (f1 <= f && f < f2)    /* then print it out */
         {
             for (j = 0; j < p->M; ++j)
-                fprintf(fp, "%d %d ", u->y[j], i - u->d[j]);
+                fprintf(fp, "%d %d ", u->sortedY[j], i - u->d[j]);
             fprintf(fp, "\n");
             ++n;
         }

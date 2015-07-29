@@ -64,9 +64,9 @@ void imputeExplore(PBWT *p, int test) {
         pbwtCursorReadBackwards(uz);
         if (isCheck) {
             for (i = 0; i < M; ++i)
-                x[u->a[i]] = u->y[i];
+                x[u->a[i]] = u->sortedY[i];
             for (i = 0; i < M; ++i)
-                if (x[uz->a[i]] != uz->y[i])
+                if (x[uz->a[i]] != uz->sortedY[i])
                     fprintf(stderr, "forward-backward mismatch at k %d i %d\n", k, i);
         }
         if (k > 0.2 * N && k < 0.8 * N)     /* ignore ends */
@@ -78,22 +78,22 @@ void imputeExplore(PBWT *p, int test) {
             memset (n0, 0, M * sizeof(int));
             memset (n1, 0, M * sizeof(int));
             for (i = 1; i < M - 1; ++i) {
-                if (u->y[i - 1] && u->y[i + 1]) if (u->y[i]) ++t->n21; else ++t->n20;
-                else if (!u->y[i - 1] && !u->y[i + 1]) if (u->y[i]) ++t->n01; else ++t->n00;
-                else if ((!u->y[i - 1] && u->d[i] < u->d[i + 1]) ||
-                         (!u->y[i + 1] && u->d[i + 1] < u->d[i])) if (u->y[i]) ++t->n11a; else ++t->n10a;
-                else if (u->y[i]) ++t->n11b; else ++t->n10b;
-                ++(array(dHist, u->d[i] / 100, Counts)[u->y[i - 1] + 2 * u->y[i]]);
-                ++cSimple[u->y[i - 1] + 2 * u->y[i]];
-                if (u->y[i + 1])
-                    ++cCond1[u->y[i - 1] + 2 * u->y[i]];
+                if (u->sortedY[i - 1] && u->sortedY[i + 1]) if (u->sortedY[i]) ++t->n21; else ++t->n20;
+                else if (!u->sortedY[i - 1] && !u->sortedY[i + 1]) if (u->sortedY[i]) ++t->n01; else ++t->n00;
+                else if ((!u->sortedY[i - 1] && u->d[i] < u->d[i + 1]) ||
+                         (!u->sortedY[i + 1] && u->d[i + 1] < u->d[i])) if (u->sortedY[i]) ++t->n11a; else ++t->n10a;
+                else if (u->sortedY[i]) ++t->n11b; else ++t->n10b;
+                ++(array(dHist, u->d[i] / 100, Counts)[u->sortedY[i - 1] + 2 * u->sortedY[i]]);
+                ++cSimple[u->sortedY[i - 1] + 2 * u->sortedY[i]];
+                if (u->sortedY[i + 1])
+                    ++cCond1[u->sortedY[i - 1] + 2 * u->sortedY[i]];
                 else
-                    ++cCond0[u->y[i - 1] + 2 * u->y[i]];
-                n0[u->a[i]] += 2 - (u->y[i - 1] + u->y[i + 1]);
-                n1[u->a[i]] += u->y[i - 1] + u->y[i + 1];
-                n0[uz->a[i]] += 2 - (uz->y[i - 1] + uz->y[i + 1]);
-                n1[uz->a[i]] += uz->y[i - 1] + uz->y[i + 1];
-                x[u->a[i]] = u->y[i];
+                    ++cCond0[u->sortedY[i - 1] + 2 * u->sortedY[i]];
+                n0[u->a[i]] += 2 - (u->sortedY[i - 1] + u->sortedY[i + 1]);
+                n1[u->a[i]] += u->sortedY[i - 1] + u->sortedY[i + 1];
+                n0[uz->a[i]] += 2 - (uz->sortedY[i - 1] + uz->sortedY[i + 1]);
+                n1[uz->a[i]] += uz->sortedY[i - 1] + uz->sortedY[i + 1];
+                x[u->a[i]] = u->sortedY[i];
             }
             for (i = 0; i < M; ++i)
                 if (n0[i] + n1[i] == 4)    /* it wasn't at the end either forwards or backwards */
@@ -187,8 +187,8 @@ static void phaseCompare(PBWT *p, PBWT *q) {
     memset (isFirst, 1, M * sizeof(int)); /* I know this is not 1 - anything non-zero will do */
     for (k = 0; k < N; k++) {
         for (i = 0; i < M; ++i) {
-            xp[up->a[i]] = up->y[i];
-            xq[uq->a[i]] = uq->y[i];
+            xp[up->a[i]] = up->sortedY[i];
+            xq[uq->a[i]] = uq->sortedY[i];
         }
         for (i = 0; i < M; i += 2) {
             if (xp[i] + xp[i + 1] == 1) {
@@ -329,7 +329,7 @@ PBWT *phaseSweep(PBWT *p, PBWT *ref, BOOL isStart, PBWT *r, int nSparse) {
     double *xp = myalloc(M, double); /* 2*p(x=1)-1, so 1 if x=1, -1 if x=0, 0 if unknown */
     for (k = 0; k < N; k++) {
         if (!isStart) pbwtCursorReadBackwards(up);
-        for (i = 0; i < M; ++i) actualHap[up->a[i]] = up->y[i];  /* build x from up->y */
+        for (i = 0; i < M; ++i) actualHap[up->a[i]] = up->sortedY[i];  /* build x from up->y */
         if (isStart) pbwtCursorForwardsRead(up);
         for (i = 0; i < M; ++i) xp[i] = actualHap[i] ? 1.0 : -1.0;
         int n2 = 0;
@@ -381,11 +381,11 @@ PBWT *phaseSweep(PBWT *p, PBWT *ref, BOOL isStart, PBWT *r, int nSparse) {
                 }
 
         for (i = 0; i < M; ++i) actualHap[i] = (xp[i] > 0.0) ? 1 : 0;
-        for (i = 0; i < M; ++i) uq->y[i] = actualHap[uq->a[i]];
+        for (i = 0; i < M; ++i) uq->sortedY[i] = actualHap[uq->a[i]];
         pbwtCursorWriteForwardsAD(uq, k);
         for (i = 0; i < M; ++i) uq->b[uq->a[i]] = i;
         kk = k % nSparse;    /* which of the sparse pbwts to update this time */
-        for (i = 0; i < M; ++i) uqq[kk]->y[i] = actualHap[uqq[kk]->a[i]];
+        for (i = 0; i < M; ++i) uqq[kk]->sortedY[i] = actualHap[uqq[kk]->a[i]];
         pbwtCursorForwardsAD(uqq[kk], k / nSparse);
         for (i = 0; i < M; ++i) uqq[kk]->b[uqq[kk]->a[i]] = i;
         if (r) {
@@ -420,7 +420,7 @@ PBWT *phase(PBWT *p, int nSparse) /* return rephased p */
     if (isCheck)        /* flip p->zz round into p->yz and compare to r */
     {
         Array yzStore = p->CompressedAllele;
-        p->CompressedAllele = p->zz;
+        p->CompressedAllele = p->ReverseCompressedAllele;
         int *aFstartStore = p->aFstart;
         p->aFstart = p->aRstart;
         fprintf(stderr, "After reverse pass: ");
@@ -448,9 +448,9 @@ PBWT *referencePhase0(PBWT *p, PBWT *pRef) {
     PBWT *r = phaseSweep(p, pRef, FALSE, 0, 2); /* always reverse with nSparse 2 */
     if (isCheck)        /* flip p->zz round into p->yz and compare to r */
     {
-        if (!p->zz) pbwtBuildReverse(p);
+        if (!p->ReverseCompressedAllele) pbwtBuildReverse(p);
         Array yzStore = p->CompressedAllele;
-        p->CompressedAllele = p->zz;
+        p->CompressedAllele = p->ReverseCompressedAllele;
         int *aFstartStore = p->aFstart;
         p->aFstart = p->aRstart;
         fprintf(stderr, "After reverse pass: ");
@@ -925,16 +925,16 @@ static inline int phaseExtend(int x0, int x1, PbwtCursor *uRef, int j0,
     temp.dplus0 = pbwtCursorMapDplus(uRef, x0, j0, old->dplus0);
     temp.dminus0 = pbwtCursorMapDminus(uRef, x0, j0, old->dminus0);
     float dS = 0;
-    if (j0) { if (x0 == uRef->y[j0 - 1]) dS += (k - old->dminus0); else dS -= (k - old->dminus0); }
-    if (j0 < uRef->M) { if (x0 == uRef->y[j0]) dS += (k - old->dplus0); else dS -= (k - old->dplus0); }
+    if (j0) { if (x0 == uRef->sortedY[j0 - 1]) dS += (k - old->dminus0); else dS -= (k - old->dminus0); }
+    if (j0 < uRef->M) { if (x0 == uRef->sortedY[j0]) dS += (k - old->dplus0); else dS -= (k - old->dplus0); }
     if (dS < 0) temp.s += dS;
 
     temp.j1 = pbwtCursorMap(uRef, x1, old->j1);
     temp.dplus1 = pbwtCursorMapDplus(uRef, x1, old->j1, old->dplus1);
     temp.dminus1 = pbwtCursorMapDminus(uRef, x1, old->j1, old->dminus1);
     dS = 0;
-    if (old->j1) { if (x1 == uRef->y[old->j1 - 1]) dS += (k - old->dminus1); else dS -= (k - old->dminus1); }
-    if (old->j1 < uRef->M) { if (x1 == uRef->y[old->j1]) dS += (k - old->dplus1); else dS -= (k - old->dplus1); }
+    if (old->j1) { if (x1 == uRef->sortedY[old->j1 - 1]) dS += (k - old->dminus1); else dS -= (k - old->dminus1); }
+    if (old->j1 < uRef->M) { if (x1 == uRef->sortedY[old->j1]) dS += (k - old->dplus1); else dS -= (k - old->dplus1); }
     if (dS < 0) temp.s += dS;
 
     if (!new->s)        /* this is the first j0 to map here */
@@ -994,7 +994,7 @@ static PBWT *referencePhase4(PBWT *pOld, PBWT *pRef) {
 
     /* here is the main loop through the sites */
     for (k = 0; k < pOld->N; ++k) {
-        for (j = 0; j < pOld->M; ++j) xOld[uOld->a[j]] = uOld->y[j];
+        for (j = 0; j < pOld->M; ++j) xOld[uOld->a[j]] = uOld->sortedY[j];
 #ifdef QUERY0_IS_REF0
       if (isCheck)
 	{ PhaseCell *pc ; TraceBackCell *tc ;
@@ -1093,7 +1093,7 @@ static PBWT *referencePhase4(PBWT *pOld, PBWT *pRef) {
     uchar *xNew = myalloc (pNew->M, uchar);
     for (k = pOld->N; k--;) {
         pbwtCursorReadBackwards(uOld);
-        for (j = 0; j < pOld->M; ++j) xOld[uOld->a[j]] = uOld->y[j];
+        for (j = 0; j < pOld->M; ++j) xOld[uOld->a[j]] = uOld->sortedY[j];
         for (jq = 0; jq < pOld->M; jq += 2)
             if (xOld[jq] == xOld[jq + 1]) {
                 xNew[jq] = xOld[jq];
@@ -1112,7 +1112,7 @@ static PBWT *referencePhase4(PBWT *pOld, PBWT *pRef) {
                 if (!tb[jq]) die("premature end of trace back at k %d, jq %d", k, jq);
                 tb[jq] = tc->back;
             }
-        for (j = 0; j < pNew->M; ++j) uNewR->y[j] = xNew[uNewR->a[j]];
+        for (j = 0; j < pNew->M; ++j) uNewR->sortedY[j] = xNew[uNewR->a[j]];
         pbwtCursorWriteForwards(uNewR);
     }
     for (jq = 0; jq < pOld->M; jq += 2) if (tb[jq]) die("trace back incomplete jq %d", jq);
@@ -1124,8 +1124,8 @@ static PBWT *referencePhase4(PBWT *pOld, PBWT *pRef) {
     PbwtCursor *uNewF = pbwtCursorCreate(pNew, TRUE, TRUE);
     for (k = 0; k < pOld->N; k++) {
         pbwtCursorReadBackwards(uNewR);
-        for (j = 0; j < pNew->M; ++j) xOld[uNewR->a[j]] = uNewR->y[j];
-        for (j = 0; j < pNew->M; ++j) uNewF->y[j] = xOld[uNewF->a[j]];
+        for (j = 0; j < pNew->M; ++j) xOld[uNewR->a[j]] = uNewR->sortedY[j];
+        for (j = 0; j < pNew->M; ++j) uNewF->sortedY[j] = xOld[uNewF->a[j]];
         pbwtCursorWriteForwards(uNewF);
     }
     pNew->aFend = myalloc (pNew->M, int);
@@ -1294,7 +1294,7 @@ static PBWT *referenceImpute3(PBWT *pOld, PBWT *pRef, PBWT *pFrame,
         for (j = 0; j < pOld->M; ++j) {
             if (pOld == pFrame && !missing[j]) /* don't impute - copy from ref */
             {
-                x[j] = uRef->y[aRefInv[j]];
+                x[j] = uRef->sortedY[aRefInv[j]];
                 continue;
             }
             /* impute from overlapping matches */
@@ -1306,7 +1306,7 @@ static PBWT *referenceImpute3(PBWT *pOld, PBWT *pRef, PBWT *pFrame,
                 if (m->end & SPARSE_BIT) bit *= fSparse;
                 if (bit > 0) {
                     sum += bit;
-                    if (uRef->y[aRefInv[m->jRef]]) score += bit;
+                    if (uRef->sortedY[aRefInv[m->jRef]]) score += bit;
                 }
                 ++m;
             }
@@ -1328,7 +1328,7 @@ static PBWT *referenceImpute3(PBWT *pOld, PBWT *pRef, PBWT *pFrame,
             }
         }
 
-        for (j = 0; j < pOld->M; ++j) uNew->y[j] = x[uNew->a[j]]; /* transfer to uNew */
+        for (j = 0; j < pOld->M; ++j) uNew->sortedY[j] = x[uNew->a[j]]; /* transfer to uNew */
         pbwtCursorWriteForwards(uNew);
         /* need to sort the dosages into uNew cursor order as well */
         for (j = 0; j < pOld->M; ++j) yDosage[j] = xDosage[uNew->a[j]];
@@ -1560,8 +1560,8 @@ static void genotypeComparePbwt(PBWT *p, PBWT *q) {
             ++ni[ff];
         }
         for (j = 0; j < p->M; ++j) {
-            xp[up->a[j]] = up->y[j];
-            xq[uq->a[j]] = uq->y[j];
+            xp[up->a[j]] = up->sortedY[j];
+            xq[uq->a[j]] = uq->sortedY[j];
         }
         if (isDosage) dos = pbwtDosageRetrieve(p, up, dos, k);
         for (j = 0; j < p->M; j += 2) {
@@ -1664,15 +1664,15 @@ PBWT *pbwtCorruptSites(PBWT *pOld, double pSite, double pChange) {
     x = myalloc (M, uchar);
 
     for (k = 0; k < N; ++k) {
-        for (i = 0; i < M; ++i) x[uOld->a[i]] = uOld->y[i];
+        for (i = 0; i < M; ++i) x[uOld->a[i]] = uOld->sortedY[i];
 
-        for (i = 0; i < M; ++i) uNew->y[i] = x[uNew->a[i]];
+        for (i = 0; i < M; ++i) uNew->sortedY[i] = x[uNew->a[i]];
         if (rand() < rSite)
             for (i = 0; i < M; ++i)
                 if (rand() < rChange) {
-                    uchar old = uNew->y[i];
-                    uNew->y[i] = (rand() < uOld->c * rFac) ? 0 : 1;
-                    if (old != uNew->y[i])
+                    uchar old = uNew->sortedY[i];
+                    uNew->sortedY[i] = (rand() < uOld->c * rFac) ? 0 : 1;
+                    if (old != uNew->sortedY[i])
                         ++nChange;
                 }
         pbwtCursorWriteForwards(uNew);
@@ -1718,15 +1718,15 @@ PBWT *pbwtCorruptSamples(PBWT *pOld, double pSample, double pChange) {
         isCorrupt[i] = (rand() < rSample);
 
     for (k = 0; k < N; ++k) {
-        for (i = 0; i < M; ++i) x[uOld->a[i]] = uOld->y[i];
+        for (i = 0; i < M; ++i) x[uOld->a[i]] = uOld->sortedY[i];
 
         for (i = 0; i < M; ++i)
             if (isCorrupt[i] && rand() < rChange) {
-                uNew->y[i] = (rand() < uOld->c * rFac) ? 0 : 1;
-                if (uNew->y[i] != x[uNew->a[i]]) ++nChange;
+                uNew->sortedY[i] = (rand() < uOld->c * rFac) ? 0 : 1;
+                if (uNew->sortedY[i] != x[uNew->a[i]]) ++nChange;
             }
             else
-                uNew->y[i] = x[uNew->a[i]];
+                uNew->sortedY[i] = x[uNew->a[i]];
         pbwtCursorWriteForwards(uNew);
         pbwtCursorForwardsRead(uOld);
     }
@@ -1763,10 +1763,10 @@ PBWT *pbwtCopySamples(PBWT *pOld, int Mnew, double meanLength) {
     for (j = 0; j < pNew->M; ++j) copy[j] = rand() % pOld->M; /* initialise copying */
 
     for (k = 0; k < pOld->N; ++k) {
-        for (i = 0; i < pOld->M; ++i) xOld[uOld->a[i]] = uOld->y[i];
+        for (i = 0; i < pOld->M; ++i) xOld[uOld->a[i]] = uOld->sortedY[i];
         for (j = 0; j < pNew->M; ++j)
             if (rand() < rSwitch) copy[j] = rand() % pOld->M; /* switch copying */
-        for (j = 0; j < pNew->M; ++j) uNew->y[j] = xOld[copy[uNew->a[j]]];
+        for (j = 0; j < pNew->M; ++j) uNew->sortedY[j] = xOld[copy[uNew->a[j]]];
         pbwtCursorWriteForwards(uNew);
         pbwtCursorForwardsRead(uOld);
     }
@@ -1870,7 +1870,7 @@ double *pbwtDosageRetrieve(PBWT *p, PbwtCursor *u, double *dosage, int k) {
         int count = *z & 0x1f;
         if (x == 6) count <<= 5; else if (x == 7) count <<= 10;
         while (count--) { /* if (i >= p->M) die ("problem in dosageRetrieve") ; */
-            dosage[i] = dosageDecode(x, u->y[i]);
+            dosage[i] = dosageDecode(x, u->sortedY[i]);
             ++i;
         }
         ++z;

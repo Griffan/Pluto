@@ -130,7 +130,7 @@ PBWT *pbwtReadVcfGT (char *filename)  /* read GTs from vcf/bcf using htslib */
           if (!no_alt) while ( *alt++ = toupper(*alt) );
 
           /* and pack them into the PBWT */
-          for (j = 0 ; j < p->M ; ++j) u->y[j] = tmpAllele[u->a[j]] == i ? 1 : 0;
+          for (j = 0 ; j < p->M ; ++j) u->sortedY[j] = tmpAllele[u->a[j]] == i ? 1 : 0;
           pbwtCursorWriteForwards (u) ;
 
           /* store missing information, if there was any */
@@ -319,7 +319,7 @@ void pbwtWriteVcf (PBWT *p, char *filename, char *referenceFasta, char *mode)
       // map haplotypes and dosages to sample order
       for (j = 0 ; j < p->M ; ++j)
         {
-          hap[u->a[j]] = u->y[j] ;
+          hap[u->a[j]] = u->sortedY[j] ;
           if (isDosage) ad[u->a[j]] = d[j] ;
         }
       int ac[2] = {0,0};

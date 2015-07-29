@@ -85,10 +85,10 @@ static void simpleEntropy (PBWT *p)
   long dTotSwitch = 0, nTotSwitch = 0 ;
 
   for (i = 0 ; i < p->N ; ++i)
-    { int last = u->y[0] ;
+    { int last = u->sortedY[0] ;
       for (j = 1 ; j < p->M ; ++j)
 	{ d = i+1 - u->d[j] ;
-	  if (u->y[j] == u->y[j-1]) { dTotStick += d ; ++nTotStick ; }
+	  if (u->sortedY[j] == u->sortedY[j-1]) { dTotStick += d ; ++nTotStick ; }
 	  else { dTotSwitch += d ; ++nTotSwitch ; }
 	}
       f = u->c/(double)p->M ;
@@ -123,7 +123,7 @@ static Array buildRowInfo (PBWT *p, int MAX) /* array of RowInfo */
   for (i = 0 ; i < p->N ; ++i)
     { for (j = 1 ; j < p->M ; ++j)
 	{ int d = i+1 - u->d[j] ; if (d > MAX) d = MAX ;
-	  if (u->y[j] == u->y[j-1]) 
+	  if (u->sortedY[j] == u->sortedY[j-1])
 	    ++arrayp(info,d,RowInfo)->nStick ; 
 	  else 
 	    ++arrayp(info,d,RowInfo)->nSwitch ;
@@ -194,13 +194,13 @@ static Array buildRowInfoDropOne (PBWT *p, int MAX) /* array of RowInfoDropOne *
     { for (j = 0 ; j < p->M ; ++j)
 	{ if (!u->d[j] || !u->d[j+1]) continue ; /* ignore edge effects */
 	  if (j == 0) 
-	    { k = (u->y[j] << 1) + u->y[j+1] ; d1 = 0 ; d2 = i+1 - u->d[j+1] ; }
+	    { k = (u->sortedY[j] << 1) + u->sortedY[j+1] ; d1 = 0 ; d2 = i+1 - u->d[j+1] ; }
 	  else if (j < p->M-1)
-	    { k = (u->y[j-1] << 2) + (u->y[j] << 1) + u->y[j+1] ; 
+	    { k = (u->sortedY[j-1] << 2) + (u->sortedY[j] << 1) + u->sortedY[j+1] ;
 	      d1 = i+1 - u->d[j] ; d2 = i+1 - u->d[j+1] ; 
 	    }
 	  else
-	    { k = (u->y[j-1] << 2) + (u->y[j] << 1) ; d1 = i+1 - u->d[j] ; d2 = 0 ; }
+	    { k = (u->sortedY[j-1] << 2) + (u->sortedY[j] << 1) ; d1 = i+1 - u->d[j] ; d2 = 0 ; }
 	  d1 /= 10 ; d2 /= 10 ;
 	  if (d1 > MAX) d1 = MAX ; if (d2 > MAX) d2 = MAX ;
 	  if (d1 < d2) dd = d2*d2 + d1 ; else dd = d1*d1 + d1 + d2 ;
@@ -288,11 +288,11 @@ static Array buildRowInfoFreqDropOne (PBWT *p, int MAX) /* array of RowInfoDropO
     { for (j = 0 ; j < p->M ; ++j)
 	{ if (!u->d[j] || !u->d[j+1]) continue ; /* ignore edge effects */
 	  if (j == 0) 
-	    k = (u->y[j] << 1) + u->y[j+1] ;
+	    k = (u->sortedY[j] << 1) + u->sortedY[j+1] ;
 	  else if (j < p->M-1)
-	    k = (u->y[j-1] << 2) + (u->y[j] << 1) + u->y[j+1] ;
+	    k = (u->sortedY[j-1] << 2) + (u->sortedY[j] << 1) + u->sortedY[j+1] ;
 	  else
-	    k = (u->y[j-1] << 2) + (u->y[j] << 1) ;
+	    k = (u->sortedY[j-1] << 2) + (u->sortedY[j] << 1) ;
 	  n1 = u->M - u->c ;
 	  arrayp(info,n1,RowInfoDropOne)->n[k] += 1 ; 
 	  arrp(info,n1,RowInfoDropOne)->nTot += 1 ;
@@ -392,7 +392,7 @@ double copyLogLikelihoodDropOne (PBWT *p, double theta, double rho)
   double rho1 = 1.0-rho, rhoM = rho/(p->M - 1.0), theta1 = 1.0-theta ;
 
   for (k = 0 ; k < p->N ; ++k)
-    { for (j = 0 ; j < p->M ; ++j) x[u->a[j]] = u->y[j] ;
+    { for (j = 0 ; j < p->M ; ++j) x[u->a[j]] = u->sortedY[j] ;
       for (i = 0 ; i < p->M ; ++i)
 	{ double sum = 0.0 ;
 	  for (j = 0 ; j < p->M ; ++j)

@@ -75,7 +75,7 @@ static void matchLongWithin1(PBWT *p, int T,
                 na = 0;
                 nb = 0;                   /* NB because of this matches won't check */
             }
-            if (u->y[i] == 0)
+            if (u->sortedY[i] == 0)
                 a[na++] = u->a[i];
             else
                 b[nb++] = u->a[i];
@@ -101,7 +101,7 @@ static void matchLongWithin2(PBWT *p, int T,
                     for (ia = i0; ia < i; ++ia)
                         for (ib = ia + 1, dmin = 0; ib < i; ++ib) {
                             if (u->d[ib] > dmin) dmin = u->d[ib];
-                            if (u->y[ib] != u->y[ia])
+                            if (u->sortedY[ib] != u->sortedY[ia])
                                 (*report)(u->a[ia], u->a[ib], dmin, k);
                         }
                 }
@@ -109,7 +109,7 @@ static void matchLongWithin2(PBWT *p, int T,
                 nb = 0;
                 i0 = i;
             }
-            if (u->y[i] == 0)
+            if (u->sortedY[i] == 0)
                 na++;
             else
                 nb++;
@@ -134,10 +134,10 @@ void matchMaximalWithin(PBWT *p, void (*report)(int ai, int bi, int start, int e
             n = i + 1;//searching interval
             if (u->d[i] <= u->d[i + 1])//scan down
                 while (u->d[m + 1] <= u->d[i])
-                    if (u->y[m--] == u->y[i] && k < p->N) goto nexti;
+                    if (u->sortedY[m--] == u->sortedY[i] && k < p->N) goto nexti;
             if (u->d[i] >= u->d[i + 1])//scan up
                 while (u->d[n] <= u->d[i + 1])
-                    if (u->y[n++] == u->y[i] && k < p->N) goto nexti;
+                    if (u->sortedY[n++] == u->sortedY[i] && k < p->N) goto nexti;
             if (matchLengthHist)
                 ++array(matchLengthHist, (u->d[i] < u->d[i + 1]) ? k - u->d[i] : k - u->d[i + 1], int);
             else {
@@ -429,11 +429,11 @@ void matchSequencesSweep(PBWT *p, PBWT *q, void (*report)(int ai, int bi, int st
     for (k = 0; k < p->N; ++k) {
         for (j = 0; j < q->M; ++j) {
             int jj = uq->a[j];
-            uchar x = uq->y[j];
-            if (up->y[f[jj]] != x) { /* first see if there is any match of the same length that can be extended */
+            uchar x = uq->sortedY[j];
+            if (up->sortedY[f[jj]] != x) { /* first see if there is any match of the same length that can be extended */
                 int iPlus = f[jj]; /* is an index into *up greater than f[jj] */
                 while (++iPlus < p->M && up->d[iPlus] <= d[jj])
-                    if (up->y[iPlus] == x) {
+                    if (up->sortedY[iPlus] == x) {
                         f[jj] = iPlus;
                         goto DONE;
                     }
@@ -450,7 +450,7 @@ void matchSequencesSweep(PBWT *p, PBWT *q, void (*report)(int ai, int bi, int st
                     if (dMinus <= dPlus) {
                         i = -1;    /* impossible value */
                         while (up->d[iMinus] <= dMinus) /* up->d[0] = k+1 prevents underflow */
-                            if (up->y[--iMinus] == x) i = iMinus;
+                            if (up->sortedY[--iMinus] == x) i = iMinus;
                         if (i >= 0) {
                             f[jj] = i;
                             d[jj] = dMinus;
@@ -461,7 +461,7 @@ void matchSequencesSweep(PBWT *p, PBWT *q, void (*report)(int ai, int bi, int st
                     else        /* dPlus < dMinus */
                     {
                         while (iPlus < p->M && up->d[iPlus] <= dPlus)
-                            if (up->y[iPlus] == x) {
+                            if (up->sortedY[iPlus] == x) {
                                 f[jj] = iPlus;
                                 d[jj] = dPlus;
                                 goto DONE;
@@ -483,7 +483,7 @@ void matchSequencesSweep(PBWT *p, PBWT *q, void (*report)(int ai, int bi, int st
         pbwtCursorCalculateU(up);
         for (j = 0; j < q->M; ++j) {
             int jj = uq->a[j];
-            f[jj] = pbwtCursorMap(up, uq->y[j], f[jj]);
+            f[jj] = pbwtCursorMap(up, uq->sortedY[j], f[jj]);
             /* trap if x == 1 and all up->y[] == 0, so d[jj] == k+1 (see above) */
             if (f[jj] == p->M) f[jj] = 0;
         }
@@ -527,7 +527,7 @@ static void reportAndUpdate(int j, int k, uchar x, PbwtCursor *up, int *f, int *
     /* first see if there is any match of the same length that can be extended */
     int iPlus = f[j]; /* is an index into *up greater than f[j] */
     while (++iPlus < up->M && up->d[iPlus] <= d[j])
-        if (up->y[iPlus] == x) {
+        if (up->sortedY[iPlus] == x) {
             f[j] = iPlus;
             return;
         }
@@ -559,7 +559,7 @@ static void reportAndUpdate(int j, int k, uchar x, PbwtCursor *up, int *f, int *
         if (dMinus <= dPlus) {
             i = -1;    /* impossible value */
             while (up->d[iMinus] <= dMinus) /* up->d[0] = k+1 prevents underflow */
-                if (up->y[--iMinus] == x) i = iMinus;
+                if (up->sortedY[--iMinus] == x) i = iMinus;
             if (i >= 0) {
                 f[j] = i;
                 d[j] = dMinus;
@@ -570,7 +570,7 @@ static void reportAndUpdate(int j, int k, uchar x, PbwtCursor *up, int *f, int *
         else        /* dPlus < dMinus */
         {
             while (iPlus < up->M && up->d[iPlus] <= dPlus)
-                if (up->y[iPlus] == x) {
+                if (up->sortedY[iPlus] == x) {
                     f[j] = iPlus;
                     d[j] = dPlus;
                     return;
@@ -622,24 +622,24 @@ void matchSequencesSweepSparse(PBWT *p, PBWT *q, int nSparse,
     for (k = 0; k < p->N; ++k) {
         if (nSparse > 1) {
             kk = k % nSparse;
-            for (j = 0; j < p->M; ++j) xp[up->a[j]] = up->y[j];
-            for (j = 0; j < p->M; ++j) upp[kk]->y[j] = xp[upp[kk]->a[j]];
+            for (j = 0; j < p->M; ++j) xp[up->a[j]] = up->sortedY[j];
+            for (j = 0; j < p->M; ++j) upp[kk]->sortedY[j] = xp[upp[kk]->a[j]];
         }
 
         /* first check if matches extend, and if not report and update f, d */
         for (j = 0; j < q->M; ++j) {
             int jj = uq->a[j];
-            uchar xq = uq->y[j];
-            if (up->y[f[jj]] != xq) /* this match ends here */
+            uchar xq = uq->sortedY[j];
+            if (up->sortedY[f[jj]] != xq) /* this match ends here */
                 reportAndUpdate(jj, k, xq, up, f, d, FALSE);
-            if (nSparse > 1 && upp[kk]->y[ff[kk][jj]] != xq)
+            if (nSparse > 1 && upp[kk]->sortedY[ff[kk][jj]] != xq)
                 reportAndUpdate(jj, k, xq, upp[kk], ff[kk], dd[kk], TRUE);
         }
         /* next update the match location f[] of each query */
         pbwtCursorCalculateU(up);
         for (j = 0; j < q->M; ++j) {
             int jj = uq->a[j];
-            f[jj] = pbwtCursorMap(up, uq->y[j], f[jj]);
+            f[jj] = pbwtCursorMap(up, uq->sortedY[j], f[jj]);
             /* trap if x == 1 and all up->y[] == 0, so d[jj] == k+1 (see above) */
             if (f[jj] == p->M) f[jj] = 0;
         }
@@ -649,7 +649,7 @@ void matchSequencesSweepSparse(PBWT *p, PBWT *q, int nSparse,
             pbwtCursorCalculateU(upp[kk]);
             for (j = 0; j < q->M; ++j) {
                 int jj = uq->a[j];
-                ff[kk][jj] = pbwtCursorMap(upp[kk], uq->y[j], ff[kk][jj]);
+                ff[kk][jj] = pbwtCursorMap(upp[kk], uq->sortedY[j], ff[kk][jj]);
                 if (ff[kk][jj] == p->M) ff[kk][jj] = 0;
             }
             /* now move the sparse cursor forward, before updating the primary ones */

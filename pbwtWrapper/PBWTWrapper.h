@@ -13,26 +13,28 @@
 #include <vector.h>
 class PBWTWrapper
 {
-    PWBT* pbwtCore,pbwtCoreReverse;
+    PBWT* pbwtCore;
     PbwtCursor* forwardCursor,backwardCursor;
     vector<vector<int> > a,alpha/*reverse*/;
     vector<vector<int> > d,delta/*reverse*/;
     vector<int> numZero;/*number of zero at each site*/
     vector<vector<int> > haplotypeCluster;
-
+    vector<int> numCluster;//at each site
+    char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
 public:
     virtual ~PBWTWrapper() { }
 
 public:
     PBWTWrapper(const ::PBWTWrapper::PWBT* pbwt) { }
-    PBWTWrapper(const char ** haplotype, int nhaps, int nsnps);
+    PBWTWrapper(const char ** haps, int nhaps, int nsnps);
     PBWTWrapper(int nhaps,int nsnps);
     int InitializeCursor();
     int InitializeReverseCursor();
     int CursorForwards();
     int CursorBackwards();
-    int CursorForwardsTo();
-    int CursorBackwardsTo();
+    int CursorForwardsTo(int k, int T=5);
+    int CursorBackwardsTo(int k, int T=5);
+    inline int CopyHap(int k, PbwtCursor* Cursor);
     int PrintDistributionAtSite();
     int IdentifyGroup();//based on content of prefix, acutally this is the function that find set maximal up to length L
     int ObtainRank();//based on content of suffix, this is the function that find rank order of haplotype

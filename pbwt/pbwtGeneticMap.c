@@ -180,7 +180,7 @@ void pbwt4hapsStats (PBWT *p)
       double g = geneticMap (pos) ;
       v = arrp(p->sites,k,Site)->varD ;
       if (u->M - u->c >= 2)	/* at least two 1s */
-	{ for (i = 0 ; i < p->M ; ++i) x[u->a[i]] = u->y[i] ;
+	{ for (i = 0 ; i < p->M ; ++i) x[u->a[i]] = u->sortedY[i] ;
 	  for (i = 0 ; i+4 <= p->M ; i += 4)
 	    if (x[i] + x[i+1] + x[i+2] + x[i+3] == 2) /* doubleton */
 	      { int pat = x[i] + (x[i+1]<<1) + (x[i+2]<<2) + (x[i+3]<<3) ;

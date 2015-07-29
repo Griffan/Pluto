@@ -56,7 +56,7 @@ void pbwtDestroy(PBWT *p) {
     if (p->sites) arrayDestroy(p->sites);
     if (p->samples) arrayDestroy(p->samples);
     if (p->CompressedAllele) arrayDestroy(p->CompressedAllele);
-    if (p->zz) arrayDestroy(p->zz);
+    if (p->ReverseCompressedAllele) arrayDestroy(p->ReverseCompressedAllele);
     if (p->aFstart) free(p->aFstart);
     if (p->aFend) free(p->aFend);
     if (p->aRstart) free(p->aRstart);
@@ -88,8 +88,8 @@ PBWT *pbwtSubSites(PBWT *pOld, double fmin, double frac) {
 
     for (i = 0; i < pOld->N; ++i) {
         if ((uOld->c < thresh) && ((bit += frac) > 1.0)) {
-            for (j = 0; j < M; ++j) x[uOld->a[j]] = uOld->y[j];
-            for (j = 0; j < M; ++j) uNew->y[j] = x[uNew->a[j]];
+            for (j = 0; j < M; ++j) x[uOld->a[j]] = uOld->sortedY[j];
+            for (j = 0; j < M; ++j) uNew->sortedY[j] = x[uNew->a[j]];
             pbwtCursorWriteForwards(uNew);
             if (pOld->sites) array(pNew->sites, pNew->N, Site) = arr(pOld->sites, i, Site);
             ++pNew->N;
@@ -133,8 +133,8 @@ PBWT *pbwtSubRange(PBWT *pOld, int start, int end) {
 
     for (i = 0; i < end; ++i) {
         if (i >= start) {
-            for (j = 0; j < M; ++j) x[uOld->a[j]] = uOld->y[j];
-            for (j = 0; j < M; ++j) uNew->y[j] = x[uNew->a[j]];
+            for (j = 0; j < M; ++j) x[uOld->a[j]] = uOld->sortedY[j];
+            for (j = 0; j < M; ++j) uNew->sortedY[j] = x[uNew->a[j]];
             pbwtCursorWriteForwards(uNew);
             if (pOld->sites) array(pNew->sites, pNew->N, Site) = arr(pOld->sites, i, Site);
             ++pNew->N;
@@ -176,26 +176,26 @@ void pbwtBuildReverse(PBWT *p) {
 
     /* use p->aFend also to start the reverse cursor - this gives better performance */
     if (!p->aRstart) p->aRstart = myalloc (M, int);
-    memcpy (p->aRstart, uF->a, M * sizeof(int));
-    p->zz = arrayReCreate (p->zz, arrayMax(p->CompressedAllele), uchar);
+    memcpy (p->aRstart, uF->a, M * sizeof(int));// is Rstart the same as Fend and uF->a?
+    p->ReverseCompressedAllele = arrayReCreate (p->ReverseCompressedAllele, arrayMax(p->CompressedAllele), uchar);// resize ReverseCompressedAllele to the same size as CompressedAllele
     PbwtCursor *uR = pbwtCursorCreate(p, FALSE, TRUE); /* will pick up aRstart */
     for (i = p->N; i--;) {
-        pbwtCursorReadBackwards(uF);
-        for (j = 0; j < M; ++j) x[uF->a[j]] = uF->y[j];
-        for (j = 0; j < M; ++j) uR->y[j] = x[uR->a[j]];
+        pbwtCursorReadBackwards(uF);//update uF->a only based on last column alleles
+        for (j = 0; j < M; ++j) x[uF->a[j]] = uF->sortedY[j];//transform original order into forwardEnd order
+        for (j = 0; j < M; ++j) uR->sortedY[j] = x[uR->a[j]];// I think uR->a is the same as uF->a; not it's not anymore, because uF unfold it one site back
         pbwtCursorWriteForwards(uR);
     }
     /* save uR->a, which is the lexicographic order of the sequences */
     if (!p->aRend) p->aRend = myalloc (M, int);
-    memcpy (p->aRend, uR->a, M * sizeof(int));
+    memcpy (p->aRend, uR->a, M * sizeof(int));//the end when loop from back to the original first
 
-    fprintf(stderr, "built reverse PBWT - size %ld\n", arrayMax(p->zz));
+    fprintf(stderr, "built reverse PBWT - size %ld\n", arrayMax(p->ReverseCompressedAllele));
 
     if (isCheck)            /* print out the reversed haplotypes */
     {
         FILE *fp = fopen("rev.haps", "w");
         Array tz = p->CompressedAllele;
-        p->CompressedAllele = p->zz;
+        p->CompressedAllele = p->ReverseCompressedAllele;
         int *ta = p->aFstart;
         p->aFstart = p->aRstart;
         pbwtWriteHaplotypes(fp, p);
@@ -221,7 +221,7 @@ uchar **pbwtHaplotypes(PBWT *p)    /* NB haplotypes can be space costly */
     for (i = 0; i < M; ++i) hap[i] = myalloc (p->N, uchar);
 
     for (i = 0; i < p->N; ++i) {
-        for (j = 0; j < M; ++j) hap[u->a[j]][i] = u->y[j];
+        for (j = 0; j < M; ++j) hap[u->a[j]][i] = u->sortedY[j];
         pbwtCursorForwardsRead(u);
     }
     pbwtCursorDestroy(u);
@@ -438,8 +438,8 @@ PbwtCursor *pbwtNakedCursorCreate(int M, int *aInit) {
     int i;
 
     u->M = M;
-    u->y = myalloc (M + 1, uchar);
-    u->y[M] = Y_SENTINEL;
+    u->sortedY = myalloc (M + 1, uchar);
+    u->sortedY[M] = Y_SENTINEL;
     u->a = myalloc (M, int);
     if (aInit) memcpy (u->a, aInit, M * sizeof(int));
     else for (i = 0; i < M; ++i) u->a[i] = i;
@@ -454,17 +454,17 @@ PbwtCursor *pbwtNakedCursorCreate(int M, int *aInit) {
 
 PbwtCursor *pbwtCursorCreate(PBWT *p, BOOL isForwards, BOOL isStart) {
     if (isForwards && !p->CompressedAllele) p->CompressedAllele = arrayCreate (1 << 20, uchar);
-    if (!isForwards && !p->zz) p->zz = arrayCreate (1 << 20, uchar);
+    if (!isForwards && !p->ReverseCompressedAllele) p->ReverseCompressedAllele = arrayCreate (1 << 20, uchar);
     PbwtCursor *u;
     if (isForwards && isStart) u = pbwtNakedCursorCreate(p->M, p->aFstart);
     else if (isForwards && !isStart) u = pbwtNakedCursorCreate(p->M, p->aFend);
     else if (!isForwards && isStart) u = pbwtNakedCursorCreate(p->M, p->aRstart);//reverse start
     else if (!isForwards && !isStart) u = pbwtNakedCursorCreate(p->M, p->aRend);
-    if (isForwards) u->CursorCompress = p->CompressedAllele; else u->CursorCompress = p->zz;
+    if (isForwards) u->CursorCompress = p->CompressedAllele; else u->CursorCompress = p->ReverseCompressedAllele;
     if (isStart)
         if (arrayMax(u->CursorCompress))
         {
-            u->n = unpack3(arrp(u->CursorCompress, 0, uchar), p->M, u->y, &u->c);
+            u->n = unpack3(arrp(u->CursorCompress, 0, uchar), p->M, u->sortedY, &u->c);
             u->isBlockEnd = TRUE;
         }
         else
@@ -481,7 +481,7 @@ PbwtCursor *pbwtCursorCreate(PBWT *p, BOOL isForwards, BOOL isStart) {
 }
 
 void pbwtCursorDestroy(PbwtCursor *u) {
-    free(u->y);
+    free(u->sortedY);
     free(u->a);
     free(u->b);
     free(u->d);
@@ -496,7 +496,7 @@ void pbwtCursorForwardsA(PbwtCursor *x) /* algorithm 1 in the manuscript */
     int i;
 
     for (i = 0; i < x->M; ++i)
-        if (x->y[i] == 0)
+        if (x->sortedY[i] == 0)
             x->a[u++] = x->a[i];
         else            /* y[i] == 1, since bi-allelic */
             x->b[v++] = x->a[i];
@@ -513,7 +513,7 @@ void pbwtCursorBackwardsA(PbwtCursor *x) /* undo algorithm 1 */
     x->b = t; /* will copy back from b to a */
 
     for (i = 0; i < x->M; ++i)
-        if (x->y[i] == 0)
+        if (x->sortedY[i] == 0)
             x->a[i] = x->b[u++];
         else            /* y[i] == 1, since bi-allelic */
             x->a[i] = x->b[x->c + v++];
@@ -529,7 +529,7 @@ void pbwtCursorForwardsAD(PbwtCursor *x, int k) /* algorithm 2 in the manuscript
     for (i = 0; i < x->M; ++i) {
         if (x->d[i] > p) p = x->d[i];
         if (x->d[i] > q) q = x->d[i];
-        if (x->y[i] == 0)        /* NB x[a[i]] = y[i] in manuscript */
+        if (x->sortedY[i] == 0)        /* NB x[a[i]] = y[i] in manuscript */
         {
             x->a[u] = x->a[i];
             x->d[u] = p;
@@ -556,7 +556,7 @@ void pbwtCursorCalculateU(PbwtCursor *x) {
 
     for (i = 0; i < x->M; ++i) {
         x->u[i] = u;
-        if (x->y[i] == 0) ++u;
+        if (x->sortedY[i] == 0) ++u;
     }
     x->c = x->u[i] = u;        /* need one off the end of update intervals */
 }
@@ -571,9 +571,9 @@ void pbwtCursorForwardsRead(PbwtCursor *u) /* move forwards and read (unless at 
 {
     pbwtCursorForwardsA(u);
     if (!u->isBlockEnd && u->n < arrayMax(u->CursorCompress))  /* move to end of previous block */
-        u->n += unpack3(arrp(u->CursorCompress, u->n, uchar), u->M, u->y, 0);
+        u->n += unpack3(arrp(u->CursorCompress, u->n, uchar), u->M, u->sortedY, 0);
     if (u->n < arrayMax(u->CursorCompress)) {
-        u->n += unpack3(arrp(u->CursorCompress, u->n, uchar), u->M, u->y, &u->c); /* read this block */
+        u->n += unpack3(arrp(u->CursorCompress, u->n, uchar), u->M, u->sortedY, &u->c); /* read this block */
         u->isBlockEnd = TRUE;
     }
     else
@@ -584,9 +584,9 @@ void pbwtCursorForwardsReadAD(PbwtCursor *u, int k) /* AD version of the above *
 {
     pbwtCursorForwardsAD(u, k);
     if (!u->isBlockEnd && u->n < arrayMax(u->CursorCompress))  /* move to end of previous block */
-        u->n += unpack3(arrp(u->CursorCompress, u->n, uchar), u->M, u->y, 0);
+        u->n += unpack3(arrp(u->CursorCompress, u->n, uchar), u->M, u->sortedY, 0);
     if (u->n < arrayMax(u->CursorCompress)) {
-        u->n += unpack3(arrp(u->CursorCompress, u->n, uchar), u->M, u->y, &u->c); /* read this block */
+        u->n += unpack3(arrp(u->CursorCompress, u->n, uchar), u->M, u->sortedY, &u->c); /* read this block */
         u->isBlockEnd = TRUE;
     }
     else
@@ -598,7 +598,7 @@ void pbwtCursorReadBackwards(PbwtCursor *u) /* read and go backwards (unless at 
     if (u->isBlockEnd && u->n) u->n -= packCountReverse(arrp(u->CursorCompress, u->n, uchar), u->M);
     if (u->n) {
         u->n -= packCountReverse(arrp(u->CursorCompress, u->n, uchar), u->M);
-        unpack3(arrp(u->CursorCompress, u->n, uchar), u->M, u->y, &u->c);
+        unpack3(arrp(u->CursorCompress, u->n, uchar), u->M, u->sortedY, &u->c);
         pbwtCursorBackwardsA(u);
         u->isBlockEnd = FALSE;
     }
@@ -608,13 +608,13 @@ void pbwtCursorReadBackwards(PbwtCursor *u) /* read and go backwards (unless at 
 
 void pbwtCursorWriteForwards(PbwtCursor *u) /* write then move forwards */
 {
-    u->n += pack3arrayAdd(u->y, u->M, u->CursorCompress);
+    u->n += pack3arrayAdd(u->sortedY, u->M, u->CursorCompress);
     u->isBlockEnd = FALSE;
     pbwtCursorForwardsA(u);
 }
 
 void pbwtCursorWriteForwardsAD(PbwtCursor *u, int k) {
-    u->n += pack3arrayAdd(u->y, u->M, u->CursorCompress);
+    u->n += pack3arrayAdd(u->sortedY, u->M, u->CursorCompress);
     u->isBlockEnd = FALSE;
     pbwtCursorForwardsAD(u, k);
 }
@@ -665,9 +665,9 @@ PBWT *pbwtSelectSites(PBWT *pOld, Array sites, BOOL isKeepOld) {
                 ++sp;
                 ++ia;
                 ++sa;
-                for (j = 0; j < pOld->M; ++j) x[uOld->a[j]] = uOld->y[j];
+                for (j = 0; j < pOld->M; ++j) x[uOld->a[j]] = uOld->sortedY[j];
                 pbwtCursorForwardsRead(uOld);
-                for (j = 0; j < pNew->M; ++j) uNew->y[j] = x[uNew->a[j]];
+                for (j = 0; j < pNew->M; ++j) uNew->sortedY[j] = x[uNew->a[j]];
                 pbwtCursorWriteForwards(uNew);
             }
         }
@@ -717,9 +717,9 @@ PBWT *pbwtRemoveSites(PBWT *pOld, Array sites, BOOL isKeepOld) {
             array(pNew->sites, pNew->N++, Site) = *sp;
             ++ip;
             ++sp;
-            for (j = 0; j < pOld->M; ++j) x[uOld->a[j]] = uOld->y[j];
+            for (j = 0; j < pOld->M; ++j) x[uOld->a[j]] = uOld->sortedY[j];
             pbwtCursorForwardsRead(uOld);
-            for (j = 0; j < pNew->M; ++j) uNew->y[j] = x[uNew->a[j]];
+            for (j = 0; j < pNew->M; ++j) uNew->sortedY[j] = x[uNew->a[j]];
             pbwtCursorWriteForwards(uNew);
         }
         else if (sp->x > sa->x) {
@@ -730,9 +730,9 @@ PBWT *pbwtRemoveSites(PBWT *pOld, Array sites, BOOL isKeepOld) {
             array(pNew->sites, pNew->N++, Site) = *sp;
             ++ip;
             ++sp;
-            for (j = 0; j < pOld->M; ++j) x[uOld->a[j]] = uOld->y[j];
+            for (j = 0; j < pOld->M; ++j) x[uOld->a[j]] = uOld->sortedY[j];
             pbwtCursorForwardsRead(uOld);
-            for (j = 0; j < pNew->M; ++j) uNew->y[j] = x[uNew->a[j]];
+            for (j = 0; j < pNew->M; ++j) uNew->sortedY[j] = x[uNew->a[j]];
             pbwtCursorWriteForwards(uNew);
         }
         else if (sp->varD > sa->varD) {

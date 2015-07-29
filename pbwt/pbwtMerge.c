@@ -166,7 +166,7 @@ PBWT *pbwtMerge(const char **fnames, int nfiles)
 				if ( strcmp(als,reader->mals) ) continue;
 
 				PbwtCursor *c = reader->cursor[i];
-				reader->unpacked[i] += unpack3(arrp(p->CompressedAllele,reader->unpacked[i],uchar), p->M, c->y, 0);
+				reader->unpacked[i] += unpack3(arrp(p->CompressedAllele,reader->unpacked[i],uchar), p->M, c->sortedY, 0);
 				pbwtCursorForwardsA(c);
 			}
 			continue;
@@ -179,16 +179,16 @@ PBWT *pbwtMerge(const char **fnames, int nfiles)
 			PbwtCursor *c = reader->cursor[i];
 			PBWT *p       = reader->pbwt[i];
 			Site *site    = arrp(p->sites, reader->cpos[i], Site);
-			reader->unpacked[i] += unpack3(arrp(p->CompressedAllele,reader->unpacked[i],uchar), p->M, c->y, 0);
-			for (j=0; j<p->M; j++) yseq[ihap + c->a[j]] = c->y[j];
+			reader->unpacked[i] += unpack3(arrp(p->CompressedAllele,reader->unpacked[i],uchar), p->M, c->sortedY, 0);
+			for (j=0; j<p->M; j++) yseq[ihap + c->a[j]] = c->sortedY[j];
 			pbwtCursorForwardsA(c);
 			ihap += p->M;
 		}
 
 		// pack merged haplotypes
 		for (j=0; j<nhaps; j++)
-			cursor->y[j] = yseq[cursor->a[j]];
-		pack3arrayAdd(cursor->y, out_pbwt->M, out_pbwt->CompressedAllele);
+			cursor->sortedY[j] = yseq[cursor->a[j]];
+		pack3arrayAdd(cursor->sortedY, out_pbwt->M, out_pbwt->CompressedAllele);
 		pbwtCursorForwardsA(cursor);
 
 		// insert new site

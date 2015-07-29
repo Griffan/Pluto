@@ -70,8 +70,8 @@ PBWT *pbwtSubSample (PBWT *pOld, Array select)
 
   for (i = 0 ; i < pOld->N ; ++i)
     { for (j = 0 ; j < pOld->M ; ++j) ainv[uOld->a[j]] = j ;
-      for (j = 0 ; j < pNew->M ; ++j) x[j] = uOld->y[ainv[arr(select,j,int)]] ;
-      for (j = 0 ; j < pNew->M ; ++j) uNew->y[j] = x[uNew->a[j]] ;
+      for (j = 0 ; j < pNew->M ; ++j) x[j] = uOld->sortedY[ainv[arr(select,j,int)]] ;
+      for (j = 0 ; j < pNew->M ; ++j) uNew->sortedY[j] = x[uNew->a[j]] ;
       pbwtCursorWriteForwards (uNew) ;
       pbwtCursorForwardsRead (uOld) ;
     }

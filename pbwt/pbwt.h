@@ -40,7 +40,7 @@ typedef struct PBWTstruct {
   Array samples ;		/* array of int index into global samples */
   Array CompressedAllele;			/* compressed PBWT array of uchar */
   int *aFstart, *aFend ;	/* start and end a[] index arrays for forwards cursor */
-  Array zz ;			/* compressed reverse PBWT array of uchar */
+  Array ReverseCompressedAllele;			/* compressed reverse PBWT array of uchar */
   int *aRstart, *aRend ; /* start and end a[] index arrays for reverse cursor */
   /* NB aRend is the lexicographic sort order for the data, and aFend the reverse lex order */
   /* probably it is optimal to have aFstart == aRend and vice versa: to be done */
@@ -76,7 +76,7 @@ typedef struct {		/* data structure for moving forwards - doesn't know PBWT */
   Array CursorCompress;			/* packed byte array; if zero y needs loading from elsewhere */
   long n ;			/* position in packed byte array */
   BOOL isBlockEnd ;		/* TRUE if n is at end of next block, FALSE if at start */
-  uchar *y ;			/* current value in sort order */
+  uchar *sortedY;			/* current value in sort order */
   int c ;			/* number of 0s in y */
   int *a ;			/* index back to original order */
   int *d ;			/* location of last match *//* smallest value that current hap matches last hap*/
@@ -126,11 +126,11 @@ void pbwtCursorToAFend (PbwtCursor *u, PBWT *p) ; /* utility to copy final u->a 
 static inline int pbwtCursorMap (PbwtCursor *u, int x, int i)
 { return x ? u->c + i - u->u[i] : u->u[i] ; }
 static inline int pbwtCursorMapDplus (PbwtCursor *u, int x, int i, int dplus)
-{ for ( ; i < u->M && u->y[i] != x ; ++i) if (u->d[i] > dplus) dplus = u->d[i] ;
+{ for ( ; i < u->M && u->sortedY[i] != x ; ++i) if (u->d[i] > dplus) dplus = u->d[i] ;
   return dplus ;
 }
 static inline int pbwtCursorMapDminus (PbwtCursor *u, int x, int i, int dminus)
-{ for (--i ; i >= 0 && u->y[i] != x ; --i) if (u->d[i] > dminus) dminus = u->d[i] ;
+{ for (--i ; i >= 0 && u->sortedY[i] != x ; --i) if (u->d[i] > dminus) dminus = u->d[i] ;
   return dminus ;
 }
 

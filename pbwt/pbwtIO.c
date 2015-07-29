@@ -119,9 +119,9 @@ void pbwtWriteDosage (PBWT *p, FILE *fp)
 
 void pbwtWriteReverse (PBWT *p, FILE *fp)
 {
-  if (!p || !p->zz) die ("pbwtWriteReverse called without reverse pbwt") ;
+  if (!p || !p->ReverseCompressedAllele) die ("pbwtWriteReverse called without reverse pbwt") ;
 
-  Array tz = p->CompressedAllele; p->CompressedAllele = p->zz ;
+  Array tz = p->CompressedAllele; p->CompressedAllele = p->ReverseCompressedAllele;
   int* tstart = p->aFstart ; p->aFstart = p->aRstart ;
   int* tend = p->aFend ; p->aFend = p->aRend ;
 
@@ -140,7 +140,7 @@ void pbwtWriteAll (PBWT *p, char *root)
   if (p->samples) { FOPEN_W("samples") ; pbwtWriteSamples (p, fp) ; fclose (fp) ; }
   if (p->missingOffset) { FOPEN_W("missing") ; pbwtWriteMissing (p, fp) ; fclose (fp) ; }
   if (p->dosageOffset) { FOPEN_W("dosage") ; pbwtWriteDosage (p, fp) ; fclose (fp) ; }
-  if (p->zz) { FOPEN_W("reverse") ; pbwtWriteReverse (p, fp) ; fclose (fp) ; }
+  if (p->ReverseCompressedAllele) { FOPEN_W("reverse") ; pbwtWriteReverse (p, fp) ; fclose (fp) ; }
 }
 
 void pbwtCheckPoint (PbwtCursor *u, PBWT *p)
@@ -386,7 +386,7 @@ void pbwtReadReverse (PBWT *p, FILE *fp)
   PBWT *q = pbwtRead (fp) ;
   if (q->M != p->M || q->N != p->N)
     die ("M %d or N %d in reverse don't match %, %d in forward", q->M, q->N, p->M, p->N) ;
-  p->zz = q->CompressedAllele; q->CompressedAllele = 0 ;
+  p->ReverseCompressedAllele = q->CompressedAllele; q->CompressedAllele = 0 ;
   p->aRstart = q->aFstart ; q->aFstart = 0 ;
   p->aRend = q->aFend ; q->aFend = 0 ;
   pbwtDestroy (q) ;
@@ -462,7 +462,7 @@ PBWT *pbwtReadMacs (FILE *fp)
   x = myalloc (M+1, uchar) ; x[M] = Y_SENTINEL ;	/* sentinel required for packing */
 
   while (parseMacsSite (fp, arrayp(p->sites,p->N,Site), M, L, x))
-    { for (j = 0 ; j < M ; ++j) u->y[j] = x[u->a[j]] ; /* next character in sort order: BWT */
+    { for (j = 0 ; j < M ; ++j) u->sortedY[j] = x[u->a[j]] ; /* next character in sort order: BWT */
       pbwtCursorWriteForwards (u) ;
       p->N++ ;
       if (nCheckPoint && !(p->N % nCheckPoint)) pbwtCheckPoint (u, p) ;
@@ -557,7 +557,7 @@ static PBWT *pbwtReadLineFile (FILE *fp, char* type, ParseLineFunc parseLine)
 	  u = pbwtCursorCreate (p, TRUE, TRUE) ;
 	}
       x = arrp(xArray,0,uchar) ;
-      for (j = 0 ; j < p->M ; ++j) u->y[j] = x[u->a[j]] ;
+      for (j = 0 ; j < p->M ; ++j) u->sortedY[j] = x[u->a[j]] ;
       pbwtCursorWriteForwards (u) ;
       if (nCheckPoint && !(p->N % nCheckPoint))	pbwtCheckPoint (u, p) ;
     }
@@ -716,7 +716,7 @@ PBWT *pbwtReadPhase (FILE *fp) /* Li and Stephens PHASE format */
   p->CompressedAllele = arrayCreate(4096*32, uchar) ;
   PbwtCursor *u = pbwtCursorCreate (p, TRUE, TRUE) ;
   for (i = 0 ; i < p->N ; ++i)
-    { for (j = 0 ; j < p->M ; ++j) u->y[j] = data[i][u->a[j]] ;
+    { for (j = 0 ; j < p->M ; ++j) u->sortedY[j] = data[i][u->a[j]] ;
       pbwtCursorWriteForwards (u) ;
       if (nCheckPoint && !((i+1) % nCheckPoint)) pbwtCheckPoint (u, p) ;
     }
@@ -740,7 +740,7 @@ void pbwtWriteHaplotypes (FILE *fp, PBWT *p)
   PbwtCursor *u = pbwtCursorCreate (p, TRUE, TRUE) ;
 
   for (i = 0 ; i < p->N ; ++i)
-    { for (j = 0 ; j < M ; ++j) hap[u->a[j]] = u->y[j] ;
+    { for (j = 0 ; j < M ; ++j) hap[u->a[j]] = u->sortedY[j] ;
       for (j = 0 ; j < M ; ++j) 
 	{ if (isWriteImputeRef && j > 0) putc (' ', fp) ;
 	  putc (hap[j]?'1':'0', fp) ;
@@ -784,7 +784,7 @@ void pbwtWriteImputeHapsG (PBWT *p, FILE *fp)
       fprintf (fp, "site%d\tsite%d\t%d", i+1, i+1, s->x) ;
       fprintf (fp, "\t%s", dictName (variationDict, s->varD)) ;
       
-      for (j = 0 ; j < p->M ; ++j) hap[u->a[j]] = u->y[j] ;
+      for (j = 0 ; j < p->M ; ++j) hap[u->a[j]] = u->sortedY[j] ;
       for (j = 0 ; j < p->M ; ++j) putc (' ', fp), putc (hap[j]?'1':'0', fp) ;
       putc ('\n', fp) ; fflush (fp) ;
       pbwtCursorForwardsRead (u) ;
@@ -815,7 +815,7 @@ void pbwtWriteGen (PBWT *p, FILE *fp)
       if (isDosage) d = pbwtDosageRetrieve (p, u, d, i) ;
       
       for (j = 0 ; j < p->M ; ++j)
-        { hap[u->a[j]] = u->y[j] ;
+        { hap[u->a[j]] = u->sortedY[j] ;
           if (isDosage) ad[u->a[j]] = d[j] ;
         }
       if (isDosage)

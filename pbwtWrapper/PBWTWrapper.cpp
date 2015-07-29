@@ -3,6 +3,7 @@
 //
 
 #include "PBWTWrapper.h"
+#include "../SinglePhasing/libStatGen/include/Error.h"
 
 
 PBWTWrapper::PBWTWrapper(const char **haplotype, int nhaps, int nsnps) {
@@ -20,7 +21,7 @@ PBWTWrapper::PBWTWrapper(const char **haplotype, int nhaps, int nsnps) {
     PbwtCursor *u = pbwtCursorCreate(p, TRUE, TRUE);
     for (i = 0; i < p->N; ++i) {
         for (j = 0; j < p->M; ++j)
-            u->y[j] = haplotype[i][u->a[j]];
+            u->sortedY[j] = haplotype[i][u->a[j]];
         pbwtCursorWriteForwards(u);
         if (nCheckPoint && !((i + 1) % nCheckPoint)) pbwtCheckPoint(u, p);
     }
@@ -53,6 +54,7 @@ int PBWTWrapper::InitializeCursor(BOOL isForwards, BOOL isStart) {
 
 
 int PBWTWrapper::InitializeReverseCursor(BOOL isForwards, BOOL isStart) {
+    // TODO:initialize it with information already get from forward loop
     backwardCursor = pbwtCursorCreate(pbwtCoreReverse, FALSE, TRUE);
     return 0;
 }
@@ -60,8 +62,13 @@ int PBWTWrapper::InitializeReverseCursor(BOOL isForwards, BOOL isStart) {
 
 int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
 
-    for(int k=0;k!=forwardCursor->N;++k)
-        CursorForwardsTo(k,10);
+
+
+    for(int k=0;k!=forwardCursor->N;++k) {
+        //copy haplotypes into forwardCursor->y
+        CopyHap(k,haplotype);
+        CursorForwardsTo(k, 10);
+    }
     //copy end of a to PBWT
     pbwtCursorToAFend(forwardCursor,PBWT);
     //update crossover rate?
@@ -69,10 +76,61 @@ int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
 }
 
 int PBWTWrapper::CursorBackwards() {
+
+    int i, j, M = pbwtCore->M;
+
+    PbwtCursor *uF=forwardCursor;
+
+//    if (pbwtCore->aFend)
+//        uF = pbwtCursorCreate(p, TRUE, FALSE);
+//    else {
+////        uF = pbwtCursorCreate(p, TRUE, TRUE);
+////        for (i = 0; i < p->N; ++i)    /* first run forwards to the end */
+////            pbwtCursorForwardsRead(uF);
+////        pbwtCursorToAFend(uF, p);
+//        error("Please double check the completeness of PBWT structure, I can't find aFend!");
+//    }
+
+    /* use p->aFend also to start the reverse cursor - this gives better performance */
+    if (!pbwtCore->aRstart) pbwtCore->aRstart = new int [M];
+    memcpy (pbwtCore->aRstart, uF->a, M * sizeof(int));// is Rstart the same as Fend and uF->a?
+    pbwtCore->ReverseCompressedAllele = arrayReCreate (pbwtCore->ReverseCompressedAllele, arrayMax(pbwtCore->CompressedAllele), uchar);// I didn't actually use this array
+    PbwtCursor *uR = pbwtCursorCreate(pbwtCore, FALSE, TRUE); /* will pick up aRstart */
+
+    //isolated from context
+    for (i = pbwtCore->N; i--;) {
+        CopyHap(i,backwardCursor);
+        CursorBackwardsTo(i,5);
+    }
+    //isolated from context
+
+
+    /* save uR->a, which is the lexicographic order of the sequences */
+    if (!pbwtCore->aRend) pbwtCore->aRend = myalloc (M, int);
+    memcpy (pbwtCore->aRend, uR->a, M * sizeof(int));//the end when loop from back to the original first
+
+    // fprintf(stderr, "built reverse PBWT - size %ld\n", arrayMax(p->ReverseCompressedAllele));
+
+    if (isCheck)            /* print out the reversed haplotypes */
+    {
+        FILE *fp = fopen("rev.haps", "w");
+        Array tz = pbwtCore->CompressedAllele;
+        pbwtCore->CompressedAllele = pbwtCore->ReverseCompressedAllele;
+        int *ta = pbwtCore->aFstart;
+        pbwtCore->aFstart = pbwtCore->aRstart;
+        pbwtWriteHaplotypes(fp, pbwtCore);
+        pbwtCore->CompressedAllele = tz;
+        pbwtCore->aFstart = ta;
+    }
+
     return 0;
 }
 
-int PBWTWrapper::CursorForwardsTo(int k, int T) {/*T is the length that how far you look back*/
+int PBWTWrapper::CursorForwardsTo(int k, int T) {
+/*T is the length that how far you look back
+ *This function must be called along the sites, no skip permitted;
+ *Mask the site you want to skip at the begining if you have to.
+ */
     int i, i0 = 0, ia, ib, na = 0, nb = 0, dmin, k;
     int group=0;
 
@@ -110,7 +168,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {/*T is the length that how far 
             i0 = i;
             group++;
         }
-        if (forwardCursor->y[i] == 0) {
+        if (forwardCursor->sortedY[i] == 0) {
             forwardCursor->a[u] = forwardCursor->a[i];
             forwardCursor->d[u] = p;
             ++u;
@@ -125,6 +183,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {/*T is the length that how far 
             nb++;
         }
     }
+    numCluster[k]=group;
     forwardCursor->c=na;
     memcpy (forwardCursor->a + u, forwardCursor->b, v * sizeof(int));
     memcpy (forwardCursor->d + u, forwardCursor->e, v * sizeof(int));
@@ -136,7 +195,26 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {/*T is the length that how far 
     return 0;
 }
 
-int PBWTWrapper::CursorBackwardsTo() {
 
+int PBWTWrapper::CursorBackwardsTo(int k, int T=5) {
+    int j;
+    uchar *x = new uchar[M];
+      pbwtCursorReadBackwards(uF);
+
+
+        for (j = 0; j < M; ++j) x[uF->a[j]] = uF->y[j];//transform original order into forwardEnd order
+        for (j = 0; j < M; ++j) uR->y[j] = x[uR->a[j]];// I think uR->a is the same as uF->a
+
+
+
+        pbwtCursorWriteForwards(uR);
+    delete [] x;
+
+    return 0;
+}
+
+int PBWTWrapper::CopyHap(int k,PbwtCursor* Cursor) {//this function has the same effect as forward/backward read
+    for(int i=0;i!=M;++i)
+        Cursor->sortedY[i]= haplotype[k][i];
     return 0;
 }
