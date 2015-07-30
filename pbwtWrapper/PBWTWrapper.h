@@ -34,8 +34,14 @@ public:
     int CursorBackwards();
     int CursorForwardsTo(int k, int T=5);
     int CursorBackwardsTo(int k, int T=5);
-	int ObtainHapFromSinglePhasing(char ** haps);
+	int ObtainHapFromSinglePhasing(char ** haps);//I implement it here, but not using it for now
     inline int CopyHap(int k, PbwtCursor* Cursor);
+
+    int MergeCluster(int site);
+    bool KStest(std::map<int,bool>& a, std::map<int,bool>& b);
+
+
+
     int PrintDistributionAtSite();
     int IdentifyGroup();//based on content of prefix, acutally this is the function that find set maximal up to length L
     int ObtainRank();//based on content of suffix, this is the function that find rank order of haplotype
