@@ -180,8 +180,8 @@ void pbwtBuildReverse(PBWT *p) {
     p->ReverseCompressedAllele = arrayReCreate (p->ReverseCompressedAllele, arrayMax(p->CompressedAllele), uchar);// resize ReverseCompressedAllele to the same size as CompressedAllele
     PbwtCursor *uR = pbwtCursorCreate(p, FALSE, TRUE); /* will pick up aRstart */
     for (i = p->N; i--;) {
-        pbwtCursorReadBackwards(uF);//update uF->a only based on last column alleles
-        for (j = 0; j < M; ++j) x[uF->a[j]] = uF->sortedY[j];//transform original order into forwardEnd order
+        pbwtCursorReadBackwards(uF);//update uF->a only based on last column alleles, but uF0->a is initialized by uF->aFend;this leads to throw last column Y and a array away
+        for (j = 0; j < M; ++j) x[uF->a[j]] = uF->sortedY[j];//acuatlly Y start from last 2 site
         for (j = 0; j < M; ++j) uR->sortedY[j] = x[uR->a[j]];// I think uR->a is the same as uF->a; not it's not anymore, because uF unfold it one site back
         pbwtCursorWriteForwards(uR);
     }

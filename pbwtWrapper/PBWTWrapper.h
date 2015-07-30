@@ -14,7 +14,7 @@
 class PBWTWrapper
 {
     PBWT* pbwtCore;
-    PbwtCursor* forwardCursor,backwardCursor;
+    PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<std::vector<int> > a,alpha/*reverse*/;
     std::vector<std::vector<int> > d,delta/*reverse*/;
     std::vector<int> numZero;/*number of zero at each site*/
@@ -28,12 +28,13 @@ public:
     PBWTWrapper(PBWT* pbwt) { }
     PBWTWrapper(const char ** haps, int nhaps, int nsnps);
     PBWTWrapper(int nhaps,int nsnps);
-    int InitializeCursor();
-    int InitializeReverseCursor();
+    int InitializeCursor(BOOL isForwards, BOOL isStart);
+	int InitializeReverseCursor(BOOL isForwards, BOOL isStart);
     int CursorForwards();
     int CursorBackwards();
     int CursorForwardsTo(int k, int T=5);
     int CursorBackwardsTo(int k, int T=5);
+	int ObtainHapFromSinglePhasing(char ** haps);
     inline int CopyHap(int k, PbwtCursor* Cursor);
     int PrintDistributionAtSite();
     int IdentifyGroup();//based on content of prefix, acutally this is the function that find set maximal up to length L
