@@ -5,14 +5,13 @@
 #include <unordered_map>
 #include <map>
 #include "PBWTWrapper.h"
-#include "../SinglePhasing/libStatGen/general/Error.h"
-#include "../pbwt/pbwt.h"
-
+#include "iostream"
+#include "pbwt/pbwt.h"
 
 PBWTWrapper::PBWTWrapper(const char **haplotype, int nhaps, int nsnps) {
 
     int version = 2;
-    printf("Read %i SNPs %i haplotypes and %i individuals from PHASE format version %i\n", nsnps, nhaps, nhaps / 2.,
+    printf("Read %i SNPs %i haplotypes and %i individuals from PHASE format version %i\n", nsnps, nhaps, nhaps / 2,
            version);
     PBWT *p = pbwtCreate(nhaps, nsnps);
     //p->chrom = strdup (fgetword(fp)) ; /* example 4th line is P followed by site positions */
@@ -31,19 +30,19 @@ PBWTWrapper::PBWTWrapper(const char **haplotype, int nhaps, int nsnps) {
     pbwtCursorToAFend(u, p);
 
     fprintf(stderr, "transform phase file");
-    if (p->chrom) fprintf(stderr, " for chromosome %s", p->chrom);
+    //if (p->chrom) fprintf(stderr, " for chromosome %s", p->chrom);
     fprintf(stderr, ": M, N are\t%d\t%d; yz length is %ld\n", p->M, p->N, arrayMax(p->CompressedAllele));
 
     pbwtCursorDestroy(u);
-    return p;
+    pbwtCore=p;
 
 }
 
-PBWTWrapper::PBWTWrapper(int nhaps, int nsnps) {
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)),alpha(a),d(a), haplotypeCluster(a),numZero(nsnps,0),numCluster(numZero){
     pbwtCore = pbwtCreate(nhaps, nsnps);
-    int i, j;
-    pbwtCore->CompressedAllele = arrayCreate(4096 * 32, uchar);
+    //pbwtCore->CompressedAllele = arrayCreate(4096 * 32, uchar);
     InitializeCursor(TRUE, TRUE);
+    reverseCursor=0;
 
 }
 
@@ -57,7 +56,7 @@ int PBWTWrapper::InitializeCursor(BOOL isForwards, BOOL isStart) {
 
 int PBWTWrapper::InitializeReverseCursor(BOOL isForwards, BOOL isStart) {
     // TODO:initialize it with information already get from forward loop
-    backwardCursor = pbwtCursorCreate(pbwtCore, FALSE, TRUE);
+    reverseCursor = pbwtCursorCreate(pbwtCore, FALSE, TRUE);
     return 0;
 }
 
@@ -69,7 +68,7 @@ int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
     for (int k = 0; k != pbwtCore->N; ++k) {
         //copy haplotypes into forwardCursor->y
         CopyHap(k, forwardCursor);
-        CursorForwardsTo(k, 10);
+        CursorForwardsTo(k, 2);
     }
     //copy end of a to PBWT
     pbwtCursorToAFend(forwardCursor, pbwtCore);
@@ -83,14 +82,16 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
  *This function must be called along the sites, no skip permitted;
  *Mask the site you want to skip at the begining if you have to.
  */
-    int i, i0 = 0, ia, ib, na = 0, nb = 0, dmin, k;
+    int i, i0 = 0, ia, ib, na = 0, nb = 0, dmin;
     int group = 0;
 
     /*coppy array d*/
     int *tmpD = new int[forwardCursor->M + 1];
     memcpy(tmpD, forwardCursor->d, (forwardCursor->M + 1) * sizeof(int));
     /*reprot haolotype cluster based on prefix, so current site not included*/
-
+    fprintf(stderr,"k:%d,T:%d\t",k,T);PrintVector(tmpD,forwardCursor->M,"tmpD");
+    fprintf(stderr,"k:%d,T:%d\t",k,T);PrintVector(forwardCursor->a,forwardCursor->M,"olda");
+    //fprintf(stderr,"k:%d,T:%d\t",k,T);PrintVector(forwardCursor->sortedY,forwardCursor->M,"sortedY");
     int u = 0, v = 0;
     int p = k + 1;
     int q = k + 1;
@@ -101,16 +102,9 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
         if (forwardCursor->d[i] > q) q = forwardCursor->d[i];
 
         if (tmpD[i] > k - T) {//if current sequence and last sequence have common sequence longer than T
-            if (na && nb)        /* then there is something to report */
+            //if (na && nb)        /* then there is something to report */
             {
                 for (ia = i0; ia < i; ++ia)
-//                    for (ib = ia + 1, dmin = 0; ib < i; ++ib) {//compare pairwsely from last >T sequence to current one
-//                        if (tmpD[ib] > dmin) dmin = tmpD[ib];//update shortest common length
-//                        if (forwardCursor->y[ib] != forwardCursor->y[ia]) {//sequence ib and ia end differently at k
-//                            //(*report)(forwardCursor->a[ia], forwardCursor->a[ib], dmin, k);
-//
-//                        }
-//                    }
                 {
                     haplotypeCluster[k][ia] = group;
                 }
@@ -142,8 +136,8 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
     memcpy(forwardCursor->d + u, forwardCursor->e, v * sizeof(int));
     forwardCursor->d[0] = k + 2;
     forwardCursor->d[forwardCursor->M] = k + 2; /* sentinels */
-    a[k].assign(forwardCursor->a,forwardCursor->a+forwardCursor->M);
-    d[k].assign(forwardCursor->d,forwardCursor->d+forwardCursor->M);
+    a[k].assign(forwardCursor->a,forwardCursor->a+forwardCursor->M+1);
+    d[k].assign(forwardCursor->d,forwardCursor->d+forwardCursor->M+1);
     //pbwtCursorForwardsReadAD(forwardCursor, k);
     // updateCursorForwards();//
 
@@ -200,7 +194,7 @@ int PBWTWrapper::CursorBackwards() {
     return 0;
 }
 
-int PBWTWrapper::CursorBackwardsTo(int k, int T = 5) {//this function must be call in order, no skip allowed
+int PBWTWrapper::CursorBackwardsTo(int k, int T) {//this function must be call in order, no skip allowed
    // int j;
     //current status: forwardCursor's sortedY and a both stopped at the final site
     //
@@ -225,7 +219,7 @@ int PBWTWrapper::ObtainHapFromSinglePhasing(char **haps) {
     pbwtCore->CompressedAllele = arrayCreate(4096 * 32, uchar);
     forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
     for (int i = 0; i < pbwtCore->N; ++i) {
-        for (int j = 0; j < pbwtCore->M; ++j) forwardCursor->sortedY[j] = haplotype[i][forwardCursor->a[j]];
+        for (int j = 0; j < pbwtCore->M; ++j) forwardCursor->sortedY[j] = haplotype[forwardCursor->a[j]][i];
         pbwtCursorWriteForwards(forwardCursor);
         if (nCheckPoint && !((i + 1) % nCheckPoint)) pbwtCheckPoint(forwardCursor, pbwtCore);
     }
@@ -234,13 +228,21 @@ int PBWTWrapper::ObtainHapFromSinglePhasing(char **haps) {
 }
 
 int PBWTWrapper::CopyHap(int k, PbwtCursor *Cursor) {//this function has the same effect as forward/backward read
-    for (int i = 0; i != Cursor->M; ++i)
-        Cursor->sortedY[i] = haplotype[k][Cursor->a[i]];
+    for (int i = 0; i != Cursor->M; ++i) {
+        if (haplotype[Cursor->a[i]][k] != 0 && haplotype[Cursor->a[i]][k] != 1) Cursor->sortedY[i] =
+                                                                                        haplotype[Cursor->a[i]][k] -
+                                                                                        '0';
+        else fprintf(stderr,"alert!!!! %d,%d,%d,%d\n",haplotype[k][Cursor->a[i]],k,i,Cursor->a[i]);
+    }
+
+    //PrintVector(Cursor->sortedY,Cursor->M,"fromCopyHap");
     return 0;
 }
 
 int PBWTWrapper::MergeCluster(int site) {
-    std::unordered_map<int,std::map<int,bool> > dist;
+    int lastNumCluster=numCluster[site];
+    std::vector<std::vector<int> > clusterMemberShip(lastNumCluster,std::vector<int>());
+    std::vector<std::vector<int> > dist(lastNumCluster,std::vector<int>(haplotypeCluster[site].size(),0));
     std::unordered_map<int, bool> mergeIndicator;
     std::vector<unsigned long> order(forwardCursor->M,0);
     for(int i=0;i!=reverseCursor->M;++i)
@@ -248,72 +250,82 @@ int PBWTWrapper::MergeCluster(int site) {
         order[reverseCursor->a[i]]=i;//record where the ith sequence now is
     }
     for (int i = 0; i != haplotypeCluster[site].size(); ++i) {
-
-        if(dist.find(haplotypeCluster[site][i])!=dist.end())
-        {
-            dist[haplotypeCluster[site][i]].insert(std::make_pair(order[i],true));//record rank distribution for each cluster
-        }
-        else
-        {
-            std::map<int,bool> tmp;
-            tmp.insert(std::make_pair(order[i],true));
-            dist.insert(std::make_pair(haplotypeCluster[site][i],tmp));//record rank distribution for each cluster
-            mergeIndicator.insert(std::make_pair(haplotypeCluster[site][i],false));
-        }
-
+        mergeIndicator[haplotypeCluster[site][i]]=false;
+        clusterMemberShip[haplotypeCluster[site][i]].push_back(i);
+        dist[haplotypeCluster[site][i]][order[i]]=1;//record rank distribution for each cluster
     }
-    int lastNumCluster=numCluster[site];
+    for(auto kv:dist)
+    {
+        for(int i(0),v(0);i!=kv.size();++i)
+        {
+            if(kv[i]==1) v++;
+            kv[i]=v;
+        }
+    }
+    if(DEBUG)
+    {
+        std::cerr<<"enter debug section:"<<std::endl;
+        for (auto i = 0; i != haplotypeCluster.size(); ++i) {
+            PrintDistributionAtSite(i,haplotypeCluster[i]);
+        }
+        std::cerr<<"exit debug section!"<<std::endl;
+        exit(0);
+    }
     int currentNumCluster=lastNumCluster-1;
     while(currentNumCluster!=lastNumCluster) {
         lastNumCluster=currentNumCluster;
 
-        for (int i = 0; i != dist.size(); ++i) {
-            for (int j = i + 1; j != dist.size(); ++j) {
-                if(mergeIndicator[i]||mergeIndicator[j]) continue;
+        for (auto i = 0; i != dist.size(); ++i) {
+            if(mergeIndicator[i]) continue;
+            for (auto j = i + 1; j != dist.size(); ++j) {
+                if(mergeIndicator[j]) continue;
                 if(KStest(dist[i],dist[j]))
                 {
                     currentNumCluster--;
                     /*Merge Action, change mergeIndicator*/
-                    dist[i].insert(dist[j].begin(),dist[j].end());
+                    for(int t=0;t!=dist[i].size();++t)
+                    {
+                        dist[i][t]+=dist[j][t];
+                    }
                     mergeIndicator[j]=true;// j th cluster has been merged into i th cluster
+                    for(int t=0;t!=clusterMemberShip[j].size();++t)
+                    {
+                        haplotypeCluster[site][t]=i;
+                    }
                 }
             }
+            PrintDistributionAtSite(i,dist[i]);
         }
+        std::cerr<<"finish of last round"<<std::endl;
     }
     return false;
 }
 
-bool PBWTWrapper::KStest(std::map<int,bool>& a, std::map<int,bool>& b) {
-    std::map<int,bool> c(a),d(a);
-    c.insert(b.begin(),b.cend());
-    std::vector<int> distA(c.size(),0),distB(c.size(),0);
-    int j=0,v=0,u=0;
-    if(a.size()>b.size()){d=b;}
-    for(std::map<int,bool>::iterator i=c.begin(); i!=c.end();++i,++j)
-    {
-        if(d.find(i->first)!=d.end())
-        {
-            v++;
-            distA[j]=v;
-            distB[j]=u;
-        }
-        else
-        {
-            u++;
-            distA[j]=v;
-            distB[j]=u;
-        }
-    }
+bool PBWTWrapper::KStest(std::vector<int>& a, std::vector<int>& b) {
+
     int Dmax=0;
     int Dtmp=0;
-    for(int i=0;i!=c.size();++i)
+    for(int i=0;i!=a.size();++i)
     {
-        Dtmp=abs(distA[i]-distB[i]);
+        Dtmp=abs(a[i]-b[i]);
         if(Dtmp>Dmax) Dmax=Dtmp;
     }
 
-    if(Dmax > 1.36*sqrt(double(a.size()+b.size())/(a.size()*b.size())))//1.36 is 0.05 significance parameter
+    if(Dmax > 1.36*sqrt(double(a.back()+b.back())/(a.back()*b.back())))//1.36 is 0.05 significance parameter
         return false;//reject null hypo, they are different
     else
         return true;//accept null hypo, they are the same
+}
+
+int PBWTWrapper::setHaps(char **haps) {
+    haplotype=haps;
+    return 0;
+}
+
+int PBWTWrapper::PrintDistributionAtSite(int state,std::vector<int> &dist) {
+    std::cerr<<"state:"<<state<<":\t";
+    for(auto k:dist)
+        std::cerr<<k<<"\t";
+    std::cerr<<std::endl;
+    return 0;
 }

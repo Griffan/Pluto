@@ -464,6 +464,8 @@ PbwtCursor *pbwtCursorCreate(PBWT *p, BOOL isForwards, BOOL isStart) {
     if (isStart)
         if (arrayMax(u->CursorCompress))
         {
+            fprintf(stderr,"unexpected behaviour!\n");
+            die("exit for debug!\n");
             u->n = unpack3(arrp(u->CursorCompress, 0, uchar), p->M, u->sortedY, &u->c);
             u->isBlockEnd = TRUE;
         }

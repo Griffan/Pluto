@@ -10,7 +10,8 @@ file(GLOB SOURCE_FILES
 )
 LINK_DIRECTORIES(/Users/fanzhang/BioLib/lib)
 #FIND_LIBRARY(PBWT_LIBRARY NAMES "hts" PATHS /Users/fanzhang/BioLib/lib)
-add_executable(pbwt ${SOURCE_FILES})
+#add_executable(pbwt ${SOURCE_FILES})
+add_library(pbwt ${SOURCE_FILES})
 #set_target_properties(Vcf PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/libVcf")
 
 #FIND_LIBRARY(APRUTIL NAMES "aprutil-1" PATHS ${PROJECT_SOURCE_DIR}/tools/apr/libs NO_DEFAULT_PATH)

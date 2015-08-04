@@ -9,8 +9,9 @@ file(GLOB SOURCE_FILES
 )
 LINK_DIRECTORIES("../libStatGen")
 
-add_executable(thunderVCF ${SOURCE_FILES})
+#add_executable(thunderVCF ${SOURCE_FILES})
+add_library(thunderVCF ${SOURCE_FILES})
 target_link_libraries(thunderVCF Mach Vcf StatGen)
-target_include_directories(thunderVCF PRIVATE "../libStatGen/include")
+target_include_directories(thunderVCF PRIVATE "/Users/fanzhang/BioLib/libStatGen/include")
 target_include_directories(thunderVCF PRIVATE "../libMach/")
 target_include_directories(thunderVCF PRIVATE "../libVcf/")

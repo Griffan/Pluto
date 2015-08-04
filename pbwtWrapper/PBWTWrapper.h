@@ -9,7 +9,8 @@
  */
 #ifndef PLUTO_PBWTWRAPPER_H
 #define PLUTO_PBWTWRAPPER_H
-#include "../pbwt/pbwt.h"
+#define DEBUG 1
+#include "pbwt/pbwt.h"
 #include <vector>
 class PBWTWrapper
 {
@@ -38,13 +39,26 @@ public:
     inline int CopyHap(int k, PbwtCursor* Cursor);
 
     int MergeCluster(int site);
-    bool KStest(std::map<int,bool>& a, std::map<int,bool>& b);
+    bool KStest(std::vector<int>& a,std::vector<int>& b);
 
+    int setHaps(char ** haps);
 
-
-    int PrintDistributionAtSite();
-    int IdentifyGroup();//based on content of prefix, acutally this is the function that find set maximal up to length L
-    int ObtainRank();//based on content of suffix, this is the function that find rank order of haplotype
+    /*
+    function name: debug functions
+    return value: :
+    param : :
+    author: fanzhang
+    time: 8/4/15
+    */
+    int PrintDistributionAtSite(int state,std::vector<int>& dist);
+    template<typename T> inline void PrintVector(T * a,int n, const char* str)
+    {
+        fprintf(stderr,"debug array %s:\t",str);
+        for (int i = 0; i < n; ++i) {
+            fprintf(stderr,"%d\t",a[i]);
+        }
+        fprintf(stderr,"\n");
+    }
 };
 
 #endif //PLUTO_PBWTWRAPPER_H

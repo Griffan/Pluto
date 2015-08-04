@@ -20,6 +20,12 @@
  * Created: Thu Apr  4 11:02:39 2013 (rd)
  *-------------------------------------------------------------------
  */
+#ifndef PBWT_H
+#define PBWT_H
+
+#ifdef __cplusplus
+extern "C"{
+#endif
 
 #include "utils.h"
 
@@ -219,7 +225,7 @@ PBWT *pbwtCorruptSites (PBWT *pOld, double pSite, double pChange) ;
 PBWT *pbwtCorruptSamples (PBWT *pOld, double pSample, double pChange) ;
 PBWT *pbwtCopySamples (PBWT *pOld, int Mnew, double meanLength) ;
 void pbwtDosageStore (PBWT *p, double *dosage, int k) ;
-double *pbwtDosageRetrieve (PBWT *p, PbwtCursor *u, double *dosage, int k) ; 
+double *pbwtDosageRetrieve (PBWT *p, PbwtCursor *u, double *dosage, int k) ;
 /* if arg dosage == 0 then create and return, else fill and return; uses u->y */
 
 /* pbwtLikelihood.c */
@@ -242,4 +248,9 @@ void readGeneticMap (FILE *fp) ;
 double geneticMap (int x) ;
 void pbwt4hapsStats (PBWT *p) ;
 
+
+#ifdef __cplusplus
+}
+#endif
 /******************* end of file *******************/
+#endif
