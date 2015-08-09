@@ -14,6 +14,7 @@
 #include <vector>
 class PBWTWrapper
 {
+public:
     PBWT* pbwtCore;
     PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<std::vector<int> > a,alpha/*reverse*/;
@@ -22,10 +23,9 @@ class PBWTWrapper
     std::vector<std::vector<int> > haplotypeCluster;
     std::vector<int> numCluster;//at each site
     char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
-public:
+
     virtual ~PBWTWrapper() { }
 
-public:
     PBWTWrapper(PBWT* pbwt) { }
     PBWTWrapper(const char ** haps, int nhaps, int nsnps);
     PBWTWrapper(int nhaps,int nsnps);

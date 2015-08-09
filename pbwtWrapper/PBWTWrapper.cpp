@@ -89,8 +89,8 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
     int *tmpD = new int[forwardCursor->M + 1];
     memcpy(tmpD, forwardCursor->d, (forwardCursor->M + 1) * sizeof(int));
     /*reprot haolotype cluster based on prefix, so current site not included*/
-    fprintf(stderr,"k:%d,T:%d\t",k,T);PrintVector(tmpD,forwardCursor->M,"tmpD");
-    fprintf(stderr,"k:%d,T:%d\t",k,T);PrintVector(forwardCursor->a,forwardCursor->M,"olda");
+    //fprintf(stderr,"k:%d,T:%d\t",k,T);PrintVector(forwardCursor->d,forwardCursor->M,"before tmpD");
+    //fprintf(stderr,"k:%d,T:%d\t",k,T);PrintVector(forwardCursor->a,forwardCursor->M,"olda");
     //fprintf(stderr,"k:%d,T:%d\t",k,T);PrintVector(forwardCursor->sortedY,forwardCursor->M,"sortedY");
     int u = 0, v = 0;
     int p = k + 1;
@@ -140,6 +140,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
     d[k].assign(forwardCursor->d,forwardCursor->d+forwardCursor->M+1);
     //pbwtCursorForwardsReadAD(forwardCursor, k);
     // updateCursorForwards();//
+    fprintf(stderr,"k:%d,T:%d\t",k,T);PrintVector(forwardCursor->d,forwardCursor->M,"after tmpD");
 
     return 0;
 }
@@ -232,7 +233,7 @@ int PBWTWrapper::CopyHap(int k, PbwtCursor *Cursor) {//this function has the sam
         if (haplotype[Cursor->a[i]][k] != 0 && haplotype[Cursor->a[i]][k] != 1) Cursor->sortedY[i] =
                                                                                         haplotype[Cursor->a[i]][k] -
                                                                                         '0';
-        else fprintf(stderr,"alert!!!! %d,%d,%d,%d\n",haplotype[k][Cursor->a[i]],k,i,Cursor->a[i]);
+        else fprintf(stderr,"alert!!!! %d,%d,%d,%d\n",haplotype[Cursor->a[i]][k],k,i,Cursor->a[i]);
     }
 
     //PrintVector(Cursor->sortedY,Cursor->M,"fromCopyHap");
@@ -254,22 +255,23 @@ int PBWTWrapper::MergeCluster(int site) {
         clusterMemberShip[haplotypeCluster[site][i]].push_back(i);
         dist[haplotypeCluster[site][i]][order[i]]=1;//record rank distribution for each cluster
     }
-    for(auto kv:dist)
+    for(int i=0;i!= dist.size();++i)
     {
-        for(int i(0),v(0);i!=kv.size();++i)
+        for(int j(0),v(0);j!=dist[i].size();++j)
         {
-            if(kv[i]==1) v++;
-            kv[i]=v;
+            if(dist[i][j]==1) v++;
+            dist[i][j]=v;
         }
     }
     if(DEBUG)
     {
-        std::cerr<<"enter debug section:"<<std::endl;
-        for (auto i = 0; i != haplotypeCluster.size(); ++i) {
-            PrintDistributionAtSite(i,haplotypeCluster[i]);
+        std::cerr<<"\nenter debug section:"<<std::endl;
+        for (auto i = 0; i != dist.size(); ++i) {
+            //PrintDistributionAtSite(i,haplotypeCluster[i]);
+            PrintDistributionAtSite(i,dist[i]);
         }
         std::cerr<<"exit debug section!"<<std::endl;
-        exit(0);
+        //exit(0);
     }
     int currentNumCluster=lastNumCluster-1;
     while(currentNumCluster!=lastNumCluster) {
@@ -292,11 +294,13 @@ int PBWTWrapper::MergeCluster(int site) {
                     {
                         haplotypeCluster[site][t]=i;
                     }
+                    if(DEBUG)std::cerr<<"Merge\t"<<j<<"\tinto\t"<<i<<std::endl;
+                    break;
                 }
             }
             PrintDistributionAtSite(i,dist[i]);
         }
-        std::cerr<<"finish of last round"<<std::endl;
+        if(DEBUG)std::cerr<<"finish of last round"<<std::endl;
     }
     return false;
 }
