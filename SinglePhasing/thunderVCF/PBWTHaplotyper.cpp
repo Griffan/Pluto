@@ -5,7 +5,7 @@
 #include "PBWTHaplotyper.h"
 #include "../../pbwtWrapper/PBWTWrapper.h"
 
-PBWTHaplotyper::PBWTHaplotyper() {
+PBWTHaplotyper::PBWTHaplotyper(int nhaps, int nsnps):Wrapper(nhaps,nsnps) {
 
 }
 
@@ -13,6 +13,82 @@ PBWTHaplotyper::~PBWTHaplotyper() {
 
 }
 
+
+bool PBWTHaplotyper::ForceMemoryAllocation() {
+    // Cycle through individuals, with the exact same steps as the actual
+    // haplotyper and request memory ... by requesting all memory upfront,
+    // we force crashes to happen early.
+    for (int i = 0; i < individuals - phased; i++)
+    {
+        ResetMemoryPool();
+        UpdateStateNum(Wrapper.numCluster[0]);
+        GetMemoryBlock(0);
+
+        if (leftMatrices[0] == NULL)
+            return false;
+
+        int skipped = 0;
+        for (int j = 1; j < markers; j++)
+            //if (genotypes[i][j] != GENOTYPE_MISSING || j == markers - 1)
+        {
+            UpdateStateNum(Wrapper.numCluster[j]);
+            GetMemoryBlock(j);
+
+            if (leftMatrices[j] == NULL)
+                return false;
+        }
+        //else
+        //skipped++;
+
+        if (skipped == 0) break;
+    }
+
+    if (!phased)
+        return true;
+
+    ResetMemoryPool();
+    for (int j = 0; j < markers; j++)
+    {
+        UpdateStateNum(Wrapper.numCluster[j]);
+        GetSmallMemoryBlock(j);
+
+        if (leftMatrices[j] == NULL)
+            return false;
+    }
+
+    return true;
+}
+void PBWTHaplotyper::ConditionOnData(float *matrix, int marker, char phred11, char phred12, char phred22) {
+    // We treat missing genotypes as uninformative about the mosaic's
+    // underlying state. If we were to allow for deletions and the like,
+    // that may no longer be true.
+
+    //if (genotype == GENOTYPE_MISSING)
+    //return;
+
+    double conditional_probs[3];
+    int ph11 = (unsigned char) phred11;
+    int ph12 = (unsigned char) phred12;
+    int ph22 = (unsigned char) phred22;
+
+    CalculatePhred2Prob();
+
+    for (int i = 0; i < 3; i++)
+        conditional_probs[i] = Penetrance(marker, i, 0) *  phred2prob[ph11] +
+                               Penetrance(marker, i, 1) *  phred2prob[ph12] +
+                               Penetrance(marker, i, 2) *  phred2prob[ph22];
+
+    for (int i = 0; i < states; i++)
+    {
+        double factors[2];
+
+        factors[0] = conditional_probs[haplotypes[i][marker]];
+        factors[1] = conditional_probs[haplotypes[i][marker] + 1];
+
+        for (int j = 0; j <= i; j++, matrix++)
+            *matrix *= factors[haplotypes[j][marker]];
+    }
+}
 void PBWTHaplotyper::ScoreLeftConditional() {
     ResetMemoryPool();
     GetMemoryBlock(0);
@@ -20,7 +96,7 @@ void PBWTHaplotyper::ScoreLeftConditional() {
     UpdateStateNum(Wrapper.numCluster[0]);
 
     SetupPrior(leftMatrices[0]);
-    ConditionOnData(leftMatrices[0], 0, genotypes[states / 2][0], genotypes[states / 2][1], genotypes[states / 2][2]);
+    ConditionOnData(leftMatrices[0], 0, genotypes[individuals - 1][0], genotypes[individuals - 1][1], genotypes[individuals - 1][2]);
 
     double theta = 0.0;
     float *from = leftMatrices[0];
@@ -29,18 +105,19 @@ void PBWTHaplotyper::ScoreLeftConditional() {
         int markerindex = i*3;
 
         // Cumulative recombination fraction allows us to skip uninformative positions
-        theta = theta + thetas[i - 1] - theta * thetas[i - 1];
+        theta = theta + thetas[i - 1] - theta * thetas[i - 1];//TODO:need to be updated accordingly
 
         // Skip over uninformative positions to save time
         // maybe check for the difference between min(phred11, phred12, phred22) and the next smallest
 
         //if (genotypes[states / 2][i] != GENOTYPE_MISSING || i == markers - 1)
         {
+            UpdateStateNum(Wrapper.numCluster[i]);
             GetMemoryBlock(i);
 
             Transpose(from, leftMatrices[i], theta);
-            ConditionOnData(leftMatrices[i], i, genotypes[states / 2][markerindex],
-                            genotypes[states / 2][markerindex+1], genotypes[states / 2][markerindex+2]);
+            ConditionOnData(leftMatrices[i], i, genotypes[individuals - 1][markerindex],
+                            genotypes[individuals - 1][markerindex+1], genotypes[individuals - 1][markerindex+2]);//based on genotype of individual need to be phased
 
             theta = 0;
             from = leftMatrices[i];
@@ -57,6 +134,8 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
     for (int i = individuals - 1; i >= 0; i--)
     {
         SwapIndividuals(i, individuals - 1);
+
+        WeightByClusterCount();
 
         if (weights != NULL)
             ScaleWeights();

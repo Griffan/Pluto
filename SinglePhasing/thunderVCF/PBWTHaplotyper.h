@@ -10,13 +10,15 @@
 #include "../../pbwtWrapper/PBWTWrapper.h"
 class PBWTHaplotyper : public ShotgunHaplotyper{
 public:
-    PBWTHaplotyper();
+    PBWTHaplotyper(int nhaps, int nsnps);
     ~PBWTHaplotyper();
     int LoopThroughChromosomesViaPBWT();
     virtual void ScoreLeftConditional();
     virtual void ConditionOnData(float * matrix, int marker, char phred11, char phred12, char phred22);
     virtual void ImputeAlleles(int marker, int state1, int state2, Random * rand);
     virtual void SampleChromosomes(Random * rand);
+
+    float getTransitionProb(int from, int to);
 
     //Memory management functions
     //virtual bool AllocateMemory(int nIndividuals, int maxHaplos, int nMarkers, float defaultTheta);
@@ -31,6 +33,7 @@ public:
 
 protected:
     PBWTWrapper Wrapper;
+    std::vector<std::vector<float> > SiteWeights;
 
 };
 

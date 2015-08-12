@@ -2437,7 +2437,7 @@ void Haplotyper::GetMemoryBlock(int marker)
 
 void Haplotyper::GetSmallMemoryBlock(int marker)
    {
-      leftMatrices[marker] = GetSmallBlock();
+   leftMatrices[marker] = GetSmallBlock();
    }
 
 void Haplotyper::RetrieveMemoryBlock(int marker)
