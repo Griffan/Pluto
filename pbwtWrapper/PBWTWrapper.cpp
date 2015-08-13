@@ -211,6 +211,7 @@ int PBWTWrapper::CursorBackwardsTo(int k, int T) {//this function must be call i
     CopyHap(k,reverseCursor);
     pbwtCursorForwardsA(reverseCursor);
     MergeCluster(k);
+	UpdateTransVector(k);
     alpha[k].assign(reverseCursor->a,reverseCursor->a+reverseCursor->M);
     return 0;
 }
@@ -240,6 +241,25 @@ int PBWTWrapper::CopyHap(int k, PbwtCursor *Cursor) {//this function has the sam
     return 0;
 }
 
+int PBWTWrapper::UpdateTransVector(int to)//calculate trans probability of site to-1 after site to 
+{
+	if (to > pbwtCore->N||to<0) die("Site is out of range!");
+	if (to == 0) return 0;
+	int from = to - 1;
+	transVector.push_back(std::vector<std::vector<float> >(numCluster[from], std::vector<float>(numCluster[to], 0.)));
+	std::vector<int> sum(numCluster[from], 0);
+	for (int i = 0; i != haplotypeCluster[to].size(); ++i)
+	{
+		transVector[from][haplotypeCluster[from][i]][haplotypeCluster[to][i]]++; 
+		sum[haplotypeCluster[from][i]]++;
+	}
+	for (int i = 0; i != numCluster[from]; ++i)
+	{
+		for (int j = 0; j != numCluster[to]; ++j)
+		transVector[from][i][j] /= sum[i];
+	}
+	
+}
 int PBWTWrapper::MergeCluster(int site) {
     int lastNumCluster=numCluster[site];
     std::vector<std::vector<int> > clusterMemberShip(lastNumCluster,std::vector<int>());

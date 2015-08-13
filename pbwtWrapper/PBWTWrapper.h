@@ -22,6 +22,7 @@ public:
     std::vector<int> numZero;/*number of zero at each site*/
     std::vector<std::vector<int> > haplotypeCluster;
     std::vector<int> numCluster;//at each site
+	std::vector<std::vector<std::vector<float> > > transVector;//transition probability: site,from,to
     char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
 
     virtual ~PBWTWrapper() { }
@@ -38,6 +39,7 @@ public:
 	int ObtainHapFromSinglePhasing(char ** haps);//I implement it here, but not using it for now
     inline int CopyHap(int k, PbwtCursor* Cursor);
 
+	int UpdateTransVector(int site);
     int MergeCluster(int site);
     bool KStest(std::vector<int>& a,std::vector<int>& b);
 

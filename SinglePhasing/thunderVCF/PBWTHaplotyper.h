@@ -13,12 +13,13 @@ public:
     PBWTHaplotyper(int nhaps, int nsnps);
     ~PBWTHaplotyper();
     int LoopThroughChromosomesViaPBWT();
+	void Transpose(int site, float * source, float * dest, float theta);
     virtual void ScoreLeftConditional();
     virtual void ConditionOnData(float * matrix, int marker, char phred11, char phred12, char phred22);
     virtual void ImputeAlleles(int marker, int state1, int state2, Random * rand);
     virtual void SampleChromosomes(Random * rand);
 
-    float getTransitionProb(int from, int to);
+	float getTransitionProb(int site, int from, int to);
 
     //Memory management functions
     //virtual bool AllocateMemory(int nIndividuals, int maxHaplos, int nMarkers, float defaultTheta);

@@ -135,8 +135,6 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
     {
         SwapIndividuals(i, individuals - 1);
 
-        WeightByClusterCount();
-
         if (weights != NULL)
             ScaleWeights();
 
@@ -176,4 +174,99 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
     return 0;
 }
 
+float PBWTHaplotyper::getTransitionProb(int site, int from, int to)
+{
+	return Wrapper.transVector[site][from][to];
+}
 
+void PBWTHaplotyper::Transpose(int site, float * source, float * dest, float theta)
+{
+	if (theta == 0.0)
+	{
+		for (int i = 0; i < states; i++)
+			for (int j = 0; j <= i; j++, dest++, source++)
+				*dest = *source;
+
+		return; 
+	}
+
+	float sum = 0.0;
+	float * probability = source;
+	float * output = dest;
+
+	for (int i = 0; i < states; i++)
+		marginals[i] = 0.0;
+
+	for (int i = 0; i < states; i++)
+	{
+		for (int j = 0; j < i; j++)
+		{
+			sum += *probability;
+			marginals[i] += *probability;
+			marginals[j] += *probability;
+			probability++;
+		}
+
+		sum += *probability;
+		marginals[i] += (*probability) * 2.0;
+		probability++;
+	}
+
+	probability = source;
+
+	float no_change = (1.0 - theta) * (1.0 - theta);
+	float one_change = (1.0 - theta) * theta / states;
+	float two_changes = sum * theta * theta / (states * states);
+
+	// Automatically rescale likelihoods when they get too small
+	if (sum < 1e-15)
+	{
+		no_change *= 1e30;
+		one_change *= 1e30;
+		two_changes *= 1e30;
+	}
+
+	// This final loop actually transposes the probabilities for each state
+	if (weights == NULL)
+		for (int i = 0; i < states; i++)
+		{
+			for (int j = 0; j < i; j++)
+			{
+				*output = *probability * no_change +
+					marginals[i] * one_change +
+					marginals[j] * one_change +
+					2 * two_changes;
+
+				probability++;
+				output++;
+			}
+
+			*output = *probability * no_change +
+				marginals[i] * one_change +
+				two_changes;
+
+			probability++;
+			output++;
+		}
+	else
+		for (int i = 0; i < states; i++)
+		{
+			for (int j = 0; j < i; j++)
+			{
+				*output = *probability * no_change +
+					marginals[i] * one_change * weights[j / 2] +
+					marginals[j] * one_change * weights[i / 2] +
+					2 * two_changes * weights[i / 2] * weights[j / 2];
+
+				probability++;
+				output++;
+			}
+
+			*output = *probability * no_change +
+				marginals[i] * one_change * weights[i / 2] +
+				two_changes * weights[i / 2] * weights[i / 2];
+
+			probability++;
+			output++;
+		}
+}
