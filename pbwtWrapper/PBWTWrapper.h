@@ -18,10 +18,10 @@ public:
     PBWT* pbwtCore;
     PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<std::vector<int> > a,alpha/*reverse*/;
-    std::vector<std::vector<int> > d,delta/*reverse*/;
-    std::vector<int> numZero;/*number of zero at each site*/
+    std::vector<std::vector<int> > d;//,delta/*reverse*/;
+    //std::vector<int> numZero;/*number of zero at each site*/
     std::vector<std::vector<int> > haplotypeCluster;
-    std::vector<int> numCluster;//at each site
+    std::vector<std::vector<uchar> > clusterAllele;//numCluster;//at each site
 	std::vector<std::vector<std::vector<float> > > transVector;//transition probability: site,from,to
     char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
 

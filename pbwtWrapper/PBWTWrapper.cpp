@@ -38,7 +38,7 @@ PBWTWrapper::PBWTWrapper(const char **haplotype, int nhaps, int nsnps) {
 
 }
 
-PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)),alpha(a),d(a), haplotypeCluster(a),numZero(nsnps,0),numCluster(numZero){
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)),alpha(a),d(a), haplotypeCluster(a),clusterAllele(nsnps,std::vector<uchar>()){
     pbwtCore = pbwtCreate(nhaps, nsnps);
     //pbwtCore->CompressedAllele = arrayCreate(4096 * 32, uchar);
     InitializeCursor(TRUE, TRUE);
@@ -46,20 +46,17 @@ PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)
 
 }
 
-
 int PBWTWrapper::InitializeCursor(BOOL isForwards, BOOL isStart) {
 
     forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
     return 0;
 }
 
-
 int PBWTWrapper::InitializeReverseCursor(BOOL isForwards, BOOL isStart) {
     // TODO:initialize it with information already get from forward loop
     reverseCursor = pbwtCursorCreate(pbwtCore, FALSE, TRUE);
     return 0;
 }
-
 
 int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
 
@@ -75,7 +72,6 @@ int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
     //update crossover rate?
     return 0;
 }
-
 
 int PBWTWrapper::CursorForwardsTo(int k, int T) {
 /*T is the length that how far you look back
@@ -108,6 +104,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
                 {
                     haplotypeCluster[k][ia] = group;
                 }
+                clusterAllele[k].push_back(forwardCursor->sortedY[i0]);
             }
             na = 0;
             nb = 0;
@@ -129,9 +126,9 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
             nb++;
         }
     }
-    numCluster[k] = group;
+    //numCluster[k] = group;
     forwardCursor->c = na;
-    numZero[k]=na;
+    //numZero[k]=na;
     memcpy(forwardCursor->a + u, forwardCursor->b, v * sizeof(int));
     memcpy(forwardCursor->d + u, forwardCursor->e, v * sizeof(int));
     forwardCursor->d[0] = k + 2;
@@ -144,7 +141,6 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
 
     return 0;
 }
-
 
 int PBWTWrapper::CursorBackwards() {
     //in the following code, we assume forwardCursor is ready and just finished forward loop
@@ -246,22 +242,23 @@ int PBWTWrapper::UpdateTransVector(int to)//calculate trans probability of site 
 	if (to > pbwtCore->N||to<0) die("Site is out of range!");
 	if (to == 0) return 0;
 	int from = to - 1;
-	transVector.push_back(std::vector<std::vector<float> >(numCluster[from], std::vector<float>(numCluster[to], 0.)));
-	std::vector<int> sum(numCluster[from], 0);
+	transVector.push_back(std::vector<std::vector<float> >(clusterAllele[from].size(), std::vector<float>(clusterAllele[to].size(), 0.)));
+	std::vector<int> sum(clusterAllele[from].size(), 0);
 	for (int i = 0; i != haplotypeCluster[to].size(); ++i)
 	{
 		transVector[from][haplotypeCluster[from][i]][haplotypeCluster[to][i]]++; 
 		sum[haplotypeCluster[from][i]]++;
 	}
-	for (int i = 0; i != numCluster[from]; ++i)
+	for (int i = 0; i != clusterAllele[from].size(); ++i)
 	{
-		for (int j = 0; j != numCluster[to]; ++j)
+		for (int j = 0; j != clusterAllele[to].size(); ++j)
 		transVector[from][i][j] /= sum[i];
 	}
 	
 }
 int PBWTWrapper::MergeCluster(int site) {
-    int lastNumCluster=numCluster[site];
+    int lastNumCluster=clusterAllele[site].size();
+    std::vector<uchar> tmpAllele;
     std::vector<std::vector<int> > clusterMemberShip(lastNumCluster,std::vector<int>());
     std::vector<std::vector<int> > dist(lastNumCluster,std::vector<int>(haplotypeCluster[site].size(),0));
     std::unordered_map<int, bool> mergeIndicator;
@@ -296,9 +293,10 @@ int PBWTWrapper::MergeCluster(int site) {
     int currentNumCluster=lastNumCluster-1;
     while(currentNumCluster!=lastNumCluster) {
         lastNumCluster=currentNumCluster;
-
+        tmpAllele.clear();
         for (auto i = 0; i != dist.size(); ++i) {
             if(mergeIndicator[i]) continue;
+            else tmpAllele.push_back(clusterAllele[site][i]);
             for (auto j = i + 1; j != dist.size(); ++j) {
                 if(mergeIndicator[j]) continue;
                 if(KStest(dist[i],dist[j]))
@@ -310,9 +308,11 @@ int PBWTWrapper::MergeCluster(int site) {
                         dist[i][t]+=dist[j][t];
                     }
                     mergeIndicator[j]=true;// j th cluster has been merged into i th cluster
+                    if(clusterAllele[i]!=clusterAllele[j]) die("alert: two states ready to be merged have different allele");
                     for(int t=0;t!=clusterMemberShip[j].size();++t)
                     {
                         haplotypeCluster[site][t]=i;
+
                     }
                     if(DEBUG)std::cerr<<"Merge\t"<<j<<"\tinto\t"<<i<<std::endl;
                     break;
@@ -322,6 +322,7 @@ int PBWTWrapper::MergeCluster(int site) {
         }
         if(DEBUG)std::cerr<<"finish of last round"<<std::endl;
     }
+    clusterAllele[site]=tmpAllele;//update merged cluster allele
     return false;
 }
 

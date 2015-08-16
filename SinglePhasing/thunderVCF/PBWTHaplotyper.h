@@ -19,7 +19,7 @@ public:
     virtual void ImputeAlleles(int marker, int state1, int state2, Random * rand);
     virtual void SampleChromosomes(Random * rand);
 
-	float getTransitionProb(int site, int from, int to);
+	inline float getTransitionProb(int site, int from, int to);
 
     //Memory management functions
     //virtual bool AllocateMemory(int nIndividuals, int maxHaplos, int nMarkers, float defaultTheta);
@@ -34,7 +34,6 @@ public:
 
 protected:
     PBWTWrapper Wrapper;
-    std::vector<std::vector<float> > SiteWeights;
 
 };
 
