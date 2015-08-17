@@ -28,10 +28,28 @@ public:
     virtual bool ForceMemoryAllocation();
 
     //inline section
+	inline uchar getAllele(int site, int state)
+	{
+		return Wrapper.clusterAllele[site][state];
+	}
+	inline int getStateNumFrom(int site)
+	{
+		return Wrapper.clusterAllele[site].size();
+	}
+	inline int getCurrentIndividualState(int site, int chrom)
+	{
+		return Wrapper.haplotypeCluster[site][2 * (individuals - 1) + chrom];
+	}
+	inline int setCurrentIndividualState(int site, int chrom, int state)
+	{
+		return Wrapper.haplotypeCluster[site][2 * (individuals - 1) + chrom]=state;
+	}
     inline int UpdateStateNum(int num){
         states=num;
     }
-
+	//TODO:
+	//1. assign states to current individual
+	//2. change transpose function
 protected:
     PBWTWrapper Wrapper;
 

@@ -41,6 +41,7 @@ public:
 
 	int UpdateTransVector(int site);
     int MergeCluster(int site);
+
     bool KStest(std::vector<int>& a,std::vector<int>& b);
 
     int setHaps(char ** haps);
