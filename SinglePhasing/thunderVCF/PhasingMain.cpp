@@ -1001,7 +1001,7 @@ void LoadGenotypeFromPhasedVcf(Pedigree &ped, char** genotypes, char* refalleles
 		error(e.what());
 	}
 }
-int main(int argc, char ** argv)
+int PhasingMain(int argc, char ** argv)
 {
 	String shotgunfile, mapfile, outfile("mach1.out"), phasedfile, pidIncludeFromUnphased(""), pidIncludeFromPhased(""), pidExcludeFromUnphased(""), pidExcludeFromPhased("");
 	String crossFile, errorFile;
@@ -1252,55 +1252,55 @@ int main(int argc, char ** argv)
 
 	SetCrashExplanation("interating through markov chain haplotyping procedure");
 
-	//for (int i = 0; i < rounds; i++)
-	//{
+	for (int i = 0; i < rounds; i++)
+	{
 	engine.LoopThroughChromosomes(consensus,SamplingRounds,ped, DuplicatedIndividualPair);
 	if (!fixTrans) engine.UpdateThetas();
 	errorRate = engine.UpdateErrorRate();
 
-	//printf("Markov Chain iteration %d [%d mosaic crossovers]\n",
-	//	i + 1, engine.TotalCrossovers());
+	printf("Markov Chain iteration %d [%d mosaic crossovers]\n",
+		i + 1, engine.TotalCrossovers());
 
-	//if (i < burnin)
-	//	continue;
+	if (i < burnin)
+		continue;
 
-	//if (OutputManager::outputHaplotypes)
-	//	consensus.Store(engine.haplotypes);
+	if (OutputManager::outputHaplotypes)
+		consensus.Store(engine.haplotypes);
 
-	if (doses.storeDosage || doses.storeDistribution)
-		doses.Update(engine.haplotypes);
+//	if (doses.storeDosage || doses.storeDistribution)
+//		doses.Update(engine.haplotypes);
+//
+//	UpdateVector(engine.thetas, thetas, nthetas, engine.markers - 1);
+//	UpdateErrorRates(engine.error_models, error_rates, nerror_rates, engine.markers);
 
-	UpdateVector(engine.thetas, thetas, nthetas, engine.markers - 1);
-	UpdateErrorRates(engine.error_models, error_rates, nerror_rates, engine.markers);
+//		if (polling > 0 && ((i - burnin) % polling) == 0) {
+//		int i = 0;// adjust for following code
+//			OutputVCFConsensus(shotgunfile, ped, consensus, doses, outfile + ".prelim" + (i + 1) + ".vcf.gz", thetas, error_rates);
+//			OutputManager::OutputConsensus(ped, consensus, doses, outfile + ".prelim" + (i + 1));
+//		}
+//
+//		if (samples > 0 && ((i - burnin) % samples) == 0)
+//			OutputManager::WriteHaplotypes(outfile + ".sample" + (i + 1) + ".gz", ped, engine.haplotypes);
 
-	//	//if (polling > 0 && ((i - burnin) % polling) == 0) {
-	//	int i = 0;// adjust for following code
-	//		OutputVCFConsensus(shotgunfile, ped, consensus, doses, outfile + ".prelim" + (i + 1) + ".vcf.gz", thetas, error_rates);
-	//		OutputManager::OutputConsensus(ped, consensus, doses, outfile + ".prelim" + (i + 1));
-	//	//}
-
-	//	//if (samples > 0 && ((i - burnin) % samples) == 0)
-	//		OutputManager::WriteHaplotypes(outfile + ".sample" + (i + 1) + ".gz", ped, engine.haplotypes);
-
-	////}
+	}
 
 	if (rounds) printf("\n");
 
 	SetCrashExplanation("estimating maximum likelihood solution, conditional on current state");
 
-	if (mle)
-	{
-		// Use best available error and crossover rates for MLE
-		if (nerror_rates)
-			for (int i = 0; i < engine.markers; i++)
-				engine.SetErrorRate(i, error_rates[i] / nerror_rates);
-
-		if (nthetas)
-			for (int i = 0; i < engine.markers - 1; i++)
-				engine.thetas[i] = thetas[i] / nthetas;
-
-		engine.OutputMLEs(ped, outfile, mledetails);
-	}
+//	if (mle)
+//	{
+//		// Use best available error and crossover rates for MLE
+//		if (nerror_rates)
+//			for (int i = 0; i < engine.markers; i++)
+//				engine.SetErrorRate(i, error_rates[i] / nerror_rates);
+//
+//		if (nthetas)
+//			for (int i = 0; i < engine.markers - 1; i++)
+//				engine.thetas[i] = thetas[i] / nthetas;
+//
+//		engine.OutputMLEs(ped, outfile, mledetails);
+//	}
 
 	//   ParseHaplotypes(engine.haplotypes, engine.individuals * 2 - 2, engine.markers, 32);
 
