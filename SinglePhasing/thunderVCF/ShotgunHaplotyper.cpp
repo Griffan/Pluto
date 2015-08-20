@@ -907,6 +907,7 @@ void ShotgunHaplotyper::EstimateMemoryInfo(int Individuals, int Markers, int Sta
                 + sizeof(Errors) * (double) Markers             // error model information
                 + sizeof(char) * (double) Markers;              // reference allele
 
+	 //  printf("[DEBUG] %d %d %d %f\n",States, positions, Markers, (double)positions * States * (States + 1)/2  );
    printf("   %40s %s\n", "Haplotyping engine (max) ...", (const char *) MemoryInfo(bytes));
    }
 

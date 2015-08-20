@@ -26,6 +26,6 @@ int main(int argc, char ** argv) {
 //    Graph.setHaps(haps);
 //    Graph.CursorForwards();
 //    Graph.CursorBackwards();
-
+//TODO:deal with missing data
     return 0;
 }

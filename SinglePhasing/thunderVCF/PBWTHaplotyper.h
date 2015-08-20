@@ -11,6 +11,8 @@
 class PBWTHaplotyper : public ShotgunHaplotyper{
 public:
     PBWTHaplotyper(int nhaps, int nsnps);
+	PBWTHaplotyper();
+	void InitWrapper(int nhaps, int nsnps);
     ~PBWTHaplotyper();
     int LoopThroughChromosomesViaPBWT();
 	void Transpose(int site, float * source, float * dest);
@@ -21,7 +23,7 @@ public:
     virtual void FillPath(int haplotype, int fromMarker, int toMarker, int state);
     virtual void SampleChromosomes(Random * rand);
 
-	inline float getTransitionProb(int site, int from, int to);
+
 
     //Memory management functions
     //virtual bool AllocateMemory(int nIndividuals, int maxHaplos, int nMarkers, float defaultTheta);
@@ -30,28 +32,31 @@ public:
     virtual bool ForceMemoryAllocation();
 
     //inline section
+	inline float getTransitionProb(int site, int from, int to) {
+		return Wrapper->transVector[site][from][to];
+	}
 	inline uchar getAllele(int site, int state)
 	{
-		return Wrapper.clusterAllele[site][state];
+		return Wrapper->clusterAllele[site][state];
 	}
 	inline int getStateNumFrom(int site)
 	{
-		return Wrapper.clusterAllele[site].size();
+		return Wrapper->clusterAllele[site].size();
 	}
 	inline int getCurrentIndividualState(int site, int chrom)
 	{
-		return Wrapper.haplotypeCluster[site][2 * (individuals - 1) + chrom];
+		return Wrapper->haplotypeCluster[site][2 * (individuals - 1) + chrom];
 	}
 	inline void setCurrentIndividualState(int site, int chrom, int state)
 	{
-		Wrapper.haplotypeCluster[site][2 * (individuals - 1) + chrom]=state;
+		Wrapper->haplotypeCluster[site][2 * (individuals - 1) + chrom]=state;
 	}
     inline void UpdateStateNum(int num){
          states=num;
     }
 
 protected:
-    PBWTWrapper Wrapper;
+    PBWTWrapper* Wrapper;
 
 };
 

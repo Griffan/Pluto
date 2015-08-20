@@ -4,22 +4,56 @@
 
 #include "PBWTHaplotyper.h"
 
-PBWTHaplotyper::PBWTHaplotyper(int nhaps, int nsnps) : Wrapper(nhaps, nsnps) {
+PBWTHaplotyper::PBWTHaplotyper(int nhaps, int nsnps) {
+
+    Wrapper= new PBWTWrapper(nhaps, nsnps);
 
 }
+
+PBWTHaplotyper::PBWTHaplotyper() {
+    ShotgunHaplotyper::ShotgunHaplotyper();
+}
+
 
 PBWTHaplotyper::~PBWTHaplotyper() {
-
+    delete Wrapper;
+    ShotgunHaplotyper::~ShotgunHaplotyper();
 }
 
+void PBWTHaplotyper::RetrieveMemoryBlock(int marker)
+{
+    if (stack[stackPtr] <= marker)
+        return;
+    else
+    {
+        ResetReuseablePool();
 
+        float *from = leftMatrices[stack[--stackPtr]];
+
+        for (int i = stack[stackPtr] + 1; i <= marker; i++)
+        {
+            int markerindex = i * 3;
+
+            // Skip over uninformative positions to save time
+            // if (genotypes[states / 2][i] != GENOTYPE_MISSING || i == markers - 1)
+            {
+                leftMatrices[i] = GetReuseableBlock();
+
+                Transpose(i, from, leftMatrices[i]);
+                ConditionOnData(leftMatrices[i], i, genotypes[states / 2][markerindex],
+                                genotypes[states / 2][markerindex+1], genotypes[states / 2][markerindex+2]);
+
+                from = leftMatrices[i];
+            }
+        }
+    }
+}
 bool PBWTHaplotyper::ForceMemoryAllocation() {
     // Cycle through individuals, with the exact same steps as the actual
     // haplotyper and request memory ... by requesting all memory upfront,
     // we force crashes to happen early.
     for (int i = 0; i < individuals - phased; i++) {
         ResetMemoryPool();
-        UpdateStateNum(getStateNumFrom(0));
         GetMemoryBlock(0);
 
         if (leftMatrices[0] == NULL)
@@ -29,7 +63,6 @@ bool PBWTHaplotyper::ForceMemoryAllocation() {
         for (int j = 1; j < markers; j++)
             //if (genotypes[i][j] != GENOTYPE_MISSING || j == markers - 1)
         {
-            UpdateStateNum(getStateNumFrom(j));
             GetMemoryBlock(j);
 
             if (leftMatrices[j] == NULL)
@@ -46,7 +79,6 @@ bool PBWTHaplotyper::ForceMemoryAllocation() {
 
     ResetMemoryPool();
     for (int j = 0; j < markers; j++) {
-        UpdateStateNum(getStateNumFrom(j));
         GetSmallMemoryBlock(j);
 
         if (leftMatrices[j] == NULL)
@@ -81,11 +113,11 @@ void PBWTHaplotyper::ConditionOnData(float *matrix, int marker, char phred11, ch
 
 //        factors[0] = conditional_probs[haplotypes[i][marker]];
 //        factors[1] = conditional_probs[haplotypes[i][marker] + 1];
-        factors[0] = conditional_probs[Wrapper.clusterAllele[marker][i]];
-        factors[1] = conditional_probs[Wrapper.clusterAllele[marker][i] + 1];
+        factors[0] = conditional_probs[Wrapper->clusterAllele[marker][i]];
+        factors[1] = conditional_probs[Wrapper->clusterAllele[marker][i] + 1];
 
         for (int j = 0; j <= i; j++, matrix++)
-            *matrix *= factors[Wrapper.clusterAllele[marker][j]];
+            *matrix *= factors[Wrapper->clusterAllele[marker][j]];
     }
 }
 
@@ -176,9 +208,7 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
     return 0;
 }
 
-float PBWTHaplotyper::getTransitionProb(int site, int from, int to) {
-    return Wrapper.transVector[site][from][to];
-}
+
 
 void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indicate dest marker index
 {
@@ -407,4 +437,8 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
     }
 
     ImputeAlleles(0, first, second, rand);
+}
+
+void PBWTHaplotyper::InitWrapper(int nhaps, int nsnps) {
+    Wrapper=new PBWTWrapper(nhaps,nsnps);
 }

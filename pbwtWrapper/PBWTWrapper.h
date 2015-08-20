@@ -22,12 +22,11 @@ public:
     //std::vector<int> numZero;/*number of zero at each site*/
     std::vector<std::vector<int> > haplotypeCluster;
     std::vector<std::vector<uchar> > clusterAllele;//numCluster;//at each site
-	std::vector<std::vector<std::vector<float> > > transVector;//transition probability: site,from,to
+	std::unordered_map<int,std::vector<std::vector<float> > > transVector;//transition probability: site,from,to
     char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
 
     virtual ~PBWTWrapper() { }
 
-    PBWTWrapper(PBWT* pbwt) { }
     PBWTWrapper(const char ** haps, int nhaps, int nsnps);
     PBWTWrapper(int nhaps,int nsnps);
     int InitializeCursor(BOOL isForwards, BOOL isStart);
