@@ -1,0 +1,2 @@
+/usr/bin/ar cq libPBWTWrapper.a  CMakeFiles/PBWTWrapper.dir/PBWTWrapper.cpp.o
+/usr/bin/ranlib libPBWTWrapper.a

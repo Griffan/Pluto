@@ -1,0 +1,6 @@
+/net/wonderland/home/fanzhang/WorkingSpace/data/7.Pluto/Pluto/build/CMakeFiles/Pluto.dir
+/net/wonderland/home/fanzhang/WorkingSpace/data/7.Pluto/Pluto/build/pbwtWrapper/CMakeFiles/PBWTWrapper.dir
+/net/wonderland/home/fanzhang/WorkingSpace/data/7.Pluto/Pluto/build/pbwtWrapper/pbwt/CMakeFiles/pbwt.dir
+/net/wonderland/home/fanzhang/WorkingSpace/data/7.Pluto/Pluto/build/SinglePhasing/thunderVCF/CMakeFiles/thunderVCF.dir
+/net/wonderland/home/fanzhang/WorkingSpace/data/7.Pluto/Pluto/build/SinglePhasing/libVcf/CMakeFiles/Vcf.dir
+/net/wonderland/home/fanzhang/WorkingSpace/data/7.Pluto/Pluto/build/SinglePhasing/libMach/CMakeFiles/Mach.dir

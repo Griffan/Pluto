@@ -4,6 +4,7 @@
 
 #include <unordered_map>
 #include <map>
+#include <cmath>
 #include "PBWTWrapper.h"
 #include "iostream"
 #include "pbwt/pbwt.h"
@@ -364,7 +365,7 @@ bool PBWTWrapper::KStest(std::vector<int>& a, std::vector<int>& b) {
         if(Dtmp>Dmax) Dmax=Dtmp;
     }
 
-    if(Dmax > 1.36*sqrt(double(a.back()+b.back())/(a.back()*b.back())))//1.36 is 0.05 significance parameter
+    if(Dmax > 1.36*std::sqrt(double(a.back()+b.back())/(a.back()*b.back())))//1.36 is 0.05 significance parameter
         return false;//reject null hypo, they are different
     else
         return true;//accept null hypo, they are the same

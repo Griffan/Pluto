@@ -10,7 +10,7 @@ project(SinglePhasing)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 
-message(STATUS "dir is " ${PROJECT_SOURCE_DIR})
+#message(STATUS "dir is " ${PROJECT_SOURCE_DIR})
 #set(SOURCE_FILES src/FASTQuick.cpp src/BwtIndexer.cpp src/BwtMapper.cpp src/PopulationIdentifier.cpp src/RefBuilder.cpp src/StatCollector.cpp)
 
 #add_subdirectory(libStatGen)

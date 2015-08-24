@@ -1,0 +1,2 @@
+/usr/bin/ar cq libthunderVCF.a  CMakeFiles/thunderVCF.dir/PBWTHaplotyper.cpp.o CMakeFiles/thunderVCF.dir/PhasingMain.cpp.o CMakeFiles/thunderVCF.dir/ShotgunHaplotyper.cpp.o CMakeFiles/thunderVCF.dir/ShotgunManners.cpp.o
+/usr/bin/ranlib libthunderVCF.a

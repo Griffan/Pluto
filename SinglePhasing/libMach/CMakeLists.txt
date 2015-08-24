@@ -9,4 +9,4 @@ file(GLOB SOURCE_FILES
 )
 add_library(Mach ${SOURCE_FILES})
 #set_target_properties(Mach PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
-target_include_directories(Mach PRIVATE "/Users/fanzhang/BioLib/libStatGen/include")
+target_include_directories(Mach PRIVATE "../libStatGen/include")

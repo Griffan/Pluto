@@ -11,4 +11,4 @@ file(GLOB SOURCE_FILES
 add_library(Vcf ${SOURCE_FILES})
 #set_target_properties(Vcf PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/libVcf")
 
-target_include_directories(Vcf PRIVATE "/Users/fanzhang/BioLib/libStatGen/include")
+target_include_directories(Vcf PRIVATE "../libStatGen/include")

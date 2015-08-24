@@ -11,13 +11,13 @@ PBWTHaplotyper::PBWTHaplotyper(int nhaps, int nsnps) {
 }
 
 PBWTHaplotyper::PBWTHaplotyper() {
-    ShotgunHaplotyper::ShotgunHaplotyper();
+
 }
 
 
 PBWTHaplotyper::~PBWTHaplotyper() {
     delete Wrapper;
-    ShotgunHaplotyper::~ShotgunHaplotyper();
+   
 }
 
 void PBWTHaplotyper::RetrieveMemoryBlock(int marker)
