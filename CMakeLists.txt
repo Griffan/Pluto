@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(Pluto)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g  -std=c++11")
 add_subdirectory(SinglePhasing)
 add_subdirectory(pbwtWrapper)
 LINK_DIRECTORIES(/net/wonderland/home/fanzhang/WorkingSpace/lib)

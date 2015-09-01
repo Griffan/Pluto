@@ -61,7 +61,7 @@ long int totalAllocated = 0 ;
 
 void *_myalloc (long size)
 {
-  void *p = (void*) malloc (size) ;
+  void *p = (void*) calloc (1,size) ;
   if (!p) die ("myalloc failure requesting %d bytes", size) ;
   totalAllocated += size ;
   return p ;

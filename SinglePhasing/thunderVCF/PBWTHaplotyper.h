@@ -33,6 +33,9 @@ public:
 
     //inline section
 	inline float getTransitionProb(int site, int from, int to) {
+		if(Wrapper->transVector.find(site)==Wrapper->transVector.end()) fprintf(stderr,"%d doesn't exist!\n",site);
+		if(Wrapper->transVector[site].size()<=from) fprintf(stderr,"site:%d out of %d sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);
+		if(Wrapper->transVector[site][from].size()<=to) fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);
 		return Wrapper->transVector[site][from][to];
 	}
 	inline uchar getAllele(int site, int state)

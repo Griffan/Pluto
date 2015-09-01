@@ -9,12 +9,14 @@
  */
 #ifndef PLUTO_PBWTWRAPPER_H
 #define PLUTO_PBWTWRAPPER_H
-#define DEBUG 1
+#define DEBUG 0
 #include "pbwt/pbwt.h"
 #include <vector>
+#include <unordered_map>
 class PBWTWrapper
 {
 public:
+    int N,M;//numSites,numHaps
     PBWT* pbwtCore;
     PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<std::vector<int> > a,alpha/*reverse*/;
@@ -29,8 +31,7 @@ public:
 
     PBWTWrapper(const char ** haps, int nhaps, int nsnps);
     PBWTWrapper(int nhaps,int nsnps);
-    int InitializeCursor(BOOL isForwards, BOOL isStart);
-	int InitializeReverseCursor(BOOL isForwards, BOOL isStart);
+
     int CursorForwards();
     int CursorBackwards();
     int CursorForwardsTo(int k, int T=5);
@@ -45,6 +46,32 @@ public:
 
     int setHaps(char ** haps);
 
+    //inline functions
+    inline int getNumStates(int k)
+    {
+        if(clusterAllele.size()<=k) fprintf(stderr,"site: %d not in clusterAllele\n",k);
+        return clusterAllele[k].size();
+    }
+    inline void resetWrapper()
+    {
+
+        if(pbwtCore)
+        {
+            pbwtDestroy(pbwtCore);
+            pbwtCore = pbwtCreate(M, N);
+
+        }
+        if(forwardCursor)
+        {
+            //delete forwardCursor;
+            pbwtCursorDestroy(forwardCursor);
+            forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
+        }
+        //TODO:REVERSE
+        a=alpha=d=haplotypeCluster=std::vector<std::vector<int> >(pbwtCore->N,std::vector<int>(pbwtCore->M,0));
+        clusterAllele=std::vector<std::vector<uchar> >(pbwtCore->N,std::vector<uchar>());
+        transVector.clear();
+    }
     /*
     function name: debug functions
     return value: :

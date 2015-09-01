@@ -1194,8 +1194,8 @@ int PhasingMain(int argc, char **argv) {
 
 
 
-    if (engine.readyForUse == false || engine.ForceMemoryAllocation() == false)
-        return MemoryAllocationFailure();//check error
+    //if (engine.readyForUse == false || engine.ForceMemoryAllocation() == false)
+    //   return MemoryAllocationFailure();//check error
 
     if (positionsAvailable &&
         engine.AllocateDistances())//it is interesting to notice that there are two position information sources, one is from VCF the other is from markerMap
