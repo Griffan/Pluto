@@ -61,6 +61,17 @@ public:
 protected:
     PBWTWrapper* Wrapper;
 
+	//memory management related
+	std::unordered_map<int, std::vector<float *> > memoryBlockList;//size and list of address
+	std::unordered_map<int, int> numInUse;//size and list of address
+	int totalBlockNum;
+
+	float* GetMemoryBlock(int marker);//revise GetMemoryBlock function
+	float* GetReuseableBlock();//revise GetReuseableBlock function
+	float* GetLargeBlock();
+	void ResetMemoryPool();
+	void ResetReuseablePool();
+	void ReleaseMemoryBlock();
 };
 
 

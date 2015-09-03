@@ -3,7 +3,18 @@
 //
 
 #include "PBWTHaplotyper.h"
-
+//debug related
+static void printLeftMatrix(float * probability, int numStates)
+{
+	for (int i = 0; i <numStates; ++i) {
+		for (int j = 0; j <= i; ++j, probability++) {
+			fprintf(stderr, "(%d,%d):%f\t", i, j, *probability);
+		}
+		fprintf(stderr, "\n");
+	}
+	fprintf(stderr, "\n");
+}
+//initiation
 PBWTHaplotyper::PBWTHaplotyper(int nhaps, int nsnps) {
 
     Wrapper = new PBWTWrapper(nhaps, nsnps);
@@ -14,13 +25,94 @@ PBWTHaplotyper::PBWTHaplotyper() {
 
 }
 
-
+void PBWTHaplotyper::InitWrapper(int nhaps, int nsnps) {
+	Wrapper = new PBWTWrapper(nhaps, nsnps);
+}
 PBWTHaplotyper::~PBWTHaplotyper() {
     if(Wrapper!=NULL)
     delete Wrapper;
-    fprintf(stderr,"calling from PBWTHaplotyper destructor!\n");
+	ReleaseMemoryBlock();
 }
 
+//memory management
+void PBWTHaplotyper::ReleaseMemoryBlock()
+{
+	for (std::unordered_map<int, std::vector<float*> >::iterator iter = memoryBlockList.begin(); iter != memoryBlockList.end(); ++iter)
+	{
+		for (size_t i = 0; i < iter->second.size(); i++)
+		{
+			if (iter->second[i] != NULL) delete[] iter->second[i];
+		}
+	}
+}
+float * PBWTHaplotyper::GetMemoryBlock(int marker)
+{
+	if (!economyMode || marker == 0 || marker > stack[stackPtr] + gridSize)
+	{
+		stack[++stackPtr] = marker;
+		leftMatrices[marker] = GetLargeBlock();
+
+		ResetReuseablePool();
+	}
+	else
+		leftMatrices[marker] = GetReuseableBlock();
+}
+float* PBWTHaplotyper::GetLargeBlock()
+{
+	int blockSize = orderedGenotypes ? states * states : states * (states + 1) / 2;
+	if (numInUse.find(blockSize) == numInUse.end())
+	{
+		numInUse[blockSize] = 0;
+		memoryBlockList[blockSize] = std::vector<float*>(0, NULL);
+	}
+	if (numInUse[blockSize] < memoryBlockList[blockSize].size())
+	{
+		numInUse[blockSize]++;
+		return memoryBlockList[blockSize][numInUse[blockSize] - 1];
+	}
+	else
+	{
+		memoryBlockList[blockSize].push_back(AllocateMemoryBlock());
+		numInUse[blockSize]++;
+		return memoryBlockList[blockSize][numInUse[blockSize] - 1];
+	}
+}
+float* PBWTHaplotyper::GetReuseableBlock()
+{
+	int blockSize = orderedGenotypes ? states * states : states * (states + 1) / 2;
+	if (numInUse.find(blockSize) == numInUse.end())
+	{
+		numInUse[blockSize] = 0;
+		memoryBlockList[blockSize] = std::vector<float*>(0, NULL);
+	}
+	if (numInUse[blockSize] < memoryBlockList[blockSize].size())
+	{
+		numInUse[blockSize]++;//TODO::reset needed
+		return memoryBlockList[blockSize][numInUse[blockSize] - 1];
+	}
+	else
+	{
+		memoryBlockList[blockSize].push_back(AllocateMemoryBlock());
+		numInUse[blockSize]++;
+		return memoryBlockList[blockSize][numInUse[blockSize] - 1];
+	}
+
+}
+void PBWTHaplotyper::ResetMemoryPool()
+{
+	nextAvailable = nextSmallAvailable = 0;
+	nextReuseable = markers - 1;
+	stackPtr = -1;
+	for (std::unordered_map<int, int>::iterator iter = numInUse.begin(); iter != numInUse.end();++iter)
+	{
+		iter->second = 0;
+	}
+}
+
+void PBWTHaplotyper::ResetReuseablePool()
+{
+	nextReuseable = markers - 1;
+}
 void PBWTHaplotyper::RetrieveMemoryBlock(int marker) {
     if (stack[stackPtr] <= marker) {
        // fprintf(stderr, "out from RetrieveMemory\n");
@@ -34,7 +126,7 @@ void PBWTHaplotyper::RetrieveMemoryBlock(int marker) {
         for (int i = stack[stackPtr] + 1; i <= marker; i++) {
             int markerindex = i * 3;
             {
-                leftMatrices[i] = GetReuseableBlock();
+				leftMatrices[i] = GetReuseableBlock();
 
                 Transpose(i, from, leftMatrices[i]);
                 ConditionOnData(leftMatrices[i], i, genotypes[states / 2][markerindex],
@@ -86,6 +178,7 @@ bool PBWTHaplotyper::ForceMemoryAllocation() {
     return true;
 }
 
+//phasing
 void PBWTHaplotyper::ConditionOnData(float *matrix, int marker, char phred11, char phred12, char phred22) {
     // We treat missing genotypes as uninformative about the mosaic's
     // underlying state. If we were to allow for deletions and the like,
@@ -118,16 +211,7 @@ void PBWTHaplotyper::ConditionOnData(float *matrix, int marker, char phred11, ch
             *matrix *= factors[Wrapper->clusterAllele[marker][j]];
     }
 }
-static void printLeftMatrix(float * probability,int numStates)
-{
-    for (int i = 0; i <numStates ; ++i) {
-        for (int j = 0; j <=i ; ++j,probability++) {
-            fprintf(stderr,"(%d,%d):%f\t",i,j,*probability);
-        }
-        fprintf(stderr,"\n");
-    }
-    fprintf(stderr,"\n");
-}
+
 void PBWTHaplotyper::ScoreLeftConditional() {
 
 
@@ -143,7 +227,7 @@ void PBWTHaplotyper::ScoreLeftConditional() {
 
     for (int i = 1; i < markers; i++) {
         int markerindex = i * 3;
-        fprintf(stderr, "processing marker %d...\n", i);
+        //fprintf(stderr, "processing marker %d...\n", i);
         // Cumulative recombination fraction allows us to skip uninformative positions
         // theta = theta + thetas[i - 1] - theta * thetas[i - 1];
 
@@ -173,12 +257,15 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
 
     ResetCrossovers();
 
+	//char* tmphap1 = new char[markers];
+	//char* tmphap2 = new char[markers];
 
     for (int i = individuals - 1; i >= 0; i--) {
 
         if (i < individuals - phased) {
             SwapIndividuals(i, individuals - 1);
-
+			//memcpy(tmphap1, haplotypes[2 * (individuals - 1)], markers);
+			//memcpy(tmphap2, haplotypes[2 * (individuals - 1) + 1], markers);
             Wrapper->setHaps(haplotypes);
             Wrapper->CursorForwards();
             Wrapper->CursorBackwards();
@@ -190,7 +277,7 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
                 ScoreNPL();
 
             //if (i < individuals - phased) {
-            fprintf(stderr, "phasing individual %d...\n", i);
+           // fprintf(stderr, "phasing individual %d...\n", i);
             ScoreLeftConditional();
             SampleChromosomes(&globalRandom);
 
@@ -213,7 +300,8 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
 //            SampleHaplotypeSource(&globalRandom);
 //            SwapHaplotypes(states, states + 1);
 //        }
-
+			//memcpy(haplotypes[2 * (individuals - 1)], tmphap1, markers);
+			//memcpy(haplotypes[2 * (individuals - 1) + 1],tmphap2, markers);
             SwapIndividuals(i, individuals - 1);
             Wrapper->resetWrapper();
         }
@@ -237,7 +325,7 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
     int toWhere = site;
     int numFromStates = getStateNumFrom(fromWhere);
     int numToStates = getStateNumFrom(toWhere);//number of cluster
-    fprintf(stderr,"site:%d\tstates:%d\tfromwhere:%d\ttowhere:%d\n",site,states,getStateNumFrom(fromWhere),getStateNumFrom(toWhere));
+    //fprintf(stderr,"site:%d\tstates:%d\tfromwhere:%d\ttowhere:%d\n",site,states,getStateNumFrom(fromWhere),getStateNumFrom(toWhere));
     //int currentIndividualOriginalState1 = getCurrentIndividualState(fromWhere, 0);
     //int currentIndividualOriginalState2 = getCurrentIndividualState(fromWhere, 1);
     // This final loop actually transposes the probabilities for each state
@@ -514,6 +602,4 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
     ImputeAlleles(0, first, second, rand);
 }
 
-void PBWTHaplotyper::InitWrapper(int nhaps, int nsnps) {
-    Wrapper = new PBWTWrapper(nhaps, nsnps);
-}
+

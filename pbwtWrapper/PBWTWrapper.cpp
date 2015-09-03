@@ -55,14 +55,12 @@ PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)
 int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
 
 
-    PrintVector(forwardCursor->a,M,"end arrary aFend check 0");
+    //PrintVector(forwardCursor->a,M,"end arrary aFend check 0");
     for (int k = 0; k != pbwtCore->N; ++k) {
         CursorForwardsTo(k, 10);
     }
     //copy end of a to PBWT
-    PrintVector(forwardCursor->a,M,"end arrary aFend check 1");
-
-    fprintf(stderr,"\n");
+    //PrintVector(forwardCursor->a,M,"end arrary aFend check 1");
     
     pbwtCursorToAFend(forwardCursor, pbwtCore);
     //update crossover rate?
@@ -107,7 +105,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
         if (forwardCursor->d[i] > q) q = forwardCursor->d[i];
 
         /*assign states of last column based on previous d and sortedY*/
-         if (k > T and lastD[i] > k - T) {//if current sequence and last sequence have common sequence longer than T
+         if (k > T && lastD[i] > k - T) {//if current sequence and last sequence have common sequence longer than T
             //if (na && nb)        /* then there is something to report */
             {
                 for (ia = i0; ia < i; ++ia)
@@ -178,7 +176,7 @@ int PBWTWrapper::CursorBackwards() {
 
     if (pbwtCore->aFend)//if aFend exists in pbwtCore, we directly use it
     {
-        fprintf(stderr,"create new cursor true false\n");
+        //fprintf(stderr,"create new cursor true false\n");
         forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, FALSE);
     }
     else {//then let's calculate it from beginning
