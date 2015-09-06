@@ -57,7 +57,7 @@ int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
 
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 0");
     for (int k = 0; k != pbwtCore->N; ++k) {
-        CursorForwardsTo(k, 10);
+        CursorForwardsTo(k, 20);
     }
     //copy end of a to PBWT
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 1");
@@ -200,11 +200,12 @@ int PBWTWrapper::CursorBackwards() {
         CursorBackwardsTo(i, 5);
     }
     //isolated from context
+
     for (i = pbwtCore->N; i--;) {
 
         UpdateTransVector(i);
     }
-
+    PrintSummary();
     /* save uR->a, which is the lexicographic order of the sequences */
     if (!pbwtCore->aRend) pbwtCore->aRend = myalloc (M, int);
     memcpy(pbwtCore->aRend, reverseCursor->a, M * sizeof(int));//the end when loop from back to the original first
@@ -437,5 +438,38 @@ int PBWTWrapper::PrintDistributionAtSite(int state,std::vector<int> &dist) {
     for(auto k:dist)
         std::cerr<<k<<"\t";
     std::cerr<<std::endl;
+    return 0;
+}
+
+int PBWTWrapper::PrintSummary() {
+//    mean nodes/level =  70.38  max nodes/level = 111  nodes = 10135
+//    mean edges/level =  94.03  max edges/level = 177  edges = 13541
+//    mean edges/node  =   1.34  mean count/node =  53.45
+    int totalNodes(0),maxNodes(0);
+    int totalEdges(0),maxEdges(0);
+    float meanEdges(0.0),meanNodes(0.0);
+    for (int i = 0; i <clusterAllele.size(); ++i) {
+        totalNodes+=clusterAllele[i].size();
+        if(clusterAllele[i].size()>maxNodes) maxNodes=clusterAllele[i].size();
+    }
+    meanNodes=(float) totalNodes/clusterAllele.size();
+
+    for (int j = 0; j < transVector.size(); ++j) {
+        int tmpEdges(0);
+        for (int i = 0; i < transVector[j].size(); ++i) {
+            for (int k = 0; k <transVector[j][i].size() ; ++k) {
+                if(transVector[j][i][k]!=0) tmpEdges++;
+            }
+        }
+
+        if(tmpEdges>maxEdges) maxEdges=tmpEdges;
+        totalEdges+=tmpEdges;
+    }
+    meanEdges=(float) totalEdges/(clusterAllele.size()-1);
+
+    printf("mean nodes/level = %f\tmax nodes/level = %d\tnodes = %d\n",meanNodes,maxNodes,totalNodes);
+    printf("mean edges/level = %f\tmax edges/level = %d\tedges = %d\n",meanEdges,maxEdges,totalEdges);
+    printf("mean edges/node = %f\tmean count/mode = %f\n",(float)totalEdges/totalNodes,(float)(pbwtCore->M)*(pbwtCore->N)/totalNodes);
+
     return 0;
 }

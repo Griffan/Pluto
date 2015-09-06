@@ -88,6 +88,8 @@ public:
         }
         fprintf(stderr,"\n");
     }
+
+    int PrintSummary();
 };
 
 #endif //PLUTO_PBWTWRAPPER_H

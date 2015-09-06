@@ -44,7 +44,7 @@ std::unordered_map<std::string, int> unphaseMarkerIdx;
 //record marker name and relative index in unphased vcf
 std::unordered_map<std::string, int> unphaseMarkerUIdx;
 //record marker name and relative index in phased ref vcf
-std::unordered_map<std::string, bool> unphaseMarkerFlag;//record if this marker only shows in unphased vcf
+std::unordered_map<std::string, bool> unphaseMarkerFlag;//false:only shows in ref vcf; true:also shows in unphased vcf
 
 std::unordered_map<std::string, bool> pidIncludedInUnphasedVcf;
 std::unordered_map<std::string, bool> pidIncludedInPhasedVcf;
@@ -166,7 +166,7 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
             markerName.printf("%s:%d", pMarker->sChrom.c_str(), pMarker->nPos);
 
             if (unphaseMarkerFlag[std::string(markerName.c_str())] ==
-                false) {//if not unphase unique marker, update content otherwise remains as before
+                true) {//if unphase also has this marker, update content otherwise remains as before
                 doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
 
                 ////fprintf(stderr,"foo1\n");
@@ -363,7 +363,8 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
             markerName.printf("%s:%d", pMarker->sChrom.c_str(), pMarker->nPos);
 
             if (unphaseMarkerFlag[std::string(markerName.c_str())] ==
-                false) {//if not unphase unique marker, update content otherwise remains as before
+                true) {//if unphase also has this marker i.e. shared marker, update content otherwise remains as before
+
                 doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
 
                 ////fprintf(stderr,"foo1\n");
@@ -688,7 +689,7 @@ void LoadUnphasedPolymorphicSites(const String &filename) {
             int idx = Pedigree::markerLookup.Integer(markerName);//only look up, no add in
             if (idx != -1)//shown in ref panel marker set
             {
-                unphaseMarkerFlag[std::string(markerName.c_str())] = true;
+                unphaseMarkerFlag[std::string(markerName.c_str())] = true;//TODO:confirm true  or false
                 unphaseMarkerIdx[std::string(markerName.c_str())] = localIdx;
             }
             else {
@@ -1060,7 +1061,7 @@ int PhasingMain(int argc, char **argv) {
                     LONG_INTPARAMETER("seed", &seed)
                     LONG_INTPARAMETER("burnin", &burnin)
                     LONG_INTPARAMETER("rounds", &rounds)
-                    LONG_INTPARAMETER("SamplingRounds", &SamplingRounds)
+                    //LONG_INTPARAMETER("SamplingRounds", &SamplingRounds)
                     LONG_PARAMETER_GROUP("Haplotyper")
                     LONG_INTPARAMETER("states", &states)
                     LONG_DOUBLEPARAMETER("errorRate", &errorRate)
@@ -1214,8 +1215,8 @@ int PhasingMain(int argc, char **argv) {
             return MemoryAllocationFailure();
     }
 
-    ConsensusBuilder::EstimateMemoryInfo(SamplingRounds, ped.count * 2, ped.markerCount);
-    ConsensusBuilder consensus(SamplingRounds, ped.count * 2, ped.markerCount);
+    ConsensusBuilder::EstimateMemoryInfo(rounds, ped.count * 2, ped.markerCount);
+    ConsensusBuilder consensus(rounds, ped.count * 2, ped.markerCount);
 
     if (consensus.readyForUse == false)
         return MemoryAllocationFailure();
@@ -1288,8 +1289,8 @@ int PhasingMain(int argc, char **argv) {
 //	if (doses.storeDosage || doses.storeDistribution)
 //		doses.Update(engine.haplotypes);
 //
-//	UpdateVector(engine.thetas, thetas, nthetas, engine.markers - 1);
-//	UpdateErrorRates(engine.error_models, error_rates, nerror_rates, engine.markers);
+	UpdateVector(engine.thetas, thetas, nthetas, engine.markers - 1);
+	UpdateErrorRates(engine.error_models, error_rates, nerror_rates, engine.markers);
 
 //		if (polling > 0 && ((i - burnin) % polling) == 0) {
 //		int i = 0;// adjust for following code
@@ -1334,6 +1335,7 @@ int PhasingMain(int argc, char **argv) {
     //else
     {
         UnphasedSamplesOutputVCF(shotgunfile, ped, doses, outfile + ".vcf.gz", thetas, error_rates, engine);
+        if (OutputManager::outputHaplotypes)
         OutputVCFConsensus(shotgunfile, ped, consensus, doses, outfile + ".consensus.vcf.gz", thetas, error_rates,
                            engine);
     }

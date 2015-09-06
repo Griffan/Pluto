@@ -266,10 +266,12 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
             SwapIndividuals(i, individuals - 1);
 			//memcpy(tmphap1, haplotypes[2 * (individuals - 1)], markers);
 			//memcpy(tmphap2, haplotypes[2 * (individuals - 1) + 1], markers);
+            clock_t t=clock();
             Wrapper->setHaps(haplotypes);
             Wrapper->CursorForwards();
             Wrapper->CursorBackwards();
-
+            printf("build model time:%.2f sec\n", (float) (clock() - t) / CLOCKS_PER_SEC);
+            exit(EXIT_SUCCESS);
             if (weights != NULL)
                 ScaleWeights();
 
@@ -406,17 +408,17 @@ void  PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *
 
     double r = rand->Next();
 
-    if (r < posterior_11)//homo ref
+    if (r < posterior_11)//homo ref alleles
     { //fprintf(stdout,"from 00\t");
         haplotypes[currentHap1][marker] = 0;
         haplotypes[currentHap2][marker] = 0;
     }
-    else if (r < posterior_11 + posterior_22)//home alt
+    else if (r < posterior_11 + posterior_22)//home alt alleles
     {//fprintf(stdout,"from 11\t");
         haplotypes[currentHap1][marker] = 1;
         haplotypes[currentHap2][marker] = 1;
     }
-    else if (copied1 != copied2)//heter states and heter geno
+    else if (copied1 != copied2)//heter states and heter alleles
     {
         //fprintf(stdout,"from 01\t");
         double rate = GetErrorRate(marker);
@@ -430,7 +432,7 @@ void  PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *
         haplotypes[currentHap1][marker] = copied1;
         haplotypes[currentHap2][marker] = copied2;
     }
-    else//hetero states but homo geno
+    else//homo states but heter alleles
     {
         //fprintf(stdout,"from else\t");
         bool bit = rand->Binary();

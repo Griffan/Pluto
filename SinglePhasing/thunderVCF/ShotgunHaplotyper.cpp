@@ -595,6 +595,7 @@ void ShotgunHaplotyper::LoadHaplotypesFromPhasedVCF(Pedigree &ped, String& fileN
 	catch (VcfFileException e) {
 		error(e.what());
 	}
+	printf("finishing LoadHaplotypesFromPhasedVCF\n");
 }
 void ShotgunHaplotyper::RandomSetup(Random * rand)
    {
