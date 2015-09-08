@@ -25,6 +25,7 @@ public:
 
 
 
+	int ExtractHeterSites(int individualToProcess);
     //Memory management functions
     //virtual bool AllocateMemory(int nIndividuals, int maxHaplos, int nMarkers, float defaultTheta);
     //virtual void EstimateMemoryInfo(int Individuals, int Markers, int States, bool Compact, bool Phased);
@@ -60,6 +61,11 @@ public:
 
 protected:
     PBWTWrapper* Wrapper;
+
+	//subset markers related
+	char** tmpHaps;
+	std::vector<char> relativeMarkerIndex;
+	std::unordered_map<int,bool> markerInUse;
 
 	//memory management related
 	std::unordered_map<int, std::vector<float *> > memoryBlockList;//size and list of address

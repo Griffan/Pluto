@@ -17,7 +17,7 @@ static void printLeftMatrix(float * probability, int numStates)
 //initiation
 PBWTHaplotyper::PBWTHaplotyper(int nhaps, int nsnps) {
 
-    Wrapper = new PBWTWrapper(nhaps, nsnps);
+    //Wrapper = new PBWTWrapper(nhaps, nsnps);
 
 }
 
@@ -26,11 +26,21 @@ PBWTHaplotyper::PBWTHaplotyper() {
 }
 
 void PBWTHaplotyper::InitWrapper(int nhaps, int nsnps) {
-	Wrapper = new PBWTWrapper(nhaps, nsnps);
+
+    tmpHaps = new char* [nhaps-2];
+    for (int i = 0; i <nhaps-2 ; ++i) {
+        tmpHaps[i]= new char [nsnps];
+    }
 }
+
 PBWTHaplotyper::~PBWTHaplotyper() {
-    if(Wrapper!=NULL)
-    delete Wrapper;
+
+    if(tmpHaps != NULL) {
+        for (int i = 0; i < 2 * (individuals - 1); ++i) {
+            delete[] tmpHaps[i];
+        }
+        delete [] tmpHaps;
+    }
 	ReleaseMemoryBlock();
 }
 
@@ -267,9 +277,11 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
 			//memcpy(tmphap1, haplotypes[2 * (individuals - 1)], markers);
 			//memcpy(tmphap2, haplotypes[2 * (individuals - 1) + 1], markers);
             clock_t t=clock();
-            Wrapper->setHaps(haplotypes);
+            ExtractHeterSites(i);
+            Wrapper->setHaps(tmpHaps);
+            Wrapper->CursorBackwards();//calculate backwards order of suffix
             Wrapper->CursorForwards();
-            Wrapper->CursorBackwards();
+
             printf("build model time:%.2f sec\n", (float) (clock() - t) / CLOCKS_PER_SEC);
             exit(EXIT_SUCCESS);
             if (weights != NULL)
@@ -605,3 +617,21 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
 }
 
 
+int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after swap individualToProcess to the back
+
+    if(Wrapper!=NULL)
+        delete Wrapper;
+    markerInUse.clear();
+    relativeMarkerIndex.clear();
+    for (int i = 0; i < markers ; ++i) {
+        if(haplotypes[2*individualToProcess][i]==haplotypes[2*individualToProcess+1][i]) continue;//homo
+        for (int j = 0; j <individuals-1/*not include individualToProcess*/; ++j) {
+            tmpHaps[2*j][i]=haplotypes[2*j][i];
+            tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];
+        }
+        markerInUse[i]=true;
+        relativeMarkerIndex.push_back(i);
+    }
+    Wrapper = new PBWTWrapper(2*(individuals-1), relativeMarkerIndex.size());
+    return 0;
+}
