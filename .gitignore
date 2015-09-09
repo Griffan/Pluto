@@ -6,5 +6,4 @@ libStatGen
 Debug
 build
 CMakeLists.txt
-*/CMakeLists.txt
-*/*/CMakeLists.txt
+
