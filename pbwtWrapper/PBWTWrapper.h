@@ -13,6 +13,8 @@
 #include "pbwt/pbwt.h"
 #include <vector>
 #include <unordered_map>
+#include <iostream>
+
 class PBWTWrapper
 {
 public:
@@ -21,6 +23,7 @@ public:
     PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<std::vector<int> > a,alpha/*reverse*/;
     std::vector<std::vector<int> > d;//,delta/*reverse*/;
+    std::vector<std::vector<uchar> > sortedY/*only for test*/;
     //std::vector<int> numZero;/*number of zero at each site*/
     std::vector<std::vector<int> > haplotypeCluster;
     std::vector<std::vector<uchar> > clusterAllele;//numCluster;//at each site
@@ -42,6 +45,7 @@ public:
 	int UpdateTransVector(int site);
     int MergeCluster(int site);
 
+    int MoveSegment(std::vector<std::vector<int> >& MemberShip);
     bool KStest(std::vector<int>& a,std::vector<int>& b);
 
     int setHaps(char ** haps);
@@ -80,13 +84,35 @@ public:
     time: 8/4/15
     */
     int PrintDistributionAtSite(int state,std::vector<int>& dist);
-    template<typename T> inline void PrintVector(T * a,int n, const char* str)
+    inline void PrintVector(std::vector<int> a,const char* str)
     {
-        fprintf(stderr,"debug array %s:\t",str);
-        for (int i = 0; i < n; ++i) {
-            fprintf(stderr,"%d\t",a[i]);
+        fprintf(stderr,"debug array %s:\n",str);
+        for (int i = 0; i < a.size(); ++i) {
+            std::cerr<<a[i]<<"\t";
         }
-        fprintf(stderr,"\n");
+        std::cerr<<std::endl;
+    }
+    template<typename T> inline void PrintMatrix(std::vector<std::vector<T> > a,const char* str)
+    {
+        fprintf(stderr,"debug matrix size(%d,%d,) %s:\n",a.size(),a[0].size(), str);
+        for (int i = 0; i < M; ++i) {
+            for (int j = 0; j < N-6; ++j) {
+                std::cerr<<(ushort)a[j][i]<<"\t";
+            }
+            std::cerr<<std::endl;
+        }
+        std::cerr<<std::endl;
+    }
+    inline void PrintHap(char** a,std::vector<std::vector<int> > &b)
+    {
+        fprintf(stderr,"Hap matrix:\n");
+        for (int i = 0; i < M; ++i) {
+            for (int j = 0; j < N-6; ++j) {
+                std::cerr<<(ushort)a[b[N-5][i]][j]<<"\t";
+            }
+            std::cerr<<std::endl;
+        }
+        std::cerr<<std::endl;
     }
 
     int PrintSummary();

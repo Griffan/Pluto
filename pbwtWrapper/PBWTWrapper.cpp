@@ -39,7 +39,7 @@
 //
 //}
 
-PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)),alpha(a),d(a), haplotypeCluster(a),clusterAllele(nsnps,std::vector<uchar>()){
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)),alpha(a),d(a), sortedY(nsnps,std::vector<uchar>(nhaps,0)),haplotypeCluster(a),clusterAllele(nsnps,std::vector<uchar>()){
     N=nsnps;
     M=nhaps;//last two haps are slots for current individual need to be phased
     pbwtCore = pbwtCreate(nhaps, nsnps);
@@ -82,14 +82,14 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
     int group = 0;
 
     /*coppy array d*/
-    int *lastD = new int[forwardCursor->M + 1];
+   // int *lastD = new int[forwardCursor->M + 1];
     uchar *lastY = new uchar[forwardCursor->M +1];
-    memcpy(lastD, forwardCursor->d, (forwardCursor->M + 1) * sizeof(int));
+   // memcpy(lastD, forwardCursor->d, (forwardCursor->M + 1) * sizeof(int));
     memcpy(lastY, forwardCursor->sortedY, (forwardCursor->M + 1) * sizeof(uchar));
     //copy haplotypes into forwardCursor->y
     CopyHap(k, forwardCursor);
 
-    if (k <= T||k==pbwtCore->N-1)//deal with beginning columns
+    if (k==pbwtCore->N-1)//deal with beginning columns
     {
         for (i = 0; i < forwardCursor->M; ++i) {
             haplotypeCluster[k][i] = 0;
@@ -97,6 +97,9 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
 
         clusterAllele[k].push_back(forwardCursor->sortedY[0]);
     }
+
+    int tmpT= k > T ? T : k;
+
     /*reprot haolotype cluster based on prefix, so current site not included*/
     //fprintf(stderr,"k:%d,T:%d\t",k,T);PrintVector(forwardCursor->d,forwardCursor->M,"before tmpD");
     //fprintf(stderr,"k:%d,T:%d\t",k,T);PrintVector(forwardCursor->a,forwardCursor->M,"olda");
@@ -111,15 +114,15 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
         if (forwardCursor->d[i] > q) q = forwardCursor->d[i];
 
         /*assign states of last column based on previous d and sortedY*/
-         if (k > T && lastD[i] > k - T) {//if current sequence and last sequence have common sequence longer than T
+         if (k!=0 and forwardCursor->d[i] > k - tmpT) {//if current sequence and last sequence have common sequence longer than T
             //if (na && nb)        /* then there is something to report */
             {
                 for (ia = i0; ia < i; ++ia)
                 {
-                    haplotypeCluster[k-1][ia] = group;
+                    haplotypeCluster[k][ia] = group;
                 }
 
-                clusterAllele[k-1].push_back(lastY[i0]);
+                clusterAllele[k].push_back(lastY[i0]);
             }
            // na = 0;
            // nb = 0;
@@ -144,16 +147,15 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
         }
     }
 
-    if((k > T and k!=pbwtCore->N-1) and i0 < forwardCursor->M-1)
+    if( (k!=pbwtCore->N-1) and i0 < forwardCursor->M-1)
     {
         for (ia = i0; ia < forwardCursor->M; ++ia)
         {
-            haplotypeCluster[k-1][ia] = group;
+            haplotypeCluster[k][ia] = group;
         }
 
-        clusterAllele[k-1].push_back(lastY[i0]);
+        clusterAllele[k].push_back(lastY[i0]);
     }
-
 
     MergeCluster(k);//TODO:implement this function
     //numCluster[k] = group;
@@ -161,12 +163,14 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
     //numZero[k]=na;
     memcpy(forwardCursor->a + u, forwardCursor->b, v * sizeof(int));
     memcpy(forwardCursor->d + u, forwardCursor->e, v * sizeof(int));
-    forwardCursor->d[0] = k + 2;
+    //forwardCursor->d[0] = k + 2;
     forwardCursor->d[forwardCursor->M] = k + 2; /* sentinels */
     a[k].assign(forwardCursor->a,forwardCursor->a+forwardCursor->M);
     d[k].assign(forwardCursor->d,forwardCursor->d+forwardCursor->M);
-    delete [] lastD;
+    sortedY[k].assign(forwardCursor->sortedY,forwardCursor->sortedY+forwardCursor->M);
+    //delete [] lastD;
     delete [] lastY;
+
     //pbwtCursorForwardsReadAD(forwardCursor, k);
     // updateCursorForwards();//
     //fprintf(stderr,"k:%d,T:%d\t",k,T);PrintVector(forwardCursor->d,forwardCursor->M,"after tmpD");
@@ -504,8 +508,12 @@ int PBWTWrapper::MergeCluster(int site) {
         tmpAllele.clear();//TODO:tmpAllele order
         stateOrder.clear();
         tmpOrder=0;
+
         for (auto i = 0; i != dist.size(); ++i) {
-            if(mergeIndicator[i]) continue;
+            if(mergeIndicator[i])
+            {
+                continue;
+            }
             else
             {
                 tmpAllele.push_back(clusterAllele[site][i]);
@@ -537,15 +545,14 @@ int PBWTWrapper::MergeCluster(int site) {
 
                     break;
                 }
-                else
-                {
-                    if(DEBUG) std::cerr<<"Cannot merge\t"<<j<<"\tinto\t"<<i<<std::endl;
-                }
             }
             //PrintDistributionAtSite(i,dist[i]);
         }
         if(DEBUG)std::cerr<<"finish of last round"<<std::endl;
     }
+    //adjust d array and a array
+    MoveSegment(clusterMemberShip);
+
     for (int k = 0; k < haplotypeCluster[site].size(); ++k) {
         haplotypeCluster[site][k]=stateOrder[haplotypeCluster[site][k]];
     }
@@ -611,5 +618,23 @@ int PBWTWrapper::PrintSummary() {
     printf("mean edges/level = %f\tmax edges/level = %d\tedges = %d\n",meanEdges,maxEdges,totalEdges);
     printf("mean edges/node = %f\tmean count/mode = %f\n",(float)totalEdges/totalNodes,(float)(pbwtCore->M)*(pbwtCore->N)/totalNodes);
 
+    return 0;
+}
+
+int PBWTWrapper::MoveSegment(std::vector<std::vector<int> >& MemberShip) {//fromEnd don't include
+    std::vector<int> tmpD,tmpA;
+    for (int i = 0; i <MemberShip.size() ; ++i) {
+        if(MemberShip[i].size()>0) {
+            tmpD.push_back(forwardCursor->d[MemberShip[i][0]]);
+            tmpA.push_back(forwardCursor->a[MemberShip[i][0]]);
+        }
+        //int d=forwardCursor->d[MemberShip[i][0]];
+        for (int j = 1; j <MemberShip[i].size() ; ++j) {
+            tmpD.push_back(0);
+            tmpA.push_back(forwardCursor->a[MemberShip[i][j]]);
+        }
+    }
+    std::copy(tmpD.begin(),tmpD.end(),forwardCursor->d);
+    std::copy(tmpA.begin(),tmpA.end(),forwardCursor->a);
     return 0;
 }

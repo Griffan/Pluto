@@ -12,7 +12,7 @@ class PBWTHaplotyper : public ShotgunHaplotyper{
 public:
     PBWTHaplotyper(int nhaps, int nsnps);
 	PBWTHaplotyper();
-	void InitWrapper(int nhaps, int nsnps);
+	void InitAuxillary(int nhaps, int nsnps);
     ~PBWTHaplotyper();
     int LoopThroughChromosomesViaPBWT();
 	void Transpose(int site, float * source, float * dest);

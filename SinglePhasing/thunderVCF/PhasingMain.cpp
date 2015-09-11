@@ -1175,7 +1175,7 @@ int PhasingMain(int argc, char **argv) {
 
     engine.EstimateMemoryInfo(ped.count, ped.markerCount, states, compact, false);
     engine.AllocateMemory(ped.count, states, ped.markerCount, (float) transRate);
-    //engine.InitWrapper(ped.count * 2, ped.markerCount);
+    engine.InitAuxillary(ped.count * 2, ped.markerCount);
 
 
     printf("Copy unphased genotypes into haplotyping engine\n");

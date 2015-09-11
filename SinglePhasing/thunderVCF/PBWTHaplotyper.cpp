@@ -2,6 +2,7 @@
 // Created by Fan Zhang on 8/6/15.
 //
 
+#include <pbwt/pbwt.h>
 #include "PBWTHaplotyper.h"
 //debug related
 static void printLeftMatrix(float * probability, int numStates)
@@ -25,7 +26,7 @@ PBWTHaplotyper::PBWTHaplotyper() {
 
 }
 
-void PBWTHaplotyper::InitWrapper(int nhaps, int nsnps) {
+void PBWTHaplotyper::InitAuxillary(int nhaps, int nsnps) {
 
     tmpHaps = new char* [nhaps-2];
     for (int i = 0; i <nhaps-2 ; ++i) {
@@ -281,9 +282,12 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
             Wrapper->setHaps(tmpHaps);
             Wrapper->CursorBackwards();//calculate backwards order of suffix
             Wrapper->CursorForwards();
-
+            //Wrapper->PrintHap(tmpHaps,Wrapper->a);
+            //Wrapper->PrintMatrix(Wrapper->a,"a array matrix");
+            //Wrapper->PrintMatrix(Wrapper->d,"d array");
+            //Wrapper->PrintVector(Wrapper->a[Wrapper->N-7],"last a array");
             printf("build model time:%.2f sec\n", (float) (clock() - t) / CLOCKS_PER_SEC);
-            exit(EXIT_SUCCESS);
+           // exit(EXIT_SUCCESS);
             if (weights != NULL)
                 ScaleWeights();
 
@@ -619,12 +623,14 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
 
 int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after swap individualToProcess to the back
 
-    if(Wrapper!=NULL)
+    if(Wrapper!=NULL) {
         delete Wrapper;
+
+    }
     markerInUse.clear();
     relativeMarkerIndex.clear();
     for (int i = 0; i < markers ; ++i) {
-        if(haplotypes[2*individualToProcess][i]==haplotypes[2*individualToProcess+1][i]) continue;//homo
+        //if(haplotypes[2*individualToProcess][i]==haplotypes[2*individualToProcess+1][i]) continue;//homo
         for (int j = 0; j <individuals-1/*not include individualToProcess*/; ++j) {
             tmpHaps[2*j][i]=haplotypes[2*j][i];
             tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];
