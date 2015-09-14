@@ -30,7 +30,24 @@ public:
 	std::unordered_map<int,std::vector<std::vector<float> > > transVector;//transition probability: site,from,to
     char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
 
-    virtual ~PBWTWrapper() { }
+    ~PBWTWrapper() {
+        if(pbwtCore)
+        {
+            pbwtDestroy(pbwtCore);
+
+        }
+        if(forwardCursor)
+        {
+            //delete forwardCursor;
+            pbwtCursorDestroy(forwardCursor);
+        }
+        if(reverseCursor)
+        {
+            //delete forwardCursor;
+            pbwtCursorDestroy(reverseCursor);
+        }
+        //TODO:REVERSE
+    }
 
     PBWTWrapper(const char ** haps, int nhaps, int nsnps);
     PBWTWrapper(int nhaps,int nsnps);

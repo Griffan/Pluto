@@ -128,8 +128,9 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
         // build map of personID -> sampleIndex
         std::map<std::string, int> pedMap;
         for (int i = 0; i < (engine.individuals - engine.phased)/*ped.count*/; ++i) {
+//            fprintf(stderr,"Adding (%s,%d)\n", ped[i].pid.c_str(), i);
             pedMap[ped[i].pid.c_str()] = i;
-            //fprintf(stderr,"Adding (%s,%d)\n", ped[i].pid.c_str(), i);
+
         }
 
         std::vector<int> vcf2ped;
@@ -1175,7 +1176,7 @@ int PhasingMain(int argc, char **argv) {
 
     engine.EstimateMemoryInfo(ped.count, ped.markerCount, states, compact, false);
     engine.AllocateMemory(ped.count, states, ped.markerCount, (float) transRate);
-    engine.InitAuxillary(ped.count * 2, ped.markerCount);
+    engine.InitAuxillary();
 
 
     printf("Copy unphased genotypes into haplotyping engine\n");

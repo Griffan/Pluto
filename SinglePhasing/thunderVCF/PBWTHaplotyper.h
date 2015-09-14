@@ -12,7 +12,7 @@ class PBWTHaplotyper : public ShotgunHaplotyper{
 public:
     PBWTHaplotyper(int nhaps, int nsnps);
 	PBWTHaplotyper();
-	void InitAuxillary(int nhaps, int nsnps);
+	void InitAuxillary();
     ~PBWTHaplotyper();
     int LoopThroughChromosomesViaPBWT();
 	void Transpose(int site, float * source, float * dest);
@@ -26,6 +26,7 @@ public:
 
 
 	int ExtractHeterSites(int individualToProcess);
+	int FillHeterSitesBack(int individualToProcess);
     //Memory management functions
     //virtual bool AllocateMemory(int nIndividuals, int maxHaplos, int nMarkers, float defaultTheta);
     //virtual void EstimateMemoryInfo(int Individuals, int Markers, int States, bool Compact, bool Phased);
@@ -33,25 +34,25 @@ public:
     virtual bool ForceMemoryAllocation();
 
     //inline section
-	inline float getTransitionProb(int site, int from, int to) {
+	inline float GetTransitionProb(int site, int from, int to) {
 		if(Wrapper->transVector.find(site)==Wrapper->transVector.end()) fprintf(stderr,"%d doesn't exist!\n",site);
-		if(Wrapper->transVector[site].size()<=from) fprintf(stderr,"site:%d out of %d sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);
+		if(Wrapper->transVector[site].size()<=from) fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);
 		if(Wrapper->transVector[site][from].size()<=to) fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);
 		return Wrapper->transVector[site][from][to];
 	}
-	inline uchar getAllele(int site, int state)
+	inline uchar GetAllele(int site, int state)
 	{
 		return Wrapper->clusterAllele[site][state];
 	}
-	inline int getStateNumFrom(int site)
+	inline int GetStateNumFrom(int site)
 	{
 		return Wrapper->clusterAllele[site].size();
 	}
-	inline int getCurrentIndividualState(int site, int chrom)
+	inline int GetCurrentIndividualState(int site, int chrom)
 	{
 		return Wrapper->haplotypeCluster[site][2 * (individuals - 1) + chrom];
 	}
-	inline void setCurrentIndividualState(int site, int chrom, int state)
+	inline void SetCurrentIndividualState(int site, int chrom, int state)
 	{
 		Wrapper->haplotypeCluster[site][2 * (individuals - 1) + chrom]=state;
 	}
@@ -64,15 +65,33 @@ protected:
 
 	//subset markers related
 	char** tmpHaps;
-	std::vector<char> relativeMarkerIndex;
-	std::unordered_map<int,bool> markerInUse;
+	char ** tmpGeno;
+	int tmpMarkers;
+
+	std::vector<char> relativeIndexToAbsolute;
+	std::unordered_map<int,int> absoluteIndexToRelative;
+	inline int SwapTempHaps()
+	{
+		char** tmpH = haplotypes;
+		haplotypes=tmpHaps;
+		tmpHaps=tmpH;
+
+		tmpH=genotypes;
+		genotypes=tmpGeno;
+		tmpGeno=tmpH;
+
+		int tmpM=markers;
+		markers=tmpMarkers;
+		tmpMarkers=tmpM;
+		return 0;
+	}
 
 	//memory management related
 	std::unordered_map<int, std::vector<float *> > memoryBlockList;//size and list of address
 	std::unordered_map<int, int> numInUse;//size and list of address
 	int totalBlockNum;
 
-	float* GetMemoryBlock(int marker);//revise GetMemoryBlock function
+	void GetMemoryBlock(int marker);//revise GetMemoryBlock function
 	float* GetReuseableBlock();//revise GetReuseableBlock function
 	float* GetLargeBlock();
 	void ResetMemoryPool();

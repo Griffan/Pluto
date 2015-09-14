@@ -4,6 +4,7 @@
 
 #include <pbwt/pbwt.h>
 #include "PBWTHaplotyper.h"
+#include "MemoryAllocators.h"
 //debug related
 static void printLeftMatrix(float * probability, int numStates)
 {
@@ -26,18 +27,17 @@ PBWTHaplotyper::PBWTHaplotyper() {
 
 }
 
-void PBWTHaplotyper::InitAuxillary(int nhaps, int nsnps) {
+void PBWTHaplotyper::InitAuxillary() {
 
-    tmpHaps = new char* [nhaps-2];
-    for (int i = 0; i <nhaps-2 ; ++i) {
-        tmpHaps[i]= new char [nsnps];
-    }
+    tmpHaps = AllocateCharMatrix(individuals * 2, markers);
+
+    tmpGeno = AllocateCharMatrix(individuals, markers*3);
 }
 
 PBWTHaplotyper::~PBWTHaplotyper() {
 
     if(tmpHaps != NULL) {
-        for (int i = 0; i < 2 * (individuals - 1); ++i) {
+        for (int i = 0; i < 2 * individuals; ++i) {
             delete[] tmpHaps[i];
         }
         delete [] tmpHaps;
@@ -56,7 +56,7 @@ void PBWTHaplotyper::ReleaseMemoryBlock()
 		}
 	}
 }
-float * PBWTHaplotyper::GetMemoryBlock(int marker)
+void PBWTHaplotyper::GetMemoryBlock(int marker)
 {
 	if (!economyMode || marker == 0 || marker > stack[stackPtr] + gridSize)
 	{
@@ -227,7 +227,7 @@ void PBWTHaplotyper::ScoreLeftConditional() {
 
 
     ResetMemoryPool();
-    UpdateStateNum(getStateNumFrom(0));
+    UpdateStateNum(GetStateNumFrom(0));
     GetMemoryBlock(0);
 
     SetupPrior(leftMatrices[0]);
@@ -247,7 +247,7 @@ void PBWTHaplotyper::ScoreLeftConditional() {
 
         //if (genotypes[states / 2][i] != GENOTYPE_MISSING || i == markers - 1)
         {
-            UpdateStateNum(getStateNumFrom(i));
+            UpdateStateNum(GetStateNumFrom(i));
 
             GetMemoryBlock(i);
 
@@ -275,32 +275,33 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
 
         if (i < individuals - phased) {
             SwapIndividuals(i, individuals - 1);
-			//memcpy(tmphap1, haplotypes[2 * (individuals - 1)], markers);
-			//memcpy(tmphap2, haplotypes[2 * (individuals - 1) + 1], markers);
+
             clock_t t=clock();
-            ExtractHeterSites(i);
-            Wrapper->setHaps(tmpHaps);
+            ExtractHeterSites(individuals-1);
+            Wrapper->setHaps(haplotypes);
             Wrapper->CursorBackwards();//calculate backwards order of suffix
             Wrapper->CursorForwards();
+
             //Wrapper->PrintHap(tmpHaps,Wrapper->a);
             //Wrapper->PrintMatrix(Wrapper->a,"a array matrix");
             //Wrapper->PrintMatrix(Wrapper->d,"d array");
             //Wrapper->PrintVector(Wrapper->a[Wrapper->N-7],"last a array");
+            printf("%d markers used for individual %d\n",markers,i);
             printf("build model time:%.2f sec\n", (float) (clock() - t) / CLOCKS_PER_SEC);
-           // exit(EXIT_SUCCESS);
-            if (weights != NULL)
-                ScaleWeights();
-
-            if (updateDiseaseScores)
-                ScoreNPL();
+            //exit(EXIT_SUCCESS);
+//            if (weights != NULL)
+//                ScaleWeights();
+//
+//            if (updateDiseaseScores)
+//                ScoreNPL();
 
             //if (i < individuals - phased) {
            // fprintf(stderr, "phasing individual %d...\n", i);
             ScoreLeftConditional();
             SampleChromosomes(&globalRandom);
 
-            if (updateDiseaseScores && diseaseCount)
-                IntegrateNPL();
+//            if (updateDiseaseScores && diseaseCount)
+//                IntegrateNPL();
 
 #ifdef _DEBUG
             if (!SanityCheck())
@@ -309,19 +310,9 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
                Print();
                }
 #endif
-            // }
-//        else {
-//            ScoreLeftConditionalForHaplotype();
-//            SampleHaplotypeSource(&globalRandom);
-//            SwapHaplotypes(states, states + 1);
-//            ScoreLeftConditionalForHaplotype();
-//            SampleHaplotypeSource(&globalRandom);
-//            SwapHaplotypes(states, states + 1);
-//        }
-			//memcpy(haplotypes[2 * (individuals - 1)], tmphap1, markers);
-			//memcpy(haplotypes[2 * (individuals - 1) + 1],tmphap2, markers);
+            FillHeterSitesBack(individuals-1);
             SwapIndividuals(i, individuals - 1);
-            Wrapper->resetWrapper();
+            //Wrapper->resetWrapper();
         }
 
     }
@@ -341,11 +332,11 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
     *output=0.0;
     int fromWhere = site - 1;//used by transvector, because vector start from 0
     int toWhere = site;
-    int numFromStates = getStateNumFrom(fromWhere);
-    int numToStates = getStateNumFrom(toWhere);//number of cluster
-    //fprintf(stderr,"site:%d\tstates:%d\tfromwhere:%d\ttowhere:%d\n",site,states,getStateNumFrom(fromWhere),getStateNumFrom(toWhere));
-    //int currentIndividualOriginalState1 = getCurrentIndividualState(fromWhere, 0);
-    //int currentIndividualOriginalState2 = getCurrentIndividualState(fromWhere, 1);
+    int numFromStates = GetStateNumFrom(fromWhere);
+    int numToStates = GetStateNumFrom(toWhere);//number of cluster
+    //fprintf(stderr,"site:%d\tstates:%d\tfromwhere:%d\ttowhere:%d\n",site,states,getStateNumFrom(fromWhere),GetStateNumFrom(toWhere));
+    //int currentIndividualOriginalState1 = GetCurrentIndividualState(fromWhere, 0);
+    //int currentIndividualOriginalState2 = GetCurrentIndividualState(fromWhere, 1);
     // This final loop actually transposes the probabilities for each state
     if(*source < 10e-15)
         factor= 10e10;
@@ -358,19 +349,20 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
                 probability=source;
                 for (int i = 0; i < numFromStates; i++) {
                     for (int j = 0; j < i; j++) {
-                        //fprintf(stderr,"a:%f\t%d\t%d\n",getTransitionProb(fromWhere, i, k),i,k);
-                        //fprintf(stderr,"b:%f\t%d\t%d\n",getTransitionProb(fromWhere, j, l),j,l);
-                        //fprintf(stderr,"c:%f\t%d\t%d\n",getTransitionProb(fromWhere, i, l),i,l);
-                        //fprintf(stderr,"d:%f\t%d\t%d\n",getTransitionProb(fromWhere, j, k),j,k);
+                        //fprintf(stderr,"a:%f\t%d\t%d\n",GetTransitionProb(fromWhere, i, k),i,k);
+                        //fprintf(stderr,"b:%f\t%d\t%d\n",GetTransitionProb(fromWhere, j, l),j,l);
+                        //fprintf(stderr,"c:%f\t%d\t%d\n",GetTransitionProb(fromWhere, i, l),i,l);
+                        //fprintf(stderr,"d:%f\t%d\t%d\n",GetTransitionProb(fromWhere, j, k),j,k);
                         //fprintf(stderr,"e:%f\t\n",*probability);
                         *output +=
-                                *probability * (getTransitionProb(fromWhere, i, k) * getTransitionProb(fromWhere, j, l)
-                                                + getTransitionProb(fromWhere, i, l) * getTransitionProb(fromWhere, j, k)
+                                *probability * (GetTransitionProb(fromWhere, i, k) * GetTransitionProb(fromWhere, j, l)
+                                                + GetTransitionProb(fromWhere, i, l) * GetTransitionProb(fromWhere, j,
+                                                                                                         k)
                                                );
                         probability++;
                     }//end of inner loop, then deal with homo haplotype
                     *output +=
-                            *probability * getTransitionProb(fromWhere, i, k) * getTransitionProb(fromWhere, i, l)*2;
+                            *probability * GetTransitionProb(fromWhere, i, k) * GetTransitionProb(fromWhere, i, l)*2;
                     probability++;
                 }
                 *output *=factor;
@@ -383,11 +375,11 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
             for (int i = 0; i < numFromStates; i++) {
                 for (int j = 0; j < i; j++) {
                     *output +=
-                            *probability * (getTransitionProb(fromWhere, i, k) * getTransitionProb(fromWhere, j, k)) *2;
+                            *probability * (GetTransitionProb(fromWhere, i, k) * GetTransitionProb(fromWhere, j, k)) *2;
                     probability++;
                 }//end of inner loop, then deal with homo haplotype
                 *output +=
-                        *probability * getTransitionProb(fromWhere, i, k) * getTransitionProb(fromWhere, i, k);
+                        *probability * GetTransitionProb(fromWhere, i, k) * GetTransitionProb(fromWhere, i, k);
                 probability++;
             }
             *output *= factor;
@@ -471,7 +463,7 @@ void  PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *
 void PBWTHaplotyper::ImputeAllele(int haplotype, int marker, int state) {
     // if (updateDiseaseScores) UpdateDiseaseScores(marker, state);
 
-    haplotypes[haplotype][marker] = getAllele(marker, state);
+    haplotypes[haplotype][marker] = GetAllele(marker, state);
 }
 
 void PBWTHaplotyper::FillPath(int haplotype, int fromMarker, int toMarker, int state) {
@@ -487,7 +479,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
     int currentHap2 = currentHap1 + 1;
     // Print(markers - 1);
     RewindMemoryPool();
-    UpdateStateNum(getStateNumFrom(markers - 1));
+    UpdateStateNum(GetStateNumFrom(markers - 1));
     RetrieveMemoryBlock(markers - 1);
 
     float *probability = leftMatrices[markers - 1];
@@ -525,7 +517,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
     // printf("        Selected state: %g\n", *(probability - 1));
 
     for (int j = markers - 2; j >= 0; j--) {
-        //fprintf(stderr,"lastSum:%f\tSum: %lf, choice:%lf,Chose (%d,%d) out of (%d) states\n", lastSum,sum, choice,first, second,getStateNumFrom(j+1));
+        //fprintf(stderr,"lastSum:%f\tSum: %lf, choice:%lf,Chose (%d,%d) out of (%d) states\n", lastSum,sum, choice,first, second,GetStateNumFrom(j+1));
         ImputeAlleles(j + 1, first, second, rand);//TODO:modify needed, like the part before fillpath
         int j0 = j;
 
@@ -544,7 +536,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
        // float sum00 = 0.0, sum01 = 0.0, sum10 = 0.0, sum11 = 0.0;
 
         sum=0.0;
-        UpdateStateNum(getStateNumFrom(j));
+        UpdateStateNum(GetStateNumFrom(j));
         RetrieveMemoryBlock(j);
         probability = leftMatrices[j];
 
@@ -553,13 +545,14 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
         fromWhere=j;//TODO: remain question
         for (int k = 0; k < states; k++) {
             for (int l = 0; l < k; l++, probability++) {
-                sum += *probability * (getTransitionProb(fromWhere, k, first) * getTransitionProb(fromWhere, l, second)
-                                       + getTransitionProb(fromWhere, k, second) *
-                                         getTransitionProb(fromWhere, l, first));
-                //fprintf(stderr,"(%d,%d):sum:%f\tleft:%f\tright:%f\t",k,l,*probability * (getTransitionProb(fromWhere, k, first) * getTransitionProb(fromWhere, l, second) + getTransitionProb(fromWhere, k, second) * getTransitionProb(fromWhere, l, first)),getTransitionProb(fromWhere, k, first) * getTransitionProb(fromWhere, l, second),getTransitionProb(fromWhere, k, second) * getTransitionProb(fromWhere, l, first));
+                sum += *probability * (GetTransitionProb(fromWhere, k, first) * GetTransitionProb(fromWhere, l, second)
+                                       + GetTransitionProb(fromWhere, k, second) *
+                                                                                        GetTransitionProb(fromWhere, l,
+                                                                                                          first));
+                //fprintf(stderr,"(%d,%d):sum:%f\tleft:%f\tright:%f\t",k,l,*probability * (getTransitionProb(fromWhere, k, first) * getTransitionProb(fromWhere, l, second) + getTransitionProb(fromWhere, k, second) * getTransitionProb(fromWhere, l, first)),getTransitionProb(fromWhere, k, first) * getTransitionProb(fromWhere, l, second),GetTransitionProb(fromWhere, k, second) * getTransitionProb(fromWhere, l, first));
             }
-            sum += *probability * getTransitionProb(fromWhere, k, first) * getTransitionProb(fromWhere, k, second);
-            //fprintf(stderr,"(%d,%d):sum:%f\tmid1:%f\tmid2:%f\n",k,k,*probability * getTransitionProb(fromWhere, k, first) * getTransitionProb(fromWhere, k, second),getTransitionProb(fromWhere, k, first),getTransitionProb(fromWhere, k, second));
+            sum += *probability * GetTransitionProb(fromWhere, k, first) * GetTransitionProb(fromWhere, k, second);
+            //fprintf(stderr,"(%d,%d):sum:%f\tmid1:%f\tmid2:%f\n",k,k,*probability * getTransitionProb(fromWhere, k, first) * GetTransitionProb(fromWhere, k, second),getTransitionProb(fromWhere, k, first),getTransitionProb(fromWhere, k, second));
             probability++;
         }
         //fprintf(stderr,"site:%d finished\n",fromWhere);
@@ -580,11 +573,11 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
 
         for (first = 0; first < states; first++) {
             for (second = 0; second < first; second++, probability++) {
-                sumPerPair = sum + *probability * getTransitionProb(fromWhere, first, first0) *
-                                   getTransitionProb(fromWhere, second, second0);
+                sumPerPair = sum + *probability * GetTransitionProb(fromWhere, first, first0) *
+                                           GetTransitionProb(fromWhere, second, second0);
                 sum += *probability *
-                       (getTransitionProb(fromWhere, first, first0) * getTransitionProb(fromWhere, second, second0)
-                        + getTransitionProb(fromWhere, first, second0) * getTransitionProb(fromWhere, second, first0));
+                       (GetTransitionProb(fromWhere, first, first0) * GetTransitionProb(fromWhere, second, second0)
+                        + GetTransitionProb(fromWhere, first, second0) * GetTransitionProb(fromWhere, second, first0));
 
                 if (sum > choice)
                 {
@@ -593,8 +586,10 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
                 }
             }
 
-            sumPerPair = sum + *probability * getTransitionProb(fromWhere, first, first0) * getTransitionProb(fromWhere, first, second0);
-            sum += *probability * (getTransitionProb(fromWhere, first, first0) * getTransitionProb(fromWhere, first, second0));
+            sumPerPair = sum + *probability * GetTransitionProb(fromWhere, first, first0) *
+                                       GetTransitionProb(fromWhere, first, second0);
+            sum += *probability * (GetTransitionProb(fromWhere, first, first0) *
+                    GetTransitionProb(fromWhere, first, second0));
             probability++;
 
             if (sum > choice)
@@ -627,17 +622,39 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
         delete Wrapper;
 
     }
-    markerInUse.clear();
-    relativeMarkerIndex.clear();
+    absoluteIndexToRelative.clear();
+    relativeIndexToAbsolute.clear();
+    tmpMarkers=0;
     for (int i = 0; i < markers ; ++i) {
-        //if(haplotypes[2*individualToProcess][i]==haplotypes[2*individualToProcess+1][i]) continue;//homo
-        for (int j = 0; j <individuals-1/*not include individualToProcess*/; ++j) {
+        if(haplotypes[2*individualToProcess][i]==haplotypes[2*individualToProcess+1][i]) continue;//homo
+        for (int j = 0; j <individuals; ++j) {
             tmpHaps[2*j][i]=haplotypes[2*j][i];
             tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];
         }
-        markerInUse[i]=true;
-        relativeMarkerIndex.push_back(i);
+        absoluteIndexToRelative[i]=tmpMarkers++;
+        relativeIndexToAbsolute.push_back(i);
     }
-    Wrapper = new PBWTWrapper(2*(individuals-1), relativeMarkerIndex.size());
+    Wrapper = new PBWTWrapper(2*(individuals-1)/*not include individualToProcess*/, tmpMarkers);
+    SwapTempHaps();
+    return 0;
+}
+
+int PBWTHaplotyper::FillHeterSitesBack(int individualToProcess) {
+    SwapTempHaps();
+    int index=0;
+    for (int i = 0; i < tmpMarkers ; ++i) {
+        index=relativeIndexToAbsolute[i];
+        haplotypes[2*(individualToProcess-1)][index]=tmpHaps[2*(individualToProcess-1)][i];
+        haplotypes[2*(individualToProcess-1)+1][index]=tmpHaps[2*(individualToProcess-1)+1][i];
+    }
+
+    if(Wrapper!=NULL) {
+        delete Wrapper;
+        Wrapper=NULL;
+    }
+    absoluteIndexToRelative.clear();
+    relativeIndexToAbsolute.clear();
+    tmpMarkers=0;
+
     return 0;
 }
