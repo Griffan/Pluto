@@ -298,7 +298,9 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
             //if (i < individuals - phased) {
            // fprintf(stderr, "phasing individual %d...\n", i);
             ScoreLeftConditional();
+
             SampleChromosomes(&globalRandom);
+            //exit(EXIT_SUCCESS);
 
 //            if (updateDiseaseScores && diseaseCount)
 //                IntegrateNPL();
@@ -310,7 +312,7 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
                Print();
                }
 #endif
-            FillHeterSitesBack(individuals-1);
+            FillHeterSitesBack(individuals - 1);
             SwapIndividuals(i, individuals - 1);
             //Wrapper->resetWrapper();
         }
@@ -338,8 +340,8 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
     //int currentIndividualOriginalState1 = GetCurrentIndividualState(fromWhere, 0);
     //int currentIndividualOriginalState2 = GetCurrentIndividualState(fromWhere, 1);
     // This final loop actually transposes the probabilities for each state
-    if(*source < 10e-15)
-        factor= 10e10;
+   if(*source < 10e-10)
+        factor= 10e5;
     if (weights == NULL)
         for (int k = 0; k < numToStates; ++k) {
 
@@ -362,7 +364,7 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
                         probability++;
                     }//end of inner loop, then deal with homo haplotype
                     *output +=
-                            *probability * GetTransitionProb(fromWhere, i, k) * GetTransitionProb(fromWhere, i, l)*2;
+                            *probability * GetTransitionProb(fromWhere, i, k) * GetTransitionProb(fromWhere, i, l);
                     probability++;
                 }
                 *output *=factor;
@@ -375,7 +377,7 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
             for (int i = 0; i < numFromStates; i++) {
                 for (int j = 0; j < i; j++) {
                     *output +=
-                            *probability * (GetTransitionProb(fromWhere, i, k) * GetTransitionProb(fromWhere, j, k)) *2;
+                            *probability * (GetTransitionProb(fromWhere, i, k) * GetTransitionProb(fromWhere, j, k));
                     probability++;
                 }//end of inner loop, then deal with homo haplotype
                 *output +=
@@ -477,7 +479,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
     int fromWhere = markers-1;
     int currentHap1 = 2 * (individuals - 1);
     int currentHap2 = currentHap1 + 1;
-    // Print(markers - 1);
+    //Print(markers - 1);
     RewindMemoryPool();
     UpdateStateNum(GetStateNumFrom(markers - 1));
     RetrieveMemoryBlock(markers - 1);
@@ -517,7 +519,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
     // printf("        Selected state: %g\n", *(probability - 1));
 
     for (int j = markers - 2; j >= 0; j--) {
-        //fprintf(stderr,"lastSum:%f\tSum: %lf, choice:%lf,Chose (%d,%d) out of (%d) states\n", lastSum,sum, choice,first, second,GetStateNumFrom(j+1));
+        //fprintf(stderr,"marker:%d\tlastSum:%f\tSum: %lf, choice:%lf,Chose (%d,%d) out of (%d) states\n",j, lastSum,sum, choice,first, second,GetStateNumFrom(j+1));
         ImputeAlleles(j + 1, first, second, rand);//TODO:modify needed, like the part before fillpath
         int j0 = j;
 
@@ -570,49 +572,77 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
         // Save the original states
         int first0 = first;
         int second0 = second;
+        if(first0 != second0) {
+            for (first = 0; first < states; first++) {
+                for (second = 0; second < first; second++, probability++) {
+                    sumPerPair = sum + *probability * GetTransitionProb(fromWhere, first, first0) *
+                                       GetTransitionProb(fromWhere, second, second0);
+                    sum += *probability *
+                           (GetTransitionProb(fromWhere, first, first0) * GetTransitionProb(fromWhere, second, second0)
+                            + GetTransitionProb(fromWhere, first, second0) *
+                              GetTransitionProb(fromWhere, second, first0));
 
-        for (first = 0; first < states; first++) {
-            for (second = 0; second < first; second++, probability++) {
-                sumPerPair = sum + *probability * GetTransitionProb(fromWhere, first, first0) *
-                                           GetTransitionProb(fromWhere, second, second0);
-                sum += *probability *
-                       (GetTransitionProb(fromWhere, first, first0) * GetTransitionProb(fromWhere, second, second0)
-                        + GetTransitionProb(fromWhere, first, second0) * GetTransitionProb(fromWhere, second, first0));
-
-                if (sum > choice)
-                {
-                    goto JUMPOUT;
-                    //break;
+                    if (sum > choice) {
+                        goto JUMPOUT;
+                        //break;
+                    }
                 }
+
+                sumPerPair = sum + *probability * GetTransitionProb(fromWhere, first, first0) *
+                                   GetTransitionProb(fromWhere, first, second0);
+                sum += *probability * (GetTransitionProb(fromWhere, first, first0) *
+                                       GetTransitionProb(fromWhere, first, second0));
+                probability++;
+
+                if (sum > choice) {
+                    //second=first;
+                    break;
+                }
+
+                // if (second <= first) break;
+            }
+            JUMPOUT:
+            if (sumPerPair < choice) {//TODO:To confirm if it's the former phase, greater or less than
+                int temp = first;
+                first = second;
+                second = temp;
+            }
+        }
+        else {
+            for (first = 0; first < states; first++) {
+                for (second = 0; second < first; second++, probability++) {
+
+                    sum += *probability *
+                           (GetTransitionProb(fromWhere, first, first0) * GetTransitionProb(fromWhere, second, second0));
+
+                    if (sum > choice) {
+                        goto JUMPOUT2;
+                        //break;
+                    }
+                }
+
+                sum += *probability * (GetTransitionProb(fromWhere, first, first0) *
+                                       GetTransitionProb(fromWhere, first, second0));
+                probability++;
+
+                if (sum > choice) {
+                    //second=first;
+                    break;
+                }
+
+                // if (second <= first) break;
             }
 
-            sumPerPair = sum + *probability * GetTransitionProb(fromWhere, first, first0) *
-                                       GetTransitionProb(fromWhere, first, second0);
-            sum += *probability * (GetTransitionProb(fromWhere, first, first0) *
-                    GetTransitionProb(fromWhere, first, second0));
-            probability++;
-
-            if (sum > choice)
-            {
-                //second=first;
-                break;
-            }
-
-           // if (second <= first) break;
         }
-        JUMPOUT:
-        if (sumPerPair < choice) {//TODO:To confirm if it's the former phase, greater or less than
-            int temp = first;
-            first = second;
-            second = temp;
-        }
-
+        JUMPOUT2:
         // Record outcomes for intermediate, uninformative, positions
         FillPath(currentHap1, j, j0 + 1, first);
         FillPath(currentHap2, j, j0 + 1, second);
+
     }
 
     ImputeAlleles(0, first, second, rand);
+
 }
 
 
@@ -626,7 +656,7 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
     relativeIndexToAbsolute.clear();
     tmpMarkers=0;
     for (int i = 0; i < markers ; ++i) {
-        if(haplotypes[2*individualToProcess][i]==haplotypes[2*individualToProcess+1][i]) continue;//homo
+        //if(haplotypes[2*individualToProcess][i]==haplotypes[2*individualToProcess+1][i]) continue;//homo
         for (int j = 0; j <individuals; ++j) {
             tmpHaps[2*j][i]=haplotypes[2*j][i];
             tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];

@@ -57,7 +57,7 @@ int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
 
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 0");
     for (int k = 0; k != pbwtCore->N; ++k) {
-        CursorForwardsTo(k, 20);
+        CursorForwardsTo(k, 200);
     }
     //copy end of a to PBWT
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 1");
@@ -89,7 +89,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
     //copy haplotypes into forwardCursor->y
     CopyHap(k, forwardCursor);
 
-    if (k==pbwtCore->N-1)//deal with beginning columns
+    if (k==pbwtCore->N-1)//deal with last columns
     {
         for (i = 0; i < forwardCursor->M; ++i) {
             haplotypeCluster[k][i] = 0;
@@ -114,7 +114,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
         if (forwardCursor->d[i] > q) q = forwardCursor->d[i];
 
         /*assign states of last column based on previous d and sortedY*/
-         if (k!=0 and forwardCursor->d[i] > k - tmpT) {//if current sequence and last sequence have common sequence longer than T
+         if (k!=pbwtCore->N-1 and forwardCursor->d[i] > k - tmpT) {//if current sequence and last sequence have common sequence longer than T
             //if (na && nb)        /* then there is something to report */
             {
                 for (ia = i0; ia < i; ++ia)
