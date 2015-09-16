@@ -648,10 +648,10 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
 
 int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after swap individualToProcess to the back
 
-    if(Wrapper!=NULL) {
-        delete Wrapper;
-
-    }
+//    if(Wrapper!=NULL) {
+//        delete Wrapper;
+//
+//    }
     absoluteIndexToRelative.clear();
     relativeIndexToAbsolute.clear();
     tmpMarkers=0;
