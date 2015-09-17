@@ -32,6 +32,8 @@ void PBWTHaplotyper::InitAuxillary() {
     tmpHaps = AllocateCharMatrix(individuals * 2, markers);
 
     tmpGeno = AllocateCharMatrix(individuals, markers*3);
+
+    Wrapper=NULL;
 }
 
 PBWTHaplotyper::~PBWTHaplotyper() {
@@ -648,10 +650,10 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
 
 int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after swap individualToProcess to the back
 
-//    if(Wrapper!=NULL) {
-//        delete Wrapper;
-//
-//    }
+    if(Wrapper!=NULL) {
+        delete Wrapper;
+
+    }
     absoluteIndexToRelative.clear();
     relativeIndexToAbsolute.clear();
     tmpMarkers=0;
@@ -678,13 +680,13 @@ int PBWTHaplotyper::FillHeterSitesBack(int individualToProcess) {
         haplotypes[2*(individualToProcess-1)+1][index]=tmpHaps[2*(individualToProcess-1)+1][i];
     }
 
-    if(Wrapper!=NULL) {
-        delete Wrapper;
-        Wrapper=NULL;
-    }
-    absoluteIndexToRelative.clear();
-    relativeIndexToAbsolute.clear();
-    tmpMarkers=0;
+//    if(Wrapper!=NULL) {
+//        delete Wrapper;
+//        Wrapper=NULL;
+//    }
+//    absoluteIndexToRelative.clear();
+//    relativeIndexToAbsolute.clear();
+//    tmpMarkers=0;
 
     return 0;
 }
