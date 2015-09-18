@@ -521,7 +521,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
     // printf("        Selected state: %g\n", *(probability - 1));
 
     for (int j = markers - 2; j >= 0; j--) {
-        //fprintf(stderr,"marker:%d\tlastSum:%f\tSum: %lf, choice:%lf,Chose (%d,%d) out of (%d) states\n",j, lastSum,sum, choice,first, second,GetStateNumFrom(j+1));
+        //fprintf(stderr,"marker:%d\tlastSum:%f\tSum: %lf, choice:%lf,Chose (%d,%d) out of (%d) states\n",j, lastSum,sum, choice,first, second,GetStateNumFrom(j));
         ImputeAlleles(j + 1, first, second, rand);//TODO:modify needed, like the part before fillpath
         int j0 = j;
 

@@ -1,2 +1,0 @@
-/usr/bin/ar cq libMach.a  CMakeFiles/Mach.dir/AssociationAnalysis.cpp.o CMakeFiles/Mach.dir/CostCalculator.cpp.o CMakeFiles/Mach.dir/DosageCalculator.cpp.o CMakeFiles/Mach.dir/ErrorRate.cpp.o CMakeFiles/Mach.dir/HaplotypeKey.cpp.o CMakeFiles/Mach.dir/HaplotypeLoader.cpp.o CMakeFiles/Mach.dir/Haplotyper.cpp.o CMakeFiles/Mach.dir/Manners.cpp.o CMakeFiles/Mach.dir/MathStats.cpp.o CMakeFiles/Mach.dir/MergeHaplotypes.cpp.o CMakeFiles/Mach.dir/OutputHandlers.cpp.o
-/usr/bin/ranlib libMach.a
