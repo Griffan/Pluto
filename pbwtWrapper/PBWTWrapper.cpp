@@ -681,11 +681,11 @@ int PBWTWrapper::PrintSummary() {
 }
 
 int PBWTWrapper:: MoveSegment(std::vector<std::vector<int> >& MemberShip) {//fromEnd don't include
-
-    fprintf(stderr,"before:\n");
-    for (int k = 0; k <M ; ++k) {
-        fprintf(stderr,"%d\t",forwardCursor->a[k]);
-    }
+//
+//    fprintf(stderr,"before:\n");
+//    for (int k = 0; k <M ; ++k) {
+//        fprintf(stderr,"%d\t",forwardCursor->a[k]);
+//    }
     fprintf(stderr,"\n");
     std::vector<int> tmpD,tmpA;
     for (int i = 0; i <MemberShip.size() ; ++i) {
@@ -704,10 +704,10 @@ int PBWTWrapper:: MoveSegment(std::vector<std::vector<int> >& MemberShip) {//fro
     std::copy(tmpD.begin(),tmpD.end(),forwardCursor->d);
     std::copy(tmpA.begin(),tmpA.end(),forwardCursor->a);
 
-    fprintf(stderr,"after:\n");
-    for (int k = 0; k <M ; ++k) {
-        fprintf(stderr,"%d\t",forwardCursor->a[k]);
-    }
-    fprintf(stderr,"\n");
+//    fprintf(stderr,"after:\n");
+//    for (int k = 0; k <M ; ++k) {
+//        fprintf(stderr,"%d\t",forwardCursor->a[k]);
+//    }
+//    fprintf(stderr,"\n");
     return 0;
 }
