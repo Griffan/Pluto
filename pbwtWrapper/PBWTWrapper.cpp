@@ -686,7 +686,7 @@ int PBWTWrapper:: MoveSegment(std::vector<std::vector<int> >& MemberShip) {//fro
 //    for (int k = 0; k <M ; ++k) {
 //        fprintf(stderr,"%d\t",forwardCursor->a[k]);
 //    }
-    fprintf(stderr,"\n");
+ //   fprintf(stderr,"\n");
     std::vector<int> tmpD,tmpA;
     for (int i = 0; i <MemberShip.size() ; ++i) {
         if(MemberShip[i].size()>0) {
