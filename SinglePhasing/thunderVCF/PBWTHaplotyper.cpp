@@ -661,14 +661,14 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
     tmpMarkers=0;
     for (int i = 0; i < markers ; ++i) {
         //if(haplotypes[2*individualToProcess][i]==haplotypes[2*individualToProcess+1][i]) continue;//homo
-        for (int j = 0; j <individuals-1080; ++j) {
+        for (int j = 0; j <individuals; ++j) {
             tmpHaps[2*j][i]=haplotypes[2*j][i];
             tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];
         }
         absoluteIndexToRelative[i]=tmpMarkers++;
         relativeIndexToAbsolute.push_back(i);
     }
-    Wrapper = new PBWTWrapper(2*(individuals-1-1080)/*not include individualToProcess*/, tmpMarkers);
+    Wrapper = new PBWTWrapper(2*(individuals-1)/*not include individualToProcess*/, tmpMarkers);
     SwapTempHaps();
     return 0;
 }
