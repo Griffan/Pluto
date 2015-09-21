@@ -65,10 +65,10 @@ public:
     int MoveSegment(std::vector<std::vector<int> >& MemberShip);
     bool KStest(std::vector<int>& a,std::vector<int>& b);
 
-    int setHaps(char ** haps);
+    int SetHaps(char **haps);
 
     //inline functions
-    inline int getNumStates(int k)
+    inline int GetNumStates(int k)
     {
         if(clusterAllele.size()<=k) fprintf(stderr,"site: %d not in clusterAllele\n",k);
         return clusterAllele[k].size();
@@ -101,31 +101,32 @@ public:
     time: 8/4/15
     */
     int PrintDistributionAtSite(int state,std::vector<int>& dist);
-    inline void PrintVector(std::vector<int> a,const char* str)
+
+    template<typename T> void PrintVector(std::vector<T> a,const char* str)
     {
         fprintf(stderr,"debug array %s:\n",str);
         for (int i = 0; i < a.size(); ++i) {
-            std::cerr<<a[i]<<"\t";
+            fprintf(stderr,"%d\t",a[i]);
         }
-        std::cerr<<std::endl;
+        fprintf(stderr,"\n");
     }
     template<typename T> inline void PrintMatrix(std::vector<std::vector<T> > a,const char* str)
     {
         fprintf(stderr,"debug matrix size(%d,%d,) %s:\n",a.size(),a[0].size(), str);
         for (int i = 0; i < M; ++i) {
-            for (int j = 0; j < N-6; ++j) {
+            for (int j = 0; j < N; ++j) {
                 std::cerr<<(ushort)a[j][i]<<"\t";
             }
             std::cerr<<std::endl;
         }
         std::cerr<<std::endl;
     }
-    inline void PrintHap(char** a,std::vector<std::vector<int> > &b)
+    inline void PrintHap(char** a,std::vector<int>  &b)
     {
         fprintf(stderr,"Hap matrix:\n");
         for (int i = 0; i < M; ++i) {
-            for (int j = 0; j < N-6; ++j) {
-                std::cerr<<(ushort)a[b[N-5][i]][j]<<"\t";
+            for (int j = 0; j < N; ++j) {
+                std::cerr<<(ushort)a[b[i]][j]<<"\t";
             }
             std::cerr<<std::endl;
         }

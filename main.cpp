@@ -23,7 +23,7 @@ int main(int argc, char ** argv) {
 //    haps[8]="10000";
 //    haps[9]="10010";
 //    PBWTWrapper Graph(M,N);
-//    Graph.setHaps(haps);
+//    Graph.SetHaps(haps);
 //    Graph.CursorForwards();
 //    Graph.CursorBackwards();
 //TODO:deal with missing data

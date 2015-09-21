@@ -95,6 +95,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
 				haplotypeCluster[k][i] = 0;
         }
         clusterAllele[k].push_back(0);
+
     }
 
     int tmpT= k > T ? T : k;
@@ -113,21 +114,22 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
         if (forwardCursor->d[i] > q) q = forwardCursor->d[i];
 
         /*assign states of last column based on previous d and sortedY*/
-         if (k!=pbwtCore->N-1 && forwardCursor->d[i] > k+1 - tmpT) {//if current sequence and last sequence have common sequence longer than T
+         if (forwardCursor->d[i] > (k - tmpT)&& k !=0) {//if current sequence and last sequence have common sequence longer than T
             //if (na && nb)        /* then there is something to report */
-            {
-				//if (k == 0) fprintf(stderr,"d:%d\tk-tmpT:%d\n",forwardCursor->d[i],k-tmpT);
-                for (ia = i0; ia < i; ++ia)
-                {
-                    haplotypeCluster[k][ia] = group;
+            if(i!=0) {
+                //fprintf(stderr,"d:%d\tk-tmpT:%d\n",forwardCursor->d[i],k-tmpT);
+                for (ia = i0; ia < i; ++ia) {
+                    haplotypeCluster[k - 1][ia] = group;
                 }
 
-                clusterAllele[k].push_back(lastY[i0]);
+                clusterAllele[k - 1].push_back(lastY[i0]);
+
+                // na = 0;
+                // nb = 0;
+                i0 = i;
+                group++;
             }
-           // na = 0;
-           // nb = 0;
-            i0 = i;
-            group++;
+
         }
 
         if (forwardCursor->sortedY[i] == 0) {
@@ -147,43 +149,55 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
         }
     }
 
-    if( (k!=pbwtCore->N-1) && i0 < forwardCursor->M-1)
+    if( (k!=pbwtCore->N-1) && i0 < forwardCursor->M)
     {
 		if (k != 0)
 		{
 			for (ia = i0; ia < forwardCursor->M; ++ia)
 			{
-				haplotypeCluster[k][ia] = group;
+				haplotypeCluster[k-1][ia] = group;
 			}
 
-			clusterAllele[k].push_back(lastY[i0]);
+			clusterAllele[k-1].push_back(lastY[i0]);
+            //fprintf(stderr,"site:%d\tnumStates:%d\n",k,clusterAllele[k].size());
+
 		}
-		else
-		{
-			int sum0(0), sum1(0);
-			for (ia = i0; ia < forwardCursor->M; ++ia)
-			{
-				if (forwardCursor->sortedY[ia] == 0)
-				{
-					haplotypeCluster[k][ia] = 0;
-					sum0 = 1;
-				}
-				else
-				{
-					haplotypeCluster[k][ia] = 1;
-					sum1 = 1;
-				}
-			}
-			if (sum0)
-				clusterAllele[k].push_back(0);
-			if (sum1)
-				clusterAllele[k].push_back(1);
-		}
+////		else
+////		{
+////			int sum0(0), sum1(0);
+////			for (ia = i0; ia < forwardCursor->M; ++ia)
+////			{
+////				if (forwardCursor->sortedY[ia] == 0)
+////				{
+////					haplotypeCluster[k][ia] = 0;
+////					sum0 = 1;
+////				}
+////				else
+////				{
+////					haplotypeCluster[k][ia] = 1;
+////					sum1 = 1;
+////				}
+////			}
+////			if (sum0)
+////				clusterAllele[k].push_back(0);
+////			if (sum1)
+////				clusterAllele[k].push_back(1);
+////            //fprintf(stderr,"site:0\tnumStates:%d\n",clusterAllele[k].size());
+////		}
     }
 	//int test = 0;
-	//if (k == 0) fprintf(stderr, "before merge num of state:%d\n", getNumStates(k));
-    MergeCluster(k);//TODO:implement this function
-	//if (k == 0 && test == 1) fprintf(stderr, "after merge num of state:%d\n", getNumStates(k));
+//	 if(k!=0){
+//         fprintf(stderr, "before merge num of state:%d\n", GetNumStates(k-1));
+//         PrintVector(haplotypeCluster[k-1],"before cluster state");
+//         PrintVector(clusterAllele[k-1],"before cluster allele");
+//     }
+    if(k!=0) MergeCluster(k-1);//TODO:implement this function
+//	 if(k!=0) {
+//         fprintf(stderr, "after merge num of state:%d\n", GetNumStates(k - 1));
+//
+//         PrintVector(haplotypeCluster[k-1], "after cluster state");
+//         PrintVector(clusterAllele[k-1],"before cluster allele");
+//     }
     //numCluster[k] = group;
     //forwardCursor->c = na;
     //numZero[k]=na;
@@ -360,11 +374,12 @@ int PBWTWrapper::UpdateTransVector(int site)//calculate trans probability of sit
 
     int prevSite = site - 1;
 
-    //fprintf(stderr,"site:%d\tprevSite:%d\tsite:%d\n",site,getNumStates(prevSite),getNumStates(site));
+    //fprintf(stderr,"site:%d\tprevSite:%d\tsite:%d\n",site,getNumStates(prevSite),GetNumStates(site));
 
-    transVector.insert(std::make_pair(prevSite,std::vector<std::vector<float> >(getNumStates(prevSite),std::vector<float>(getNumStates(site), 0.))));
+    transVector.insert(std::make_pair(prevSite,std::vector<std::vector<float> >(GetNumStates(prevSite),std::vector<float>(
+            GetNumStates(site), 0.))));
 
-	std::vector<float> marginal(getNumStates(prevSite), 0.000001);
+	std::vector<float> marginal(GetNumStates(prevSite), 0.000001);
     //int maxi=0;
     //int maxj=0;
 	for (int i = 0; i != haplotypeCluster[site].size(); ++i)
@@ -376,22 +391,22 @@ int PBWTWrapper::UpdateTransVector(int site)//calculate trans probability of sit
         //if(haplotypeCluster[prevSite][i]>maxi) maxi=haplotypeCluster[prevSite][i];
         //if(haplotypeCluster[site][i]>maxj) maxj=haplotypeCluster[site][i];
 	}
-	for (int i = 0; i != getNumStates(prevSite); ++i)
+	for (int i = 0; i != GetNumStates(prevSite); ++i)
 	{
-		for (int j = 0; j != getNumStates(site); ++j) {
+		for (int j = 0; j != GetNumStates(site); ++j) {
             transVector[prevSite][i][j] /= marginal[i];
             //fprintf(stderr,"i:%d to j:%d is %f\t",i,j,transVector[prevSite][i][j]);
         }
        //fprintf(stderr,"\n");
 	}
 
-    //fprintf(stderr,"finish %d and:prevStates:%d,States:%d\n",prevSite,getNumStates(prevSite),getNumStates(site));
+    //fprintf(stderr,"finish %d and:prevStates:%d,States:%d\n",prevSite,getNumStates(prevSite),GetNumStates(site));
 
 	return 0;
 }
 /*
 int PBWTWrapper::MergeCluster(int site) {
-    int oldNumCluster = getNumStates(site);
+    int oldNumCluster = GetNumStates(site);
     int numHaps = haplotypeCluster[site].size();
     std::vector<uchar> tmpAllele;
     std::vector<std::vector<int> > clusterMemberShip(oldNumCluster,std::vector<int>());
@@ -489,10 +504,10 @@ int PBWTWrapper::MergeCluster(int site) {
 
 int PBWTWrapper::MergeCluster(int site) {
 	int ret(0);
-    int oldNumCluster = getNumStates(site);
+    int oldNumCluster = GetNumStates(site);
     int numHaps = haplotypeCluster[site].size();
     std::vector<uchar> tmpAllele;
-    std::vector<std::vector<int> > clusterMemberShip(oldNumCluster,std::vector<int>());
+    std::vector<std::vector<int> > clusterMemberShip(oldNumCluster,std::vector<int>());// state->position in current M array
     std::vector<std::vector<int> > dist(oldNumCluster,std::vector<int>(numHaps,0));
     std::unordered_map<int, bool> mergeIndicator;
     std::vector<unsigned long> order(forwardCursor->M,0);
@@ -519,13 +534,14 @@ int PBWTWrapper::MergeCluster(int site) {
     {
         std::cerr<<"\nenter debug section:"<<std::endl;
         for (auto i = 0; i != dist.size(); ++i) {
-            PrintDistributionAtSite(i,haplotypeCluster[i]);
+           // PrintDistributionAtSite(i,haplotypeCluster[i]);
             PrintDistributionAtSite(i,dist[i]);
         }
-        std::cerr<<"exit debug section!"<<std::endl;
+        std::cerr<<"exit debug section!\n"<<std::endl;
         //exit(0);
     }
-
+   // PrintVector(clusterAllele[site],"haplotype cluster states before");
+   // PrintVector(haplotypeCluster[site],"haplotype cluster states before");
     int currentNumCluster=oldNumCluster-1;
     std::unordered_map<int,int> stateOrder;//mapping oldState to newOrder
     int tmpOrder(0);
@@ -553,6 +569,12 @@ int PBWTWrapper::MergeCluster(int site) {
                 if(clusterAllele[site][i]==clusterAllele[site][j] && KStest(dist[i],dist[j]))
                 {
 					ret = 1;
+
+
+                    //PrintVector(dist[i],"state i");
+                    //PrintVector(dist[j],"state j");
+
+                    //fprintf(stderr,"merge state:%d and state:%d\n",i,j);
                     currentNumCluster--;
                     //Merge Action, change mergeIndicator
                     for(int t=0;t!=dist[i].size();++t)
@@ -579,31 +601,40 @@ int PBWTWrapper::MergeCluster(int site) {
         if(DEBUG)std::cerr<<"finish of last round"<<std::endl;
     }
     //adjust d array and a array
-    MoveSegment(clusterMemberShip);
-
+    if(ret)MoveSegment(clusterMemberShip);
+    //PrintVector(clusterAllele[site],"allele cluster states after");
+    //PrintVector(haplotypeCluster[site],"haplotype cluster states after");
     for (int k = 0; k < haplotypeCluster[site].size(); ++k) {
         haplotypeCluster[site][k]=stateOrder[haplotypeCluster[site][k]];
     }
     clusterAllele[site]=tmpAllele;//update merged cluster allele
+    //PrintVector(clusterAllele[site],"allele cluster states final");
+    //PrintVector(haplotypeCluster[site],"haplotype cluster states final");
     return ret;
 }
 bool PBWTWrapper::KStest(std::vector<int>& a, std::vector<int>& b) {
 
     int Dmax=0;
     int Dtmp=0;
+
+    //PrintVector(a,"state a");
+    //PrintVector(b,"state b");
     for(int i=0;i!=a.size();++i)
     {
         Dtmp=abs(a[i]-b[i]);
         if(Dtmp>Dmax) Dmax=Dtmp;
     }
-
-    if(Dmax > 1.36*std::sqrt(double(a.back()+b.back())/(a.back()*b.back())))//1.36 is 0.05 significance parameter
+    //fprintf(stderr,"debug double(a.back()+b.back())/(a.back()*b.back()):%f\n",std::sqrt(double(a.back()+b.back())/(a.back()*b.back())));
+    int thresh=1.36*std::sqrt(double(a.back()+b.back())/(a.back()*b.back()));
+    if(isinf(thresh)||isnan(thresh))
+        return false;
+    else if(Dmax > thresh)//1.36 is 0.05 significance parameter
         return false;//reject null hypo, they are different
     else
         return true;//accept null hypo, they are the same
 }
 
-int PBWTWrapper::setHaps(char **haps) {
+int PBWTWrapper::SetHaps(char **haps) {
     haplotype=haps;
     return 0;
 }
@@ -649,13 +680,21 @@ int PBWTWrapper::PrintSummary() {
     return 0;
 }
 
-int PBWTWrapper::MoveSegment(std::vector<std::vector<int> >& MemberShip) {//fromEnd don't include
+int PBWTWrapper:: MoveSegment(std::vector<std::vector<int> >& MemberShip) {//fromEnd don't include
+
+    fprintf(stderr,"before:\n");
+    for (int k = 0; k <M ; ++k) {
+        fprintf(stderr,"%d\t",forwardCursor->a[k]);
+    }
+    fprintf(stderr,"\n");
     std::vector<int> tmpD,tmpA;
     for (int i = 0; i <MemberShip.size() ; ++i) {
         if(MemberShip[i].size()>0) {
-            tmpD.push_back(forwardCursor->d[MemberShip[i][0]]);
+            tmpD.push_back(forwardCursor->d[MemberShip[i][0]]);//keep original d
             tmpA.push_back(forwardCursor->a[MemberShip[i][0]]);
         }
+        else
+            continue;
         //int d=forwardCursor->d[MemberShip[i][0]];
         for (int j = 1; j <MemberShip[i].size() ; ++j) {
             tmpD.push_back(0);
@@ -664,5 +703,11 @@ int PBWTWrapper::MoveSegment(std::vector<std::vector<int> >& MemberShip) {//from
     }
     std::copy(tmpD.begin(),tmpD.end(),forwardCursor->d);
     std::copy(tmpA.begin(),tmpA.end(),forwardCursor->a);
+
+    fprintf(stderr,"after:\n");
+    for (int k = 0; k <M ; ++k) {
+        fprintf(stderr,"%d\t",forwardCursor->a[k]);
+    }
+    fprintf(stderr,"\n");
     return 0;
 }
