@@ -83,9 +83,21 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
 
     /*coppy array d*/
    // int *lastD = new int[forwardCursor->M + 1];
-    uchar *lastY = new uchar[forwardCursor->M +1];
+   // uchar *lastY = new uchar[forwardCursor->M +1];
    // memcpy(lastD, forwardCursor->d, (forwardCursor->M + 1) * sizeof(int));
-    memcpy(lastY, forwardCursor->sortedY, (forwardCursor->M + 1) * sizeof(uchar));
+    //memcpy(lastY, forwardCursor->sortedY, (forwardCursor->M + 1) * sizeof(uchar));
+    if(DEBUG && (k>=64||k==63||k==62||k==61)) {
+        fprintf(stderr, "last a array %d:\n",k);
+        for (int kt = 0; kt < M; ++kt) {
+            fprintf(stderr, "%d\t", forwardCursor->a[kt]);
+        }
+        fprintf(stderr, "\n");
+        fprintf(stderr, "last Y array:%d\n",k);
+        for (int kt = 0; kt < M; ++kt) {
+            fprintf(stderr, "%d\t", forwardCursor->sortedY[kt]);
+        }
+        fprintf(stderr, "\n");
+    }
     //copy haplotypes into forwardCursor->y
     CopyHap(k, forwardCursor);
 
@@ -122,12 +134,13 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
                     haplotypeCluster[k - 1][ia] = group;
                 }
 
-                clusterAllele[k - 1].push_back(lastY[i0]);
-
+                clusterAllele[k - 1].push_back(haplotype[forwardCursor->a[i0]][k-1]);
+                if(DEBUG && k==64) fprintf(stderr,"i0:%d\tallele:%d\n",i0,haplotype[forwardCursor->a[i0]][k-1]);
                 // na = 0;
                 // nb = 0;
                 i0 = i;
                 group++;
+
             }
 
         }
@@ -157,8 +170,8 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
 			{
 				haplotypeCluster[k-1][ia] = group;
 			}
-
-			clusterAllele[k-1].push_back(lastY[i0]);
+            if(DEBUG && k==64) fprintf(stderr,"i0:%d\tallele:%d\n",i0,haplotype[forwardCursor->a[i0]][k-1]);
+			clusterAllele[k-1].push_back(haplotype[forwardCursor->a[i0]][k-1]);
             //fprintf(stderr,"site:%d\tnumStates:%d\n",k,clusterAllele[k].size());
 
 		}
@@ -185,19 +198,20 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
 ////            //fprintf(stderr,"site:0\tnumStates:%d\n",clusterAllele[k].size());
 ////		}
     }
-	//int test = 0;
-//	 if(k!=0){
-//         fprintf(stderr, "before merge num of state:%d\n", GetNumStates(k-1));
-//         PrintVector(haplotypeCluster[k-1],"before cluster state");
-//         PrintVector(clusterAllele[k-1],"before cluster allele");
-//     }
-    if(k!=0) MergeCluster(k-1);//TODO:implement this function
-//	 if(k!=0) {
-//         fprintf(stderr, "after merge num of state:%d\n", GetNumStates(k - 1));
-//
-//         PrintVector(haplotypeCluster[k-1], "after cluster state");
-//         PrintVector(clusterAllele[k-1],"before cluster allele");
-//     }
+	int test = 0;
+	 if(DEBUG&&k==64){
+         fprintf(stderr, "at site:%d\n", k-1);
+
+         PrintVector(haplotypeCluster[k-1],"before cluster state");
+         PrintVector(clusterAllele[k-1],"before cluster allele");
+     }
+    if(k!=0) test=MergeCluster(k-1);//TODO:implement this function
+	 if(DEBUG&&k==64&&test) {
+         fprintf(stderr, "at site:%d\n", k-1);
+
+         PrintVector(haplotypeCluster[k-1], "after cluster state");
+         PrintVector(clusterAllele[k-1],"before cluster allele");
+     }
     //numCluster[k] = group;
     //forwardCursor->c = na;
     //numZero[k]=na;
@@ -209,7 +223,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
     d[k].assign(forwardCursor->d,forwardCursor->d+forwardCursor->M);
     sortedY[k].assign(forwardCursor->sortedY,forwardCursor->sortedY+forwardCursor->M);
     //delete [] lastD;
-    delete [] lastY;
+    //delete [] lastY;
 
     //pbwtCursorForwardsReadAD(forwardCursor, k);
     // updateCursorForwards();//
@@ -374,7 +388,7 @@ int PBWTWrapper::UpdateTransVector(int site)//calculate trans probability of sit
 
     int prevSite = site - 1;
 
-    //fprintf(stderr,"site:%d\tprevSite:%d\tsite:%d\n",site,getNumStates(prevSite),GetNumStates(site));
+    //fprintf(stderr,"site:%d\tprevSite:%d\tsite:%d\n",site,GetNumStates(prevSite),GetNumStates(site));
 
     transVector.insert(std::make_pair(prevSite,std::vector<std::vector<float> >(GetNumStates(prevSite),std::vector<float>(
             GetNumStates(site), 0.))));
@@ -530,9 +544,9 @@ int PBWTWrapper::MergeCluster(int site) {
             dist[i][j]=v;
         }
     }
-    if(0)
+    if(DEBUG)
     {
-        std::cerr<<"\nenter debug section:"<<std::endl;
+        std::cerr<<"\nenter debug section, site "<<site<<":"<<std::endl;
         for (auto i = 0; i != dist.size(); ++i) {
            // PrintDistributionAtSite(i,haplotypeCluster[i]);
             PrintDistributionAtSite(i,dist[i]);
@@ -601,7 +615,11 @@ int PBWTWrapper::MergeCluster(int site) {
         if(DEBUG)std::cerr<<"finish of last round"<<std::endl;
     }
     //adjust d array and a array
-    if(ret)MoveSegment(clusterMemberShip);
+    if(ret)
+    {
+        MoveSegment(clusterMemberShip);
+        //fprintf(stderr,"site:%d merged...\n",site);
+    }
     //PrintVector(clusterAllele[site],"allele cluster states after");
     //PrintVector(haplotypeCluster[site],"haplotype cluster states after");
     for (int k = 0; k < haplotypeCluster[site].size(); ++k) {
@@ -682,11 +700,16 @@ int PBWTWrapper::PrintSummary() {
 
 int PBWTWrapper:: MoveSegment(std::vector<std::vector<int> >& MemberShip) {//fromEnd don't include
 //
-//    fprintf(stderr,"before:\n");
+//    fprintf(stderr,"before d:\n");
+//    for (int k = 0; k <M ; ++k) {
+//        fprintf(stderr,"%d\t",forwardCursor->d[k]);
+//    }
+//    fprintf(stderr,"\n");
+//    fprintf(stderr,"before a:\n");
 //    for (int k = 0; k <M ; ++k) {
 //        fprintf(stderr,"%d\t",forwardCursor->a[k]);
 //    }
- //   fprintf(stderr,"\n");
+//    fprintf(stderr,"\n");
     std::vector<int> tmpD,tmpA;
     for (int i = 0; i <MemberShip.size() ; ++i) {
         if(MemberShip[i].size()>0) {
@@ -704,7 +727,12 @@ int PBWTWrapper:: MoveSegment(std::vector<std::vector<int> >& MemberShip) {//fro
     std::copy(tmpD.begin(),tmpD.end(),forwardCursor->d);
     std::copy(tmpA.begin(),tmpA.end(),forwardCursor->a);
 
-//    fprintf(stderr,"after:\n");
+//    fprintf(stderr,"after d:\n");
+//    for (int k = 0; k <M ; ++k) {
+//        fprintf(stderr,"%d\t",forwardCursor->d[k]);
+//    }
+//    fprintf(stderr,"\n");
+//    fprintf(stderr,"after a:\n");
 //    for (int k = 0; k <M ; ++k) {
 //        fprintf(stderr,"%d\t",forwardCursor->a[k]);
 //    }
