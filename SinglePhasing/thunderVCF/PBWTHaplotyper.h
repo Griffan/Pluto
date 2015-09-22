@@ -10,6 +10,7 @@
 #include "../../pbwtWrapper/PBWTWrapper.h"
 class PBWTHaplotyper : public ShotgunHaplotyper{
 public:
+	bool onlyHeterSite;
     PBWTHaplotyper(int nhaps, int nsnps);
 	PBWTHaplotyper();
 	void InitAuxillary();
@@ -61,6 +62,7 @@ public:
     }
 
 protected:
+
     PBWTWrapper* Wrapper;
 
 	//subset markers related

@@ -24,7 +24,7 @@ PBWTHaplotyper::PBWTHaplotyper(int nhaps, int nsnps) {
 }
 
 PBWTHaplotyper::PBWTHaplotyper() {
-
+    onlyHeterSite=false;
 }
 
 void PBWTHaplotyper::InitAuxillary() {
@@ -684,7 +684,7 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
     relativeIndexToAbsolute.clear();
     tmpMarkers=0;
     for (int i = 0; i < markers ; ++i) {
-        //if(haplotypes[2*individualToProcess][i]==haplotypes[2*individualToProcess+1][i]) continue;//homo
+        if((onlyHeterSite) && haplotypes[2*individualToProcess][i]==haplotypes[2*individualToProcess+1][i]) continue;//homo
         for (int j = 0; j <individuals-DEBUG; ++j) {
             tmpHaps[2*j][i]=haplotypes[2*j][i];
             tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];

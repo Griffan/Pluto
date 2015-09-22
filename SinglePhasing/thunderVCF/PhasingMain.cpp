@@ -1037,6 +1037,8 @@ int PhasingMain(int argc, char **argv) {
     bool randomPhase = true;
     bool fixTrans = false;
 
+    bool onlyHeterSite = false;
+
     SetupCrashHandlers();
     SetCrashExplanation("reading command line options");
 
@@ -1070,6 +1072,7 @@ int PhasingMain(int argc, char **argv) {
                     LONG_INTPARAMETER("weightedStates", &weightedStates)
                     LONG_PARAMETER("compact", &compact)
                     LONG_PARAMETER("fixTrans", &fixTrans)
+                    LONG_PARAMETER("onlyHeterSite",&onlyHeterSite)
                     LONG_PARAMETER_GROUP("Phasing")
                     EXCLUSIVE_PARAMETER("randomPhase", &randomPhase)
                     EXCLUSIVE_PARAMETER("inputPhased", &inputPhased)
@@ -1111,6 +1114,8 @@ int PhasingMain(int argc, char **argv) {
 
 
     PBWTHaplotyper engine;//declaration of engine, also will call default constructor
+
+    engine.onlyHeterSite=onlyHeterSite;
 
     // Setup and load a list of polymorphic sites, each with two allele labels ...
     Pedigree ped;
