@@ -219,9 +219,9 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
     memcpy(forwardCursor->d + u, forwardCursor->e, v * sizeof(int));
     //forwardCursor->d[0] = k + 2;
     forwardCursor->d[forwardCursor->M] = k + 2; /* sentinels */
-    a[k].assign(forwardCursor->a,forwardCursor->a+forwardCursor->M);
-    d[k].assign(forwardCursor->d,forwardCursor->d+forwardCursor->M);
-    sortedY[k].assign(forwardCursor->sortedY,forwardCursor->sortedY+forwardCursor->M);
+    //a[k].assign(forwardCursor->a,forwardCursor->a+forwardCursor->M);
+    //d[k].assign(forwardCursor->d,forwardCursor->d+forwardCursor->M);
+    //sortedY[k].assign(forwardCursor->sortedY,forwardCursor->sortedY+forwardCursor->M);
     //delete [] lastD;
     //delete [] lastY;
 
@@ -348,7 +348,7 @@ int PBWTWrapper::CursorBackwardsTo(int k, int T) {
     }
 
     memcpy(reverseCursor->a + u, reverseCursor->b, v * sizeof(int));
-    alpha[k].assign(reverseCursor->a,reverseCursor->a+reverseCursor->M);
+    //alpha[k].assign(reverseCursor->a,reverseCursor->a+reverseCursor->M);
 
     return 0;
 }
@@ -390,9 +390,12 @@ int PBWTWrapper::UpdateTransVector(int site)//calculate trans probability of sit
 
     //fprintf(stderr,"site:%d\tprevSite:%d\tsite:%d\n",site,GetNumStates(prevSite),GetNumStates(site));
 
-    transVector.insert(std::make_pair(prevSite,std::vector<std::vector<float> >(GetNumStates(prevSite),std::vector<float>(
-            GetNumStates(site), 0.))));
-
+    //transVector.insert(std::make_pair(prevSite,std::vector<std::vector<float> >(GetNumStates(prevSite),std::vector<float>(GetNumStates(site), 0.))));
+    transVector.push_back(std::vector<std::vector<float> >(GetNumStates(prevSite),std::vector<float>(GetNumStates(site), 0.)));
+    if(prevSite!=transVector.size()-1) {
+        fprintf(stderr,"transvector index error\n");
+        exit(1);
+    }
 	std::vector<float> marginal(GetNumStates(prevSite), 0.000001);
     //int maxi=0;
     //int maxj=0;
