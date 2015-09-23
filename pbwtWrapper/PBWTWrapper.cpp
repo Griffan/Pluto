@@ -606,7 +606,7 @@ int PBWTWrapper::MergeCluster(int site) {
                         clusterMemberShip[i].push_back(clusterMemberShip[j][t]);
                     }
                     clusterMemberShip[j].clear();
-                    if(DEBUG)std::cerr<<"Merge\t"<<j<<"\tinto\t"<<i<<std::endl;
+                    //if(DEBUG)std::cerr<<"Merge\t"<<j<<"\tinto\t"<<i<<std::endl;
 
                     //if(clusterAllele[site][i]!=clusterAllele[site][j]) die((char*)"alert: two states ready to be merged have different allele");
 
@@ -615,22 +615,23 @@ int PBWTWrapper::MergeCluster(int site) {
             }
             //PrintDistributionAtSite(i,dist[i]);
         }
-        if(DEBUG)std::cerr<<"finish of last round"<<std::endl;
+        //if(DEBUG)std::cerr<<"finish of last round"<<std::endl;
     }
-    //adjust d array and a array
-    if(ret)
-    {
+
+    if(ret) {
+        //adjust d array and a array
         MoveSegment(clusterMemberShip);
         //fprintf(stderr,"site:%d merged...\n",site);
+
+        //PrintVector(clusterAllele[site],"allele cluster states after");
+        //PrintVector(haplotypeCluster[site],"haplotype cluster states after");
+        for (int k = 0; k < haplotypeCluster[site].size(); ++k) {
+            haplotypeCluster[site][k] = stateOrder[haplotypeCluster[site][k]];
+        }
+        clusterAllele[site] = tmpAllele;//update merged cluster allele
+        //PrintVector(clusterAllele[site],"allele cluster states final");
+        //PrintVector(haplotypeCluster[site],"haplotype cluster states final");
     }
-    //PrintVector(clusterAllele[site],"allele cluster states after");
-    //PrintVector(haplotypeCluster[site],"haplotype cluster states after");
-    for (int k = 0; k < haplotypeCluster[site].size(); ++k) {
-        haplotypeCluster[site][k]=stateOrder[haplotypeCluster[site][k]];
-    }
-    clusterAllele[site]=tmpAllele;//update merged cluster allele
-    //PrintVector(clusterAllele[site],"allele cluster states final");
-    //PrintVector(haplotypeCluster[site],"haplotype cluster states final");
     return ret;
 }
 bool PBWTWrapper::KStest(std::vector<int>& a, std::vector<int>& b) {

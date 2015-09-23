@@ -683,15 +683,45 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
     absoluteIndexToRelative.clear();
     relativeIndexToAbsolute.clear();
     tmpMarkers=0;
-    for (int i = 0; i < markers ; ++i) {
-        if((onlyHeterSite) && haplotypes[2*individualToProcess][i]==haplotypes[2*individualToProcess+1][i]) continue;//homo
-        for (int j = 0; j <individuals-DEBUG; ++j) {
-            tmpHaps[2*j][i]=haplotypes[2*j][i];
-            tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];
+
+    if(onlyHeterSite){
+        std::vector<int> HeterIndex(markers,0);
+        for (int i = 0; i < markers ; ++i) {
+            if(haplotypes[2*individualToProcess][i]!=haplotypes[2*individualToProcess+1][i]) {
+                HeterIndex[i] = 1;
+                absoluteIndexToRelative[i] = tmpMarkers++;
+                relativeIndexToAbsolute.push_back(i);
+            }
         }
-        absoluteIndexToRelative[i]=tmpMarkers++;
-        relativeIndexToAbsolute.push_back(i);
+
+        for (int j = 0; j <individuals-DEBUG; ++j) {
+            for (int i = 0; i < markers ; ++i) {
+                if(!HeterIndex[i])
+                {
+                    continue;
+                }//homo
+                tmpHaps[2*j][i]=haplotypes[2*j][i];
+                tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];
+            }
+        }
     }
+    else
+    {
+        for (int j = 0; j <individuals-DEBUG; ++j) {
+            for (int i = 0; i < markers ; ++i) {
+                tmpHaps[2*j][i]=haplotypes[2*j][i];
+                tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];
+
+                if(j==0) {
+                    absoluteIndexToRelative[i] = tmpMarkers++;
+                    relativeIndexToAbsolute.push_back(i);
+                }
+
+            }
+        }
+    }
+
+
     Wrapper = new PBWTWrapper(2*(individuals-1-DEBUG)/*not include individualToProcess*/, tmpMarkers);
     SwapTempHaps();
     return 0;
