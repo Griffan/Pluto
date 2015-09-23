@@ -526,14 +526,14 @@ int PBWTWrapper::MergeCluster(int site) {
     std::vector<uchar> tmpAllele;
     std::vector<std::vector<int> > clusterMemberShip(oldNumCluster,std::vector<int>());// state->position in current M array
     std::vector<std::vector<int> > dist(oldNumCluster,std::vector<int>(numHaps,0));
-    std::unordered_map<int, bool> mergeIndicator;
+    std::vector<bool> mergeIndicator(oldNumCluster,false);
     std::vector<unsigned long> order(forwardCursor->M,0);
     for(int i=0;i!=reverseCursor->M;++i)
     {
         order[reverseCursor->a[i]]=i;//record where the ith sequence now is
     }
     for (int i = 0; i != numHaps; ++i) {
-        mergeIndicator[haplotypeCluster[site][i]]=false;//initialize states' merge status
+        //mergeIndicator[haplotypeCluster[site][i]]=false;//initialize states' merge status
 
         clusterMemberShip[haplotypeCluster[site][i]].push_back(i);//put haps in the same state into same vector
 
@@ -610,14 +610,14 @@ int PBWTWrapper::MergeCluster(int site) {
 
                     //if(clusterAllele[site][i]!=clusterAllele[site][j]) die((char*)"alert: two states ready to be merged have different allele");
 
-                    break;
+                    //break;//TODO:need experiment
                 }
             }
             //PrintDistributionAtSite(i,dist[i]);
         }
         //if(DEBUG)std::cerr<<"finish of last round"<<std::endl;
     }
-
+    //fprintf(stderr,"old states:%d\tnew states:%d\n",GetNumStates(site),currentNumCluster);
     if(ret) {
         //adjust d array and a array
         MoveSegment(clusterMemberShip);

@@ -721,7 +721,11 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
         }
     }
 
-
+    if(tmpMarkers==0)
+    {
+        fprintf(stderr,"found 0 heterozygous site...abort!\n");
+        abort();
+    }
     Wrapper = new PBWTWrapper(2*(individuals-1-DEBUG)/*not include individualToProcess*/, tmpMarkers);
     SwapTempHaps();
     return 0;

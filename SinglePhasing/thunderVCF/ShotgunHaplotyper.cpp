@@ -409,15 +409,15 @@ void ShotgunHaplotyper::LoadHaplotypesFromVCF(String& fileName)
 
 	// genotype is missing
 	if ( g == 0xffff ) {
-	  fprintf(stderr,"ERROR: Observed Missing genotypes");
-	  abort();
+	  //fprintf(stderr,"ERROR: Observed Missing genotypes");
+	  //abort();
 	}
 	else {
 	  // genotype is unphased
 	  if ( (g & 0x8000) == 0 ) {
 	    if ( !warningsPrinted ) {
-	      fprintf(stderr,"ERROR: Observed unphased genotypes %x",g);
-	      abort();
+	      //fprintf(stderr,"ERROR: Observed unphased genotypes %x",g);
+	      //abort();
 	    }
 	  }
 	  g1 = (((g & 0x7f00) >> 8) & 0xff);
@@ -482,8 +482,8 @@ void ShotgunHaplotyper::LoadHaplotypesFromPhasedVCF(String& fileName)
 					// genotype is unphased
 					if ((g & 0x8000) == 0) {
 						if (!warningsPrinted) {
-							fprintf(stderr, "ERROR: Observed unphased genotypes %x", g);
-							abort();
+							//fprintf(stderr, "ERROR: Observed unphased genotypes %x", g);
+							//abort();
 						}
 					}
 					g1 = (((g & 0x7f00) >> 8) & 0xff);
@@ -568,8 +568,8 @@ void ShotgunHaplotyper::LoadHaplotypesFromPhasedVCF(Pedigree &ped, String& fileN
 						// genotype is unphased
 						if ((g & 0x8000) == 0) {
 							if (!warningsPrinted) {
-								fprintf(stderr, "ERROR: Observed unphased genotypes %x", g);
-								abort();
+								//fprintf(stderr, "ERROR: Observed unphased genotypes %x", g);
+								//abort();
 							}
 						}
 						g1 = (((g & 0x7f00) >> 8) & 0xff);
