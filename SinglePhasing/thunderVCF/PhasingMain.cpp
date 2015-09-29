@@ -368,15 +368,17 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
 
                 doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
 
-                ////fprintf(stderr,"foo1\n");
+                //fprintf(stderr,"foo1,marker:%d\n",m);
                 int nInfo = pMarker->asInfoKeys.Find("LDAF");
                 if (nInfo < -1) {
                     sprintf(sDose, "%.4lf", 1. - freq);
                     pMarker->asInfoKeys.Add("LDAF");
                     pMarker->asInfoValues.Add(sDose);
                 }
-                else
+                else {
+                    //fprintf(stderr,"pMarker->asInfoValues[nInfo]:%s\tfreq:%f\n",pMarker->asInfoValues[nInfo].c_str(),freq);
                     pMarker->asInfoValues[nInfo].printf("%.4lf", 1. - freq);
+                }
 
                 nInfo = pMarker->asInfoKeys.Find("AVGPOST");
                 if (nInfo < -1) {
@@ -456,10 +458,13 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
                     // add DS values
                     sprintf(sDose, "%.3lf", 2 - doses.GetDosage(pi, m));
                     if (DSidx < -1) {
+                       // fprintf(stderr,"cant find DS filed\n");
                         pMarker->asSampleValues.InsertAt(nFormats * i + DSidx, sDose);
                     }
-                    else
+                    else {
+                        //fprintf(stderr,"pMarker->asSampleValues.size:%s nFormtas:%d\tDSidx:%d\tsDose:%s\n",pMarker->asSampleValues[nFormats * i + GTidx].c_str(),nFormats,DSidx,sDose);
                         pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3lf", sDose);
+                    }
                 }
             }
             pMarker->printVCFMarker(outVCF, false); // print marker to output file
@@ -1292,9 +1297,9 @@ int PhasingMain(int argc, char **argv) {
         if (OutputManager::outputHaplotypes)
             consensus.Store(engine.haplotypes);
 
-//	if (doses.storeDosage || doses.storeDistribution)
-//		doses.Update(engine.haplotypes);
-//
+	if (doses.storeDosage || doses.storeDistribution)
+		doses.Update(engine.haplotypes);
+
 	UpdateVector(engine.thetas, thetas, nthetas, engine.markers - 1);
 	UpdateErrorRates(engine.error_models, error_rates, nerror_rates, engine.markers);
 

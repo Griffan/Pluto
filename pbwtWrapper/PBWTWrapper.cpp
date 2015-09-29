@@ -39,7 +39,10 @@
 //
 //}
 
-PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)),alpha(a),d(a), sortedY(nsnps,std::vector<uchar>(nhaps,0)),haplotypeCluster(a),clusterAllele(nsnps,std::vector<uchar>()){
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)),alpha(a),d(a), /*sortedY(nsnps,std::vector<uchar>(nhaps,0)),*/
+                                               haplotypeCluster(a),
+                                               clusterAllele(nsnps,std::vector<uchar>())
+{
     N=nsnps;
     M=nhaps;//last two haps are slots for current individual need to be phased
     pbwtCore = pbwtCreate(nhaps, nsnps);
@@ -205,12 +208,13 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
          PrintVector(haplotypeCluster[k-1],"before cluster state");
          PrintVector(clusterAllele[k-1],"before cluster allele");
      }
-    if(k!=0) test=MergeCluster(k-1);//TODO:implement this function
+    if(k!=0&&clusterAllele[k-1].size()==0) {fprintf(stderr,"0 states, abort!");abort();}
+    if(k!=0&&clusterAllele[k-1].size()!=1) test=MergeCluster(k-1);//TODO:implement this function
 	 if(DEBUG&&k==64&&test) {
          fprintf(stderr, "at site:%d\n", k-1);
 
          PrintVector(haplotypeCluster[k-1], "after cluster state");
-         PrintVector(clusterAllele[k-1],"before cluster allele");
+         PrintVector(clusterAllele[k-1],"after cluster allele");
      }
     //numCluster[k] = group;
     //forwardCursor->c = na;
@@ -219,8 +223,8 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
     memcpy(forwardCursor->d + u, forwardCursor->e, v * sizeof(int));
     //forwardCursor->d[0] = k + 2;
     forwardCursor->d[forwardCursor->M] = k + 2; /* sentinels */
-    //a[k].assign(forwardCursor->a,forwardCursor->a+forwardCursor->M);
-    //d[k].assign(forwardCursor->d,forwardCursor->d+forwardCursor->M);
+    a[k].assign(forwardCursor->a,forwardCursor->a+forwardCursor->M);
+    d[k].assign(forwardCursor->d,forwardCursor->d+forwardCursor->M);
     //sortedY[k].assign(forwardCursor->sortedY,forwardCursor->sortedY+forwardCursor->M);
     //delete [] lastD;
     //delete [] lastY;

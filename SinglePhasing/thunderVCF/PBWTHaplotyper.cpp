@@ -201,12 +201,12 @@ void PBWTHaplotyper::ConditionOnData(float *matrix, int marker, char phred11, ch
     //return;
 
     double conditional_probs[3];
-    int ph11 = (unsigned char) phred11;
-    int ph12 = (unsigned char) phred12;
-    int ph22 = (unsigned char) phred22;
+    uchar ph11 = (unsigned char) phred11;
+    uchar ph12 = (unsigned char) phred12;
+    uchar ph22 = (unsigned char) phred22;
 
     CalculatePhred2Prob();
-
+    //fprintf(stderr,"(ph11,ph12,ph22)=(%d,%d,%d)\n",ph11,ph12,ph22);
     for (int i = 0; i < 3; i++)
         conditional_probs[i] = Penetrance(marker, i, 0) * phred2prob[ph11] +
                                Penetrance(marker, i, 1) * phred2prob[ph12] +
@@ -687,7 +687,8 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
     if(onlyHeterSite){
         std::vector<int> HeterIndex(markers,0);
         for (int i = 0; i < markers ; ++i) {
-            if(haplotypes[2*individualToProcess][i]!=haplotypes[2*individualToProcess+1][i]) {
+            if(haplotypes[2*individualToProcess][i]!=haplotypes[2*individualToProcess+1][i])
+            {
                 HeterIndex[i] = 1;
                 absoluteIndexToRelative[i] = tmpMarkers++;
                 relativeIndexToAbsolute.push_back(i);
@@ -695,13 +696,15 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
         }
 
         for (int j = 0; j <individuals-DEBUG; ++j) {
-            for (int i = 0; i < markers ; ++i) {
-                if(!HeterIndex[i])
+            for (int i = 0; i < tmpMarkers ; ++i) {
+                int markerAbsoluteNow=relativeIndexToAbsolute[i];
+                if(!HeterIndex[markerAbsoluteNow])
                 {
                     continue;
                 }//homo
-                tmpHaps[2*j][i]=haplotypes[2*j][i];
-                tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];
+                tmpHaps[2*j][i]=haplotypes[2*j][markerAbsoluteNow];
+                tmpHaps[2*j+1][i]=haplotypes[2*j+1][markerAbsoluteNow];
+                strncpy(&tmpGeno[j][i*3],&genotypes[j][markerAbsoluteNow*3],3);
             }
         }
     }
@@ -711,7 +714,7 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
             for (int i = 0; i < markers ; ++i) {
                 tmpHaps[2*j][i]=haplotypes[2*j][i];
                 tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];
-
+                strncpy(&tmpGeno[j][i*3],&genotypes[j][i*3],3);
                 if(j==0) {
                     absoluteIndexToRelative[i] = tmpMarkers++;
                     relativeIndexToAbsolute.push_back(i);
@@ -723,7 +726,7 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
 
     if(tmpMarkers==0)
     {
-        fprintf(stderr,"found 0 heterozygous site...abort!\n");
+        fprintf(stderr,"found 0 markers available...abort!\n");
         abort();
     }
     Wrapper = new PBWTWrapper(2*(individuals-1-DEBUG)/*not include individualToProcess*/, tmpMarkers);
