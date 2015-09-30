@@ -54,13 +54,13 @@ PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)
 
 }
 
-
+#define PREFIX_LENGTH 20000000
 int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
 
 
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 0");
     for (int k = 0; k != pbwtCore->N; ++k) {
-        CursorForwardsTo(k, 200);
+        CursorForwardsTo(k, PREFIX_LENGTH);
     }
     //copy end of a to PBWT
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 1");

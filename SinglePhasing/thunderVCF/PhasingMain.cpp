@@ -901,9 +901,7 @@ void LoadGenotypeFromPhasedVcf(Pedigree &ped, char **genotypes, char *refalleles
                     engine.thetas[markerindex] = pMarker->asInfoValues[THidx].AsDouble();
             }
             else {
-                fprintf(stderr,
-                        "No ERATE or THETA tag found in input vcf, now using command line(--errorRate and --transRate)settings:\n Error Rate:%f\tTrans Rate(Theta):%f\n",
-                        defaultErrorRate, defaultTransRate);
+                //fprintf(stderr,"No ERATE or THETA tag found in input vcf, now using command line(--errorRate and --transRate)settings:\n Error Rate:%f\tTrans Rate(Theta):%f\n",defaultErrorRate, defaultTransRate);
                 engine.SetErrorRate(markerindex, defaultErrorRate);
                 engine.thetas[markerindex] = defaultTransRate;
             }
