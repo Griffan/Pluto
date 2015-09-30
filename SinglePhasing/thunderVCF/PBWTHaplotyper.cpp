@@ -693,6 +693,7 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
     tmpMarkers=0;
 
     if(onlyHeterSite){
+        //fprintf(stderr,"through heeter part\n");
         std::vector<int> HeterIndex(markers,0);
         for (int i = 0; i < markers ; ++i) {
             if(haplotypes[2*individualToProcess][i]!=haplotypes[2*individualToProcess+1][i])
@@ -712,24 +713,30 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
                 }//homo
                 tmpHaps[2*j][i]=haplotypes[2*j][markerAbsoluteNow];
                 tmpHaps[2*j+1][i]=haplotypes[2*j+1][markerAbsoluteNow];
-                strncpy(&tmpGeno[j][i*3],&genotypes[j][markerAbsoluteNow*3],3);
+                tmpGeno[j][i*3]=genotypes[j][markerAbsoluteNow*3];
+                tmpGeno[j][i*3+1]=genotypes[j][markerAbsoluteNow*3+1];
+                tmpGeno[j][i*3+2]=genotypes[j][markerAbsoluteNow*3+2];
             }
         }
+        SwapTempHaps();
     }
     else
     {
-        for (int j = 0; j <individuals-DEBUG; ++j) {
-            for (int i = 0; i < markers ; ++i) {
-                tmpHaps[2*j][i]=haplotypes[2*j][i];
-                tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];
-                strncpy(&tmpGeno[j][i*3],&genotypes[j][i*3],3);
-                if(j==0) {
-                    absoluteIndexToRelative[i] = tmpMarkers++;
-                    relativeIndexToAbsolute.push_back(i);
-                }
-
-            }
-        }
+//        for (int j = 0; j <individuals-DEBUG; ++j) {
+//            for (int i = 0; i < markers ; ++i) {
+//                tmpHaps[2*j][i]=haplotypes[2*j][i];
+//                tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];
+//                tmpGeno[j][i*3]=genotypes[j][i*3];
+//                tmpGeno[j][i*3+1]=genotypes[j][i*3+1];
+//                tmpGeno[j][i*3+2]=genotypes[j][i*3+2];
+//                if(j==0) {
+//                    absoluteIndexToRelative[i] = tmpMarkers++;
+//                    relativeIndexToAbsolute.push_back(i);
+//                }
+//
+//            }
+//        }
+        tmpMarkers=markers;
     }
 
     if(tmpMarkers==0)
@@ -738,17 +745,21 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
         abort();
     }
     Wrapper = new PBWTWrapper(2*(individuals-1-DEBUG)/*not include individualToProcess*/, tmpMarkers);
-    SwapTempHaps();
+
     return 0;
 }
 
 int PBWTHaplotyper::FillHeterSitesBack(int individualToProcess) {
-    SwapTempHaps();
-    int index=0;
-    for (int i = 0; i < tmpMarkers ; ++i) {
-        index=relativeIndexToAbsolute[i];
-        haplotypes[2*(individualToProcess-1)][index]=tmpHaps[2*(individualToProcess-1)][i];
-        haplotypes[2*(individualToProcess-1)+1][index]=tmpHaps[2*(individualToProcess-1)+1][i];
+
+    if(onlyHeterSite) {
+        SwapTempHaps();
+        int markerAbsoluteNow = 0;
+        for (int i = 0; i < tmpMarkers; ++i) {
+            markerAbsoluteNow = relativeIndexToAbsolute[i];
+            haplotypes[2 * (individualToProcess - 1)][markerAbsoluteNow] = tmpHaps[2 * (individualToProcess - 1)][i];
+            haplotypes[2 * (individualToProcess - 1) + 1][markerAbsoluteNow] = tmpHaps[2 * (individualToProcess - 1) +
+                                                                                       1][i];
+        }
     }
 
 //    if(Wrapper!=NULL) {

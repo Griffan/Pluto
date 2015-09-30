@@ -471,6 +471,7 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
             pMarker->printVCFMarker(outVCF, false); // print marker to output file
         }
         delete pVcf;
+        //delete pMarker;
         ifclose(outVCF);
     }
     catch (VcfFileException e) {
