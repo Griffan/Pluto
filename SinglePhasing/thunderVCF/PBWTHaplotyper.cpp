@@ -44,6 +44,14 @@ PBWTHaplotyper::~PBWTHaplotyper() {
         }
         delete [] tmpHaps;
     }
+    if(tmpGeno != NULL) {
+        for (int i = 0; i < individuals; ++i) {
+            delete[] tmpGeno[i];
+        }
+        delete [] tmpGeno;
+    }
+    if(Wrapper != NULL)
+        delete Wrapper;
 	ReleaseMemoryBlock();
 }
 

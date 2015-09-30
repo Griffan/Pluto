@@ -369,6 +369,7 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
                 doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
 
                 //fprintf(stderr,"foo1,marker:%d\n",m);
+                //if(pMarker->nPos == 60479) continue;
                 int nInfo = pMarker->asInfoKeys.Find("LDAF");
                 if (nInfo < -1) {
                     sprintf(sDose, "%.4lf", 1. - freq);
@@ -462,8 +463,8 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
                         pMarker->asSampleValues.InsertAt(nFormats * i + DSidx, sDose);
                     }
                     else {
-                        //fprintf(stderr,"pMarker->asSampleValues.size:%s nFormtas:%d\tDSidx:%d\tsDose:%s\n",pMarker->asSampleValues[nFormats * i + GTidx].c_str(),nFormats,DSidx,sDose);
-                        pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3lf", sDose);
+                        //fprintf(stderr,"pMarker->asSampleValues.size:%s nFormtas:%d\tDSidx:%d\tsDose:%s\n",pMarker->asSampleValues[nFormats * i + DSidx].c_str(),nFormats,DSidx,sDose);
+                        pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3s", sDose);
                     }
                 }
             }
@@ -903,7 +904,7 @@ void LoadGenotypeFromPhasedVcf(Pedigree &ped, char **genotypes, char *refalleles
                 fprintf(stderr,
                         "No ERATE or THETA tag found in input vcf, now using command line(--errorRate and --transRate)settings:\n Error Rate:%f\tTrans Rate(Theta):%f\n",
                         defaultErrorRate, defaultTransRate);
-                engine.SetErrorRate(defaultErrorRate);
+                engine.SetErrorRate(markerindex, defaultErrorRate);
                 engine.thetas[markerindex] = defaultTransRate;
             }
             int GLflag = 0;
