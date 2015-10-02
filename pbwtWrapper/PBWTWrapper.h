@@ -30,6 +30,7 @@ public:
 	//std::unordered_map<int,std::vector<std::vector<float> > > transVector;//transition probability: site,from,to
     std::vector<std::vector<std::vector<float> > > transVector;
     char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
+    std::vector<std::vector<int> > clusterMembership;
 
     ~PBWTWrapper() {
         if(pbwtCore)
@@ -64,7 +65,9 @@ public:
     int MergeCluster(int site);
 
     int MoveSegment(std::vector<std::vector<int> >& MemberShip);
-    bool KStest(std::vector<int>& a,std::vector<int>& b);
+    //bool KStest(std::vector<int>& a,std::vector<int>& b);
+    bool KStest(const double& Dmax, const int & sizeA, const int & sizeB);
+    int UpdateRankWithinState(std::vector<std::vector<int> > &dist,int stateA, int stateB);
 
     int SetHaps(char **haps);
 
@@ -115,6 +118,7 @@ public:
     {
         fprintf(stderr,"debug matrix size(%d,%d,) %s:\n",a.size(),a[0].size(), str);
         for (int i = 0; i < M; ++i) {
+            std::cerr<<i<<"\t";
             for (int j = 0; j < N; ++j) {
                 std::cerr<<(ushort)a[j][i]<<"\t";
             }

@@ -8,6 +8,8 @@
 #include "PBWTWrapper.h"
 #include "iostream"
 #include "pbwt/pbwt.h"
+#include <fstream>
+#include "math.h"
 
 //PBWTWrapper::PBWTWrapper(const char **haplotype, int nhaps, int nsnps) {
 //
@@ -83,7 +85,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
  */
     int i, i0 = 0, ia, ib, na = 0, nb = 0, dmin;
     int group = 0;
-
+    clusterMembership.clear();
     /*coppy array d*/
    // int *lastD = new int[forwardCursor->M + 1];
    // uchar *lastY = new uchar[forwardCursor->M +1];
@@ -133,11 +135,14 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
             //if (na && nb)        /* then there is something to report */
             if(i!=0) {
                 //fprintf(stderr,"d:%d\tk-tmpT:%d\n",forwardCursor->d[i],k-tmpT);
+                std::vector<int> tmpMem;
                 for (ia = i0; ia < i; ++ia) {
                     haplotypeCluster[k - 1][ia] = group;
+                    tmpMem.push_back(ia);
                 }
 
                 clusterAllele[k - 1].push_back(haplotype[forwardCursor->a[i0]][k-1]);
+                clusterMembership.push_back(tmpMem);
                 if(DEBUG && k==64) fprintf(stderr,"i0:%d\tallele:%d\n",i0,haplotype[forwardCursor->a[i0]][k-1]);
                 // na = 0;
                 // nb = 0;
@@ -165,56 +170,38 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
         }
     }
 
-    if( (k!=pbwtCore->N-1) && i0 < forwardCursor->M)
+    if( i0 < forwardCursor->M)
     {
 		if (k != 0)
 		{
+            std::vector<int> tmpMem;
 			for (ia = i0; ia < forwardCursor->M; ++ia)
 			{
 				haplotypeCluster[k-1][ia] = group;
+                tmpMem.push_back(ia);
 			}
             if(DEBUG && k==64) fprintf(stderr,"i0:%d\tallele:%d\n",i0,haplotype[forwardCursor->a[i0]][k-1]);
 			clusterAllele[k-1].push_back(haplotype[forwardCursor->a[i0]][k-1]);
-            //fprintf(stderr,"site:%d\tnumStates:%d\n",k,clusterAllele[k].size());
+            clusterMembership.push_back(tmpMem);
+            //fprintf(stderr,"site:%d\tnumStates:%d\n",k-1,clusterAllele[k-1].size());
 
 		}
-////		else
-////		{
-////			int sum0(0), sum1(0);
-////			for (ia = i0; ia < forwardCursor->M; ++ia)
-////			{
-////				if (forwardCursor->sortedY[ia] == 0)
-////				{
-////					haplotypeCluster[k][ia] = 0;
-////					sum0 = 1;
-////				}
-////				else
-////				{
-////					haplotypeCluster[k][ia] = 1;
-////					sum1 = 1;
-////				}
-////			}
-////			if (sum0)
-////				clusterAllele[k].push_back(0);
-////			if (sum1)
-////				clusterAllele[k].push_back(1);
-////            //fprintf(stderr,"site:0\tnumStates:%d\n",clusterAllele[k].size());
-////		}
+
     }
 	int test = 0;
-	 if(DEBUG&&k==64){
+	 if(DEBUG&&k!=0){
          fprintf(stderr, "at site:%d\n", k-1);
 
-         PrintVector(haplotypeCluster[k-1],"before cluster state");
-         PrintVector(clusterAllele[k-1],"before cluster allele");
+         PrintVector(haplotypeCluster[k-1],"haplotype state before merge state");
+         PrintVector(clusterAllele[k-1],"state allele before merge allele");
      }
     if(k!=0&&clusterAllele[k-1].size()==0) {fprintf(stderr,"0 states, abort!");abort();}
     if(k!=0&&clusterAllele[k-1].size()!=1) test=MergeCluster(k-1);//TODO:implement this function
-	 if(DEBUG&&k==64&&test) {
+	 if(k!=0&&DEBUG&&test) {
          fprintf(stderr, "at site:%d\n", k-1);
 
-         PrintVector(haplotypeCluster[k-1], "after cluster state");
-         PrintVector(clusterAllele[k-1],"after cluster allele");
+         PrintVector(haplotypeCluster[k-1], "haplotype state after merge state");
+         PrintVector(clusterAllele[k-1],"state allele after merge allele");
      }
     //numCluster[k] = group;
     //forwardCursor->c = na;
@@ -351,8 +338,9 @@ int PBWTWrapper::CursorBackwardsTo(int k, int T) {
         }
     }
 
+
     memcpy(reverseCursor->a + u, reverseCursor->b, v * sizeof(int));
-    //alpha[k].assign(reverseCursor->a,reverseCursor->a+reverseCursor->M);
+    alpha[k].assign(reverseCursor->a,reverseCursor->a+reverseCursor->M);
 
     return 0;
 }
@@ -528,37 +516,59 @@ int PBWTWrapper::MergeCluster(int site) {
     int oldNumCluster = GetNumStates(site);
     int numHaps = haplotypeCluster[site].size();
     std::vector<uchar> tmpAllele;
-    std::vector<std::vector<int> > clusterMemberShip(oldNumCluster,std::vector<int>());// state->position in current M array
-    std::vector<std::vector<int> > dist(oldNumCluster,std::vector<int>(numHaps,0));
+    //std::vector<std::vector<int> > clusterMemberShip(oldNumCluster,std::vector<int>());// state->position in current M array
+    std::vector<std::vector<int> > dist(oldNumCluster,std::vector<int>(numHaps,0));//state->rank_occupied
     std::vector<bool> mergeIndicator(oldNumCluster,false);
-    std::vector<unsigned long> order(forwardCursor->M,0);
-    for(int i=0;i!=reverseCursor->M;++i)
-    {
-        order[reverseCursor->a[i]]=i;//record where the ith sequence now is
-    }
-    for (int i = 0; i != numHaps; ++i) {
-        //mergeIndicator[haplotypeCluster[site][i]]=false;//initialize states' merge status
 
-        clusterMemberShip[haplotypeCluster[site][i]].push_back(i);//put haps in the same state into same vector
+    std::vector<std::vector<double> > Dmax(oldNumCluster,std::vector<double>(oldNumCluster,0));
+    std::vector<std::vector<float> > rankSum(oldNumCluster,std::vector<float>(oldNumCluster,0));
+    std::vector<std::vector<std::pair<double,double> > > hapsCounted(oldNumCluster,std::vector<std::pair<double,double> >(oldNumCluster,std::make_pair<int,int>(0,0)));
 
-        dist[haplotypeCluster[site][i]][order[i]]=1;//record rank distribution for each cluster
-    }
-    for(int i=0;i!= dist.size();++i)
+//    fprintf(stderr,"\n");
+//    fprintf(stderr,"alpha for site %d:\n",site);
+//    for (int k = 0; k <M ; ++k) {
+//        fprintf(stderr,"%d\t",alpha[site][k]);
+//    }
+//    fprintf(stderr,"\n");
+
+    double tmpABS=0;
+    for (int i = 0; i != numHaps; ++i)//from rank 0 to rank numHaps-1
     {
-        for(int j(0),v(0);j!=dist[i].size();++j)
-        {
-            if(dist[i][j]==1) v++;
-            dist[i][j]=v;
+        //clusterMemberShip[haplotypeCluster[site][i]].push_back(i);//put haps in the same state into same vector
+        dist[haplotypeCluster[site][alpha[site][i]]][i]=1;//record rank occupation indicator for each cluster
+        for (int j = 0; j < dist.size(); ++j) {
+            for (int k = j+1; k < dist.size(); ++k) {
+                if(clusterAllele[site][j]!=clusterAllele[site][k]) continue;
+                double total=clusterMembership[j].size()+clusterMembership[k].size();
+                if(dist[j][i]==1)
+                {
+                    rankSum[j][k]+=1;
+                    hapsCounted[j][k].first=(rankSum[j][k]+0.5)/total;
+                }
+                if(dist[k][i]==1)
+                {
+                    rankSum[j][k]+=1;
+                    hapsCounted[j][k].second=(rankSum[j][k]+0.5)/total;
+                }
+
+                tmpABS=fabs(hapsCounted[j][k].first-hapsCounted[j][k].second);
+
+                if(tmpABS>Dmax[j][k]) Dmax[j][k]=tmpABS;
+            }
         }
+
     }
+
+
+
     if(DEBUG)
     {
-        std::cerr<<"\nenter debug section, site "<<site<<":"<<std::endl;
+        std::cerr<<"\nenter rank distribution section, site "<<site<<":"<<std::endl;
         for (auto i = 0; i != dist.size(); ++i) {
            // PrintDistributionAtSite(i,haplotypeCluster[i]);
             PrintDistributionAtSite(i,dist[i]);
         }
-        std::cerr<<"exit debug section!\n"<<std::endl;
+        std::cerr<<"exit rank distribution section!\n"<<std::endl;
         //exit(0);
     }
    // PrintVector(clusterAllele[site],"haplotype cluster states before");
@@ -587,7 +597,8 @@ int PBWTWrapper::MergeCluster(int site) {
 
             for (auto j = i + 1; j != dist.size(); ++j) {
                 if(mergeIndicator[j]) continue;
-                if(clusterAllele[site][i]==clusterAllele[site][j] && KStest(dist[i],dist[j]))
+                if(DEBUG)fprintf(stderr,"now testing state %d and state %d\n",i,j);
+                if(clusterAllele[site][i]==clusterAllele[site][j] && KStest(Dmax[i][j],clusterMembership[i].size(),clusterMembership[j].size()))
                 {
 					ret = 1;
 
@@ -595,7 +606,7 @@ int PBWTWrapper::MergeCluster(int site) {
                     //PrintVector(dist[i],"state i");
                     //PrintVector(dist[j],"state j");
 
-                    //fprintf(stderr,"merge state:%d and state:%d\n",i,j);
+                    if(DEBUG)fprintf(stderr,"merge state:%d and state:%d\n",i,j);
                     currentNumCluster--;
                     //Merge Action, change mergeIndicator
                     for(int t=0;t!=dist[i].size();++t)
@@ -604,12 +615,12 @@ int PBWTWrapper::MergeCluster(int site) {
                     }
                     mergeIndicator[j]=true;// j th cluster has been merged into i th cluster
 
-                    for(int t=0;t!=clusterMemberShip[j].size();++t)
+                    for(int t=0;t!=clusterMembership[j].size();++t)
                     {
-                        haplotypeCluster[site][clusterMemberShip[j][t]]=i;
-                        clusterMemberShip[i].push_back(clusterMemberShip[j][t]);
+                        haplotypeCluster[site][clusterMembership[j][t]]=i;
+                        clusterMembership[i].push_back(clusterMembership[j][t]);
                     }
-                    clusterMemberShip[j].clear();
+                    clusterMembership[j].clear();
                     //if(DEBUG)std::cerr<<"Merge\t"<<j<<"\tinto\t"<<i<<std::endl;
 
                     //if(clusterAllele[site][i]!=clusterAllele[site][j]) die((char*)"alert: two states ready to be merged have different allele");
@@ -624,7 +635,7 @@ int PBWTWrapper::MergeCluster(int site) {
     //fprintf(stderr,"old states:%d\tnew states:%d\n",GetNumStates(site),currentNumCluster);
     if(ret) {
         //adjust d array and a array
-        MoveSegment(clusterMemberShip);
+        MoveSegment(clusterMembership);
         //fprintf(stderr,"site:%d merged...\n",site);
 
         //PrintVector(clusterAllele[site],"allele cluster states after");
@@ -638,20 +649,32 @@ int PBWTWrapper::MergeCluster(int site) {
     }
     return ret;
 }
-bool PBWTWrapper::KStest(std::vector<int>& a, std::vector<int>& b) {
+//bool PBWTWrapper::KStest(std::vector<int>& a, std::vector<int>& b) {
+//
+//    int Dmax=0;
+//    int Dtmp=0;
+//
+//    PrintVector(a,"state a");
+//    PrintVector(b,"state b");
+//    for(int i=0;i!=a.size();++i)
+//    {
+//        Dtmp=abs(a[i]-b[i]);
+//        if(Dtmp>Dmax) Dmax=Dtmp;
+//    }
+//    //fprintf(stderr,"debug double(a.back()+b.back())/(a.back()*b.back()):%f\n",std::sqrt(double(a.back()+b.back())/(a.back()*b.back())));
+//    double thresh=1.36*std::sqrt(double(a.back()+b.back())/(a.back()*b.back()));
+//    fprintf(stderr,"Dmax:%d and threshold:%f\n",Dmax,thresh);
+//    if(isinf(thresh)||isnan(thresh))
+//        return false;
+//    else if(Dmax > thresh)//1.36 is 0.05 significance parameter
+//        return false;//reject null hypo, they are different
+//    else
+//        return true;//accept null hypo, they are the same
+//}
+bool PBWTWrapper::KStest(const double& Dmax, const int & sizeA, const int & sizeB) {
 
-    int Dmax=0;
-    int Dtmp=0;
-
-    //PrintVector(a,"state a");
-    //PrintVector(b,"state b");
-    for(int i=0;i!=a.size();++i)
-    {
-        Dtmp=abs(a[i]-b[i]);
-        if(Dtmp>Dmax) Dmax=Dtmp;
-    }
-    //fprintf(stderr,"debug double(a.back()+b.back())/(a.back()*b.back()):%f\n",std::sqrt(double(a.back()+b.back())/(a.back()*b.back())));
-    int thresh=1.36*std::sqrt(double(a.back()+b.back())/(a.back()*b.back()));
+    double thresh=1.95*std::sqrt(double(sizeA+sizeB)/(sizeA*sizeB));
+    if(DEBUG)fprintf(stderr,"Dmax:%lf and threshold:%f\n",Dmax,thresh);
     if(isinf(thresh)||isnan(thresh))
         return false;
     else if(Dmax > thresh)//1.36 is 0.05 significance parameter
@@ -666,10 +689,17 @@ int PBWTWrapper::SetHaps(char **haps) {
 }
 
 int PBWTWrapper::PrintDistributionAtSite(int state,std::vector<int> &dist) {
+    std::ofstream fout("/Users/fanzhang/Downloads/PlutoTest/rank.txt",std::ofstream::app);
     std::cerr<<"state:"<<state<<":\t";
-    for(auto k:dist)
-        std::cerr<<k<<"\t";
+    fout<<"state:"<<state<<":\t";
+    for(auto k:dist) {
+        std::cerr << k << "\t";
+        fout << k << "\t";
+
+    }
     std::cerr<<std::endl;
+    fout<<std::endl;
+
     return 0;
 }
 
@@ -701,7 +731,7 @@ int PBWTWrapper::PrintSummary() {
 
     printf("mean nodes/level = %f\tmax nodes/level = %d\tnodes = %d\n",meanNodes,maxNodes,totalNodes);
     printf("mean edges/level = %f\tmax edges/level = %d\tedges = %d\n",meanEdges,maxEdges,totalEdges);
-    printf("mean edges/node = %f\tmean count/mode = %f\n",(float)totalEdges/totalNodes,(float)(pbwtCore->M)*(pbwtCore->N)/totalNodes);
+    printf("mean edges/node = %f\tmean count/node = %f\n",(float)totalEdges/totalNodes,(float)(pbwtCore->M)*(pbwtCore->N)/totalNodes);
 
     return 0;
 }
@@ -745,5 +775,18 @@ int PBWTWrapper:: MoveSegment(std::vector<std::vector<int> >& MemberShip) {//fro
 //        fprintf(stderr,"%d\t",forwardCursor->a[k]);
 //    }
 //    fprintf(stderr,"\n");
+    return 0;
+}
+
+int PBWTWrapper::UpdateRankWithinState(std::vector<std::vector<int> > &dist,int stateA,int stateB) {
+
+    for(int i=0;i!= dist.size();++i)
+    {
+        for(int j(0),v(0);j!=dist[i].size();++j)
+        {
+            if(dist[i][j]==1) v++;
+            dist[i][j]=v;
+        }
+    }
     return 0;
 }
