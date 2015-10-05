@@ -202,6 +202,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
 
          PrintVector(haplotypeCluster[k-1], "haplotype state after merge state");
          PrintVector(clusterAllele[k-1],"state allele after merge allele");
+         fprintf(stderr,"\n");
      }
     //numCluster[k] = group;
     //forwardCursor->c = na;
@@ -515,7 +516,7 @@ int PBWTWrapper::MergeCluster(int site) {
 	int ret(0);
     int oldNumCluster = GetNumStates(site);
     int numHaps = haplotypeCluster[site].size();
-    std::vector<uchar> tmpAllele;
+
     //std::vector<std::vector<int> > clusterMemberShip(oldNumCluster,std::vector<int>());// state->position in current M array
     std::vector<std::vector<int> > dist(oldNumCluster,std::vector<int>(numHaps,0));//state->rank_occupied
     std::vector<bool> mergeIndicator(oldNumCluster,false);
@@ -532,13 +533,34 @@ int PBWTWrapper::MergeCluster(int site) {
 //    fprintf(stderr,"\n");
 
     double tmpABS=0;
+    int currentNumCluster=oldNumCluster-1;
+    std::unordered_map<int,int> stateOrder;//mapping oldState to newOrder
+    int tmpOrder(0);
+    std::vector<uchar> tmpAllele;
+
     for (int i = 0; i != numHaps; ++i)//from rank 0 to rank numHaps-1
     {
         //clusterMemberShip[haplotypeCluster[site][i]].push_back(i);//put haps in the same state into same vector
         dist[haplotypeCluster[site][alpha[site][i]]][i]=1;//record rank occupation indicator for each cluster
+
         for (int j = 0; j < dist.size(); ++j) {
-            for (int k = j+1; k < dist.size(); ++k) {
-                if(clusterAllele[site][j]!=clusterAllele[site][k]) continue;
+            if(i==numHaps-1)
+            {
+                if(mergeIndicator[j])//ToDO: need adjustment for trangle situation
+                {
+                    continue;
+                }
+                else
+                {
+                    tmpAllele.push_back(clusterAllele[site][j]);
+                    stateOrder[j]=tmpOrder;
+                    tmpOrder++;
+                }
+            }
+            for (int k = j+1; k < dist.size(); ++k)
+            {
+                if(clusterAllele[site][j]!=clusterAllele[site][k] || mergeIndicator[k]) continue;
+
                 double total=clusterMembership[j].size()+clusterMembership[k].size();
                 if(dist[j][i]==1)
                 {
@@ -554,84 +576,128 @@ int PBWTWrapper::MergeCluster(int site) {
                 tmpABS=fabs(hapsCounted[j][k].first-hapsCounted[j][k].second);
 
                 if(tmpABS>Dmax[j][k]) Dmax[j][k]=tmpABS;
-            }
-        }
-
-    }
 
 
-
-    if(DEBUG)
-    {
-        std::cerr<<"\nenter rank distribution section, site "<<site<<":"<<std::endl;
-        for (auto i = 0; i != dist.size(); ++i) {
-           // PrintDistributionAtSite(i,haplotypeCluster[i]);
-            PrintDistributionAtSite(i,dist[i]);
-        }
-        std::cerr<<"exit rank distribution section!\n"<<std::endl;
-        //exit(0);
-    }
-   // PrintVector(clusterAllele[site],"haplotype cluster states before");
-   // PrintVector(haplotypeCluster[site],"haplotype cluster states before");
-    int currentNumCluster=oldNumCluster-1;
-    std::unordered_map<int,int> stateOrder;//mapping oldState to newOrder
-    int tmpOrder(0);
-
-    while(currentNumCluster!=oldNumCluster) {
-        oldNumCluster=currentNumCluster;
-        tmpAllele.clear();//TODO:tmpAllele order
-        stateOrder.clear();
-        tmpOrder=0;
-
-        for (auto i = 0; i != dist.size(); ++i) {
-            if(mergeIndicator[i])
-            {
-                continue;
-            }
-            else
-            {
-                tmpAllele.push_back(clusterAllele[site][i]);
-                stateOrder[i]=tmpOrder;
-                tmpOrder++;
-            }
-
-            for (auto j = i + 1; j != dist.size(); ++j) {
-                if(mergeIndicator[j]) continue;
-                if(DEBUG)fprintf(stderr,"now testing state %d and state %d\n",i,j);
-                if(clusterAllele[site][i]==clusterAllele[site][j] && KStest(Dmax[i][j],clusterMembership[i].size(),clusterMembership[j].size()))
+                if(DEBUG && i==numHaps-1)
                 {
-					ret = 1;
-
-
-                    //PrintVector(dist[i],"state i");
-                    //PrintVector(dist[j],"state j");
-
-                    if(DEBUG)fprintf(stderr,"merge state:%d and state:%d\n",i,j);
-                    currentNumCluster--;
-                    //Merge Action, change mergeIndicator
-                    for(int t=0;t!=dist[i].size();++t)
-                    {
-                        dist[i][t]+=dist[j][t];
+                    std::cerr<<"\nenter rank distribution section, site "<<site<<":"<<std::endl;
+                    for (auto i = 0; i != dist.size(); ++i) {
+                        // PrintDistributionAtSite(i,haplotypeCluster[i]);
+                        PrintDistributionAtSite(i,dist[i]);
                     }
-                    mergeIndicator[j]=true;// j th cluster has been merged into i th cluster
+                    std::cerr<<"exit rank distribution section!\n"<<std::endl;
+                    //exit(0);
+                }
 
-                    for(int t=0;t!=clusterMembership[j].size();++t)
-                    {
-                        haplotypeCluster[site][clusterMembership[j][t]]=i;
-                        clusterMembership[i].push_back(clusterMembership[j][t]);
-                    }
-                    clusterMembership[j].clear();
-                    //if(DEBUG)std::cerr<<"Merge\t"<<j<<"\tinto\t"<<i<<std::endl;
+                if(i==numHaps-1 && KStest(Dmax[j][k],clusterMembership[j].size(),clusterMembership[k].size()))
+                {
+                        ret = 1;
 
-                    //if(clusterAllele[site][i]!=clusterAllele[site][j]) die((char*)"alert: two states ready to be merged have different allele");
 
-                    //break;//TODO:need experiment
+                        //PrintVector(dist[i],"state i");
+                        //PrintVector(dist[j],"state j");
+
+                        if(DEBUG)fprintf(stderr,"merge state:%d and state:%d\n",j,k);
+                        currentNumCluster--;
+                        //Merge Action, change mergeIndicator
+                        for(int t=0;t!=dist[j].size();++t)
+                        {
+                            dist[j][t]+=dist[k][t];
+                            dist[k][t]=-65534;
+                        }
+                        mergeIndicator[k]=true;// j th cluster has been merged into i th cluster
+
+                        for(int t=0;t!=clusterMembership[k].size();++t)
+                        {
+                            haplotypeCluster[site][clusterMembership[k][t]]=j;
+                            clusterMembership[j].push_back(clusterMembership[k][t]);
+                        }
+                        clusterMembership[k].clear();
+
+
+                        //if(clusterAllele[site][i]!=clusterAllele[site][j]) die((char*)"alert: two states ready to be merged have different allele");
+
+                        //break;//TODO:need experiment
+
                 }
             }
-            //PrintDistributionAtSite(i,dist[i]);
         }
-        //if(DEBUG)std::cerr<<"finish of last round"<<std::endl;
+
     }
+
+
+//
+//    if(DEBUG)
+//    {
+//        std::cerr<<"\nenter rank distribution section, site "<<site<<":"<<std::endl;
+//        for (auto i = 0; i != dist.size(); ++i) {
+//           // PrintDistributionAtSite(i,haplotypeCluster[i]);
+//            PrintDistributionAtSite(i,dist[i]);
+//        }
+//        std::cerr<<"exit rank distribution section!\n"<<std::endl;
+//        //exit(0);
+//    }
+   // PrintVector(clusterAllele[site],"haplotype cluster states before");
+   // PrintVector(haplotypeCluster[site],"haplotype cluster states before");
+//    int currentNumCluster=oldNumCluster-1;
+//    std::unordered_map<int,int> stateOrder;//mapping oldState to newOrder
+//    int tmpOrder(0);
+//
+//    while(currentNumCluster!=oldNumCluster) {
+//        oldNumCluster=currentNumCluster;
+//        tmpAllele.clear();//TODO:tmpAllele order
+//        stateOrder.clear();
+//        tmpOrder=0;
+//
+//        for (auto i = 0; i != dist.size(); ++i) {
+//            if(mergeIndicator[i])
+//            {
+//                continue;
+//            }
+//            else
+//            {
+//                tmpAllele.push_back(clusterAllele[site][i]);
+//                stateOrder[i]=tmpOrder;
+//                tmpOrder++;
+//            }
+//
+//            for (auto j = i + 1; j != dist.size(); ++j) {
+//                if(mergeIndicator[j]) continue;
+//                if(DEBUG)fprintf(stderr,"now testing state %d and state %d\n",i,j);
+//                if(clusterAllele[site][i]==clusterAllele[site][j] && KStest(Dmax[i][j],clusterMembership[i].size(),clusterMembership[j].size()))
+//                {
+//					ret = 1;
+//
+//
+//                    //PrintVector(dist[i],"state i");
+//                    //PrintVector(dist[j],"state j");
+//
+//                    if(DEBUG)fprintf(stderr,"merge state:%d and state:%d\n",i,j);
+//                    currentNumCluster--;
+//                    //Merge Action, change mergeIndicator
+//                    for(int t=0;t!=dist[i].size();++t)
+//                    {
+//                        dist[i][t]+=dist[j][t];
+//                    }
+//                    mergeIndicator[j]=true;// j th cluster has been merged into i th cluster
+//
+//                    for(int t=0;t!=clusterMembership[j].size();++t)
+//                    {
+//                        haplotypeCluster[site][clusterMembership[j][t]]=i;
+//                        clusterMembership[i].push_back(clusterMembership[j][t]);
+//                    }
+//                    clusterMembership[j].clear();
+//                    //if(DEBUG)std::cerr<<"Merge\t"<<j<<"\tinto\t"<<i<<std::endl;
+//
+//                    //if(clusterAllele[site][i]!=clusterAllele[site][j]) die((char*)"alert: two states ready to be merged have different allele");
+//
+//                    //break;//TODO:need experiment
+//                }
+//            }
+//            //PrintDistributionAtSite(i,dist[i]);
+//        }
+//        //if(DEBUG)std::cerr<<"finish of last round"<<std::endl;
+//    }
     //fprintf(stderr,"old states:%d\tnew states:%d\n",GetNumStates(site),currentNumCluster);
     if(ret) {
         //adjust d array and a array
@@ -689,16 +755,16 @@ int PBWTWrapper::SetHaps(char **haps) {
 }
 
 int PBWTWrapper::PrintDistributionAtSite(int state,std::vector<int> &dist) {
-    std::ofstream fout("/Users/fanzhang/Downloads/PlutoTest/rank.txt",std::ofstream::app);
+    //std::ofstream fout("/Users/fanzhang/Downloads/PlutoTest/rank.txt",std::ofstream::app);
     std::cerr<<"state:"<<state<<":\t";
-    fout<<"state:"<<state<<":\t";
+   // fout<<"state:"<<state<<":\t";
     for(auto k:dist) {
         std::cerr << k << "\t";
-        fout << k << "\t";
+    //    fout << k << "\t";
 
     }
     std::cerr<<std::endl;
-    fout<<std::endl;
+    //fout<<std::endl;
 
     return 0;
 }
