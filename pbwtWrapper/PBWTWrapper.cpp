@@ -557,15 +557,18 @@ int PBWTWrapper::MergeCluster(int site) {
                     tmpOrder++;
                 }
             }
+            std::vector<int> tmpDist(dist[j]);//record the pivot state
+            int tmpMembershipSize=clusterMembership[j].size();
             for (int k = j+1; k < dist.size(); ++k)
             {
-                if(clusterAllele[site][j]!=clusterAllele[site][k] || mergeIndicator[k]) continue;
+                if(clusterAllele[site][j]!=clusterAllele[site][k] || mergeIndicator[k]) continue;//if alleles are different or merged once
 
-                double total=clusterMembership[j].size()+clusterMembership[k].size();
-                if(dist[j][i]==1)
+                double total=tmpMembershipSize+clusterMembership[k].size();
+                //if(dist[j][i]==1)
+                if(tmpDist[i]==1)
                 {
-                    rankSum[j][k]+=1;
-                    hapsCounted[j][k].first=(rankSum[j][k]+0.5)/total;
+                    rankSum[j][k]+=1;//rankSum between j and k increase by 1
+                    hapsCounted[j][k].first=(rankSum[j][k]+0.5)/total;//local rank between j and k updated and normalized by total rankSum
                 }
                 if(dist[k][i]==1)
                 {
@@ -573,7 +576,7 @@ int PBWTWrapper::MergeCluster(int site) {
                     hapsCounted[j][k].second=(rankSum[j][k]+0.5)/total;
                 }
 
-                tmpABS=fabs(hapsCounted[j][k].first-hapsCounted[j][k].second);
+                tmpABS=fabs(hapsCounted[j][k].first-hapsCounted[j][k].second);//tmp Dmax
 
                 if(tmpABS>Dmax[j][k]) Dmax[j][k]=tmpABS;
 
@@ -589,11 +592,9 @@ int PBWTWrapper::MergeCluster(int site) {
                     //exit(0);
                 }
 
-                if(i==numHaps-1 && KStest(Dmax[j][k],clusterMembership[j].size(),clusterMembership[k].size()))
+                if(i==numHaps-1 && KStest(Dmax[j][k],tmpMembershipSize,clusterMembership[k].size()))//last haplotypes, deal with merging test
                 {
                         ret = 1;
-
-
                         //PrintVector(dist[i],"state i");
                         //PrintVector(dist[j],"state j");
 
@@ -613,11 +614,6 @@ int PBWTWrapper::MergeCluster(int site) {
                             clusterMembership[j].push_back(clusterMembership[k][t]);
                         }
                         clusterMembership[k].clear();
-
-
-                        //if(clusterAllele[site][i]!=clusterAllele[site][j]) die((char*)"alert: two states ready to be merged have different allele");
-
-                        //break;//TODO:need experiment
 
                 }
             }
