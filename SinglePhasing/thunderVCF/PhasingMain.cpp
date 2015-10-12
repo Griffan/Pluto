@@ -813,15 +813,18 @@ void LoadShotgunResults(Pedigree &ped, char **genotypes, /*char* refalleles, dou
                         error("Negative PL or Positive GL observed");
                     }
 
-                    //printf("phred scores are %f, %f, %f\n", phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble());
 
                     if (phred11 > maxPhred) phred11 = maxPhred;
                     if (phred12 > maxPhred) phred12 = maxPhred;
                     if (phred22 > maxPhred) phred22 = maxPhred;
 
+                   // printf("phred scores are %f, %f, %f;\tphred11/12/22 %d, %d, %d\n", phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble(),phred11,phred12,phred22);
+
+
                     genotypes[personIndices[i]][genoindex] = phred11;
                     genotypes[personIndices[i]][genoindex + 1] = phred12;
                     genotypes[personIndices[i]][genoindex + 2] = phred22;
+                    //fprintf(stderr,"marker:%d\t%d\t%d\t%d\n",markerindex,genotypes[personIndices[i]][genoindex],genotypes[personIndices[i]][genoindex + 1],genotypes[personIndices[i]][genoindex + 2] );
                 }
             }
         }

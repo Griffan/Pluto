@@ -10,7 +10,7 @@ static void printLeftMatrix(float * probability, int numStates)
 {
 	for (int i = 0; i <numStates; ++i) {
 		for (int j = 0; j <= i; ++j, probability++) {
-			fprintf(stderr, "(%d,%d):%f\t", i, j, *probability);
+			fprintf(stderr, "(%d,%d):%9.9f\t", i, j, *probability);
 		}
 		fprintf(stderr, "\n");
 	}
@@ -214,7 +214,7 @@ void PBWTHaplotyper::ConditionOnData(float *matrix, int marker, char phred11, ch
     uchar ph22 = (unsigned char) phred22;
 
     CalculatePhred2Prob();
-    //fprintf(stderr,"(ph11,ph12,ph22)=(%d,%d,%d)\n",ph11,ph12,ph22);
+    //if(marker==106) fprintf(stderr,"(ph11,ph12,ph22)=(%d,%d,%d)\n",ph11,ph12,ph22);
     for (int i = 0; i < 3; i++)
         conditional_probs[i] = Penetrance(marker, i, 0) * phred2prob[ph11] +
                                Penetrance(marker, i, 1) * phred2prob[ph12] +
@@ -262,9 +262,9 @@ void PBWTHaplotyper::ScoreLeftConditional() {
             GetMemoryBlock(i);
 
             Transpose(i, from, leftMatrices[i]);
+           // if(i==106)            fprintf(stderr,"marker:%d\t%d\t%d\t%d\n",i,genotypes[individuals - 1][markerindex],genotypes[individuals - 1][markerindex + 1],genotypes[individuals - 1][markerindex + 2]);
             ConditionOnData(leftMatrices[i], i, genotypes[individuals - 1][markerindex],
-                            genotypes[individuals - 1][markerindex + 1], genotypes[individuals - 1][markerindex +
-                                                                                                    2]);//based on genotype of individual need to be phased
+                            genotypes[individuals - 1][markerindex + 1], genotypes[individuals - 1][markerindex + 2]);//based on genotype of individual need to be phased
 
             from = leftMatrices[i];
 
@@ -285,7 +285,6 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
 
         if (i < individuals - phased) {
             SwapIndividuals(i, individuals - 1);
-
             clock_t t=clock();
             ExtractHeterSites(individuals-1);
             Wrapper->SetHaps(haplotypes);
@@ -416,14 +415,17 @@ void  PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *
     int currentHap1 = 2 * (individuals - 1);
     int currentHap2 = currentHap1 + 1;
 
-    int copied1 = haplotypes[state1][marker];
-    int copied2 = haplotypes[state2][marker];
-    //fprintf(stdout,"marker %d copied genotype: %d|%d\t",marker,copied1,copied2);
+    int copied1 = Wrapper->clusterAllele[marker][state1];//haplotypes[state1][marker];
+    int copied2 = Wrapper->clusterAllele[marker][state2];//haplotypes[state2][marker];
+    //if(marker==106)fprintf(stdout,"marker %d copied genotype: %d|%d\t",marker,copied1,copied2);
 
     int markerindex = marker * 3;
-    int ph11 = (unsigned char) genotypes[states / 2][markerindex];
-    int ph12 = (unsigned char) genotypes[states / 2][markerindex + 1];
-    int ph22 = (unsigned char) genotypes[states / 2][markerindex + 2];
+//    int ph11 = (unsigned char) genotypes[states / 2][markerindex];
+//    int ph12 = (unsigned char) genotypes[states / 2][markerindex + 1];
+//    int ph22 = (unsigned char) genotypes[states / 2][markerindex + 2];
+    int ph11 = (unsigned char) genotypes[individuals - 1][markerindex];
+    int ph12 = (unsigned char) genotypes[individuals - 1][markerindex + 1];
+    int ph22 = (unsigned char) genotypes[individuals - 1][markerindex + 2];
 
     CalculatePhred2Prob();
 
@@ -538,7 +540,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
     // printf("        Selected state: %g\n", *(probability - 1));
 
     for (int j = markers - 2; j >= 0; j--) {
-        //fprintf(stderr,"marker:%d\tlastSum:%f\tSum: %lf, choice:%lf,Chose (%d,%d) out of (%d) states\n",j, lastSum,sum, choice,first, second,GetStateNumFrom(j));
+        //fprintf(stderr,"marker:%d\tlastSum:%9.9f\tSum: %9.9f, choice:%9.9f,Chose (%d,%d) out of (%d) states\n",j+1, lastSum,sum, choice,first, second,GetStateNumFrom(j));
         //Wrapper->PrintVector(Wrapper->haplotypeCluster[j],"states");
         ImputeAlleles(j + 1, first, second, rand);//TODO:modify needed, like the part before fillpath
         int j0 = j;
@@ -562,7 +564,8 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
         RetrieveMemoryBlock(j);
         probability = leftMatrices[j];
 
-        //printLeftMatrix(probability,states);
+//        if(j==106)
+//        printLeftMatrix(probability,states);
 
         fromWhere=j;//TODO: remain question
         if(first!=second) {

@@ -61,12 +61,14 @@ int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
 
 
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 0");
+
     for (int k = 0; k != pbwtCore->N; ++k) {
+        //fprintf(stderr,"at site %d\n",k);
         CursorForwardsTo(k, PREFIX_LENGTH);
     }
     //copy end of a to PBWT
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 1");
-    
+
     pbwtCursorToAFend(forwardCursor, pbwtCore);
 
     for (int i=0;i != pbwtCore->N; i++) {
