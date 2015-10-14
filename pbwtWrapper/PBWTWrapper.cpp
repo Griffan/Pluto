@@ -737,7 +737,7 @@ int PBWTWrapper::MergeCluster(int site) {
 //}
 bool PBWTWrapper::KStest(const double& Dmax, const int & sizeA, const int & sizeB) {
 
-    double thresh=1.95*std::sqrt(double(sizeA+sizeB)/(sizeA*sizeB));
+    double thresh=1*std::sqrt(double(sizeA+sizeB)/(sizeA*sizeB));
     if(DEBUG)fprintf(stderr,"Dmax:%lf and threshold:%f\n",Dmax,thresh);
     if(isinf(thresh)||isnan(thresh))
         return false;
