@@ -540,12 +540,30 @@ int PBWTWrapper::MergeCluster(int site) {
     int tmpOrder(0);
     std::vector<uchar> tmpAllele;
 
-    for (int i = 0; i != numHaps; ++i)//from rank 0 to rank numHaps-1
-    {
-        //clusterMemberShip[haplotypeCluster[site][i]].push_back(i);//put haps in the same state into same vector
-        dist[haplotypeCluster[site][alpha[site][i]]][i]=1;//record rank occupation indicator for each cluster
+//    for (int i = 0; i != numHaps; ++i)//from rank 0 to rank numHaps-1
+//    {
+//        //alpha[site][i]:original index of haps at i th place, e.g. david is the ith haplotype
+//        //haplotypeCluster[site][alpha[site][i]]: david's state status, saying state is michigan
+//        //dist[haplotypeCluster[site][alpha[site][i]]][i]: state michigan's ith slot is occupied
+//        //the structure looks like:
+//        //state 1:0000001000100
+//        //state 2:0100100000010
+//        //state 3:1011010111001
+//        dist[haplotypeCluster[site][alpha[site][i]]][i] = 1;//record rank occupation indicator for each cluster, haplotypeCluster record state status for haplotype alpha[site][i]]
+//    }
 
-        for (int j = 0; j < dist.size(); ++j) {
+        for (int i = 0; i != numHaps; ++i)//from rank 0 to rank numHaps-1
+    {
+        //alpha[site][i]:original index of haps at i th place, e.g. david is the ith haplotype
+        //haplotypeCluster[site][alpha[site][i]]: david's state status, saying state is michigan
+        //dist[haplotypeCluster[site][alpha[site][i]]][i]: state michigan's ith slot is occupied, or where is the ith haplotype located, michigan state's ith slot
+        //the structure looks like:
+        //state 1:0000001000100
+        //state 2:0100100000010
+        //state 3:1011010111001
+        dist[haplotypeCluster[site][alpha[site][i]]][i]=1;//record rank occupation indicator for each cluster, haplotypeCluster record state status for haplotype alpha[site][i]]
+
+        for (int j = 0; j < dist.size(); ++j) {//enumerate through all the states
             if(i==numHaps-1)
             {
                 if(mergeIndicator[j])//ToDO: need adjustment for trangle situation
@@ -561,18 +579,18 @@ int PBWTWrapper::MergeCluster(int site) {
             }
             std::vector<int> tmpDist(dist[j]);//record the pivot state
             int tmpMembershipSize=clusterMembership[j].size();
-            for (int k = j+1; k < dist.size(); ++k)
+            for (int k = j+1; k < dist.size(); ++k)//comparing state j and state k
             {
                 if(clusterAllele[site][j]!=clusterAllele[site][k] || mergeIndicator[k]) continue;//if alleles are different or merged once
 
                 double total=tmpMembershipSize+clusterMembership[k].size();
                 //if(dist[j][i]==1)
-                if(tmpDist[i]==1)
+                if(tmpDist[i]==1)//if j's ith slot is occupied
                 {
                     rankSum[j][k]+=1;//rankSum between j and k increase by 1
                     hapsCounted[j][k].first=(rankSum[j][k]+0.5)/total;//local rank between j and k updated and normalized by total rankSum
                 }
-                if(dist[k][i]==1)
+                if(dist[k][i]==1)//if k's ith slot is occupied
                 {
                     rankSum[j][k]+=1;
                     hapsCounted[j][k].second=(rankSum[j][k]+0.5)/total;
@@ -737,7 +755,7 @@ int PBWTWrapper::MergeCluster(int site) {
 //}
 bool PBWTWrapper::KStest(const double& Dmax, const int & sizeA, const int & sizeB) {
 
-    double thresh=1*std::sqrt(double(sizeA+sizeB)/(sizeA*sizeB));
+    double thresh=0.2*std::sqrt(double(sizeA+sizeB)/(sizeA*sizeB));
     if(DEBUG)fprintf(stderr,"Dmax:%lf and threshold:%f\n",Dmax,thresh);
     if(isinf(thresh)||isnan(thresh))
         return false;

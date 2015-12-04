@@ -69,6 +69,7 @@ protected:
 	char** tmpHaps;
 	char ** tmpGeno;
 	int tmpMarkers;
+	double max_num;
 
 	std::vector<char> relativeIndexToAbsolute;
 	std::unordered_map<int,int> absoluteIndexToRelative;

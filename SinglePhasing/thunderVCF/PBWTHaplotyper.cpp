@@ -25,6 +25,7 @@ PBWTHaplotyper::PBWTHaplotyper(int nhaps, int nsnps) {
 
 PBWTHaplotyper::PBWTHaplotyper() {
     onlyHeterSite=false;
+    max_num=0;
 }
 
 void PBWTHaplotyper::InitAuxillary() {
@@ -266,8 +267,8 @@ void PBWTHaplotyper::ScoreLeftConditional() {
 
             Transpose(i, from, leftMatrices[i]);
 
-//            fprintf(stderr,"marker:%d\tout of (%d) states\n",i,GetStateNumFrom(i-1));
-//            printLeftMatrix(from,GetStateNumFrom(i-1));
+            //fprintf(stderr,"marker:%d\tout of (%d) states\n",i,GetStateNumFrom(i-1));
+            //printLeftMatrix(from,GetStateNumFrom(i-1));
 
             ConditionOnData(leftMatrices[i], i, genotypes[individuals - 1][markerindex],genotypes[individuals - 1][markerindex + 1], genotypes[individuals - 1][markerindex + 2]);//based on genotype of individual need to be phased
 
@@ -364,8 +365,10 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
     //int currentIndividualOriginalState1 = GetCurrentIndividualState(fromWhere, 0);
     //int currentIndividualOriginalState2 = GetCurrentIndividualState(fromWhere, 1);
     // This final loop actually transposes the probabilities for each state
-   if(*source < 10e-10)
-        factor= 10e5;
+   if(max_num < 10e-10) {
+       factor = 10e5;
+       max_num=0;
+   }
 //    if (weights == NULL)
         for (int k = 0; k < numToStates; ++k) {
 
@@ -393,6 +396,7 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
                     probability++;
                 }
                 //fprintf(stderr,"site:%d:(%d,%d) %f\t\n",site,k,l,*output);
+                if(*output>max_num) max_num=*output;
                 *output *=factor;
                 output++;
 
@@ -411,6 +415,7 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
                 probability++;
             }
             //fprintf(stderr,"site:%d:(%d,%d) %f\t\n",site,k,k,*output);
+            if(*output>max_num) max_num=*output;
             *output *= factor;
             output++;
 
@@ -549,7 +554,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
     // printf("        Selected state: %g\n", *(probability - 1));
 
     for (int j = markers - 2; j >= 0; j--) {
-//        fprintf(stderr,"marker:%d\tlastSum:%9.9f\tSum: %9.9f, choice:%9.9f,Chose (%d,%d) out of (%d) states\n",j+1, lastSum,sum, choice,first, second,GetStateNumFrom(j+1));
+ //       fprintf(stderr,"marker:%d\tlastSum:%9.9f\tSum: %9.9f, choice:%9.9f,Chose (%d,%d) out of (%d) states\n",j+1, lastSum,sum, choice,first, second,GetStateNumFrom(j+1));
 //        //Wrapper->PrintVector(Wrapper->haplotypeCluster[j],"states");
 //        //if(j==106)
 //        printLeftMatrix(leftMatrices[j+1],GetStateNumFrom(j+1));
@@ -616,7 +621,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
                             + GetTransitionProb(fromWhere, first, second0) *
                               GetTransitionProb(fromWhere, second, first0));
 
-                    if (sum > choice) {
+                    if (sum >= choice) {
                         goto JUMPOUT;
                         //break;
                     }
@@ -628,7 +633,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
                                        GetTransitionProb(fromWhere, first, second0));
                 probability++;
 
-                if (sum > choice) {
+                if (sum >= choice) {
                     //second=first;
                     break;
                 }
@@ -649,7 +654,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
                     sum += *probability *
                            (GetTransitionProb(fromWhere, first, first0) * GetTransitionProb(fromWhere, second, second0));
 
-                    if (sum > choice) {
+                    if (sum >= choice) {
                         goto JUMPOUT2;
                         //break;
                     }
@@ -659,7 +664,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
                                        GetTransitionProb(fromWhere, first, second0));
                 probability++;
 
-                if (sum > choice) {
+                if (sum >= choice) {
                     //second=first;
                     break;
                 }
