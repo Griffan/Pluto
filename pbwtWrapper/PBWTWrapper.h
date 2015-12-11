@@ -9,7 +9,7 @@
  */
 #ifndef PLUTO_PBWTWRAPPER_H
 #define PLUTO_PBWTWRAPPER_H
-#define DEBUG 0
+#define DEBUG 1
 #include "pbwt/pbwt.h"
 #include <vector>
 #include <unordered_map>

@@ -6,5 +6,4 @@ libStatGen
 Debug
 build
 CMakeLists.txt
-TestUnit
 pbwtWrapper/CMakeLists.txt
