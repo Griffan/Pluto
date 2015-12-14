@@ -9,7 +9,7 @@
  */
 #ifndef PLUTO_PBWTWRAPPER_H
 #define PLUTO_PBWTWRAPPER_H
-#define DEBUG 1
+#define DEBUG 0
 #include "pbwt/pbwt.h"
 #include <vector>
 #include <unordered_map>
@@ -22,10 +22,11 @@ public:
     PBWT* pbwtCore;
     PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<std::vector<int> > a,alpha/*reverse*/;
+    std::vector<std::unordered_map<int,int> > aMap,alphaMap;
     std::vector<std::vector<int> > d;//,delta/*reverse*/;
     std::vector<std::vector<uchar> > sortedY/*only for test*/;
     //std::vector<int> numZero;/*number of zero at each site*/
-    std::vector<std::vector<int> > haplotypeCluster;
+    std::vector<std::vector<int> > haplotypeCluster;//site, rank
     std::vector<std::vector<uchar> > clusterAllele;//numCluster;//at each site
 	//std::unordered_map<int,std::vector<std::vector<float> > > transVector;//transition probability: site,from,to
     std::vector<std::vector<std::vector<float> > > transVector;
@@ -60,6 +61,7 @@ public:
     int CursorBackwardsTo(int k, int T=5);
 	int ObtainHapFromSinglePhasing(char ** haps);//I implement it here, but not using it for now
     inline int CopyHap(int k, PbwtCursor* Cursor);
+
 
 	int UpdateTransVector(int site);
     int MergeCluster(int site);
@@ -138,7 +140,47 @@ public:
         std::cerr<<std::endl;
     }
 
+    inline float CalDmax(std::vector<int> a, std::vector<int> b)
+    {
+        int size=a.size()+b.size();
+        if(a.size()>b.size())
+        {
+            std::vector<int> tmp=a;
+            a=b;
+            b=tmp;
+        }
+        std::vector<int> A(size,0),B(size,0);
+        std::sort(a.begin(),a.end());
+        std::sort(b.begin(),b.end());
+        int currentA(a[0]),currentB(b[0]);
+        for (int totalRank(0),i(0),j(0),cumuNumA(0),cumuNumB(0);totalRank<size;totalRank++) {
+            if((currentA<currentB&&i<a.size())||j==b.size())
+            {
+                cumuNumA++;
+                A[totalRank]=cumuNumA;
+                B[totalRank]=cumuNumB;
+                i++;
+                currentA=a[i];
+            }
+            else
+            {
+                cumuNumB++;
+                A[totalRank]=cumuNumA;
+                B[totalRank]=cumuNumB;
+                j++;
+                currentB=b[j];
+            }
+        }
+        float Dmax(0);
+        for (int k = 0; k < size; ++k) {
+            if(abs(A[k]-B[k])>Dmax) Dmax=abs(A[k]-B[k]);
+        }
+
+        return Dmax/size;
+    }
     int PrintSummary();
+
+
 };
 
 #endif //PLUTO_PBWTWRAPPER_H
