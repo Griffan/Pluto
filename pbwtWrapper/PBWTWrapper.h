@@ -157,7 +157,7 @@ public:
         for (int totalRank(0),i(0),j(0),cumuNumA(0),cumuNumB(0);totalRank<size;totalRank++) {
             if((currentA<currentB&&i<a.size())||j==b.size())
             {
-                cumuNumA++;
+                cumuNumA=totalRank;
                 A[totalRank]=cumuNumA;
                 B[totalRank]=cumuNumB;
                 i++;
@@ -165,7 +165,7 @@ public:
             }
             else
             {
-                cumuNumB++;
+                cumuNumB=totalRank;
                 A[totalRank]=cumuNumA;
                 B[totalRank]=cumuNumB;
                 j++;

@@ -7,7 +7,7 @@
 #include "algorithm"
 #include "random"
 //#define DEBUG 1
-#define DEBUG2
+#define DEBUG3
 #ifdef DEBUG2
 using namespace std;
 char**  HapsInit(int M, int N)
@@ -59,17 +59,18 @@ int RandomShuffle(char** &haps,int M)
     return 0;
 }
 
-int AddRandomSuffix(char** &haps,int M)
+char** AddRandomSuffix(char** &haps,int M, unsigned seed)
 {
+    srand(seed);
     for (int i = 0; i <M ; ++i) {
-        int suffix=rand() % (8);
+        int suffix=rand() % 8;
         char* tmp=new char[1+strlen(haps[i])+strlen(string(to_string(suffix)).c_str())];
         strcpy(tmp,haps[i]);
         strcat(tmp,string(to_string(suffix)).c_str());
         haps[i]=tmp;
     }
 
-    return 0;
+    return haps;
 }
 int main(int argc, char ** argv) {
 
@@ -78,10 +79,12 @@ int main(int argc, char ** argv) {
     int M=21+79+95+116+25+112+152;
     int N=8;
     char ** haps=HapsInit(M,N);
-    AddRandomSuffix(haps,M);
+
     //RandomShuffle(haps,M);
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    //std::shuffle(haps,haps+M,std::default_random_engine(seed));
+    haps=AddRandomSuffix(haps,M,seed);
+    std::shuffle(haps,haps+M,std::default_random_engine(seed));
+    std::shuffle(haps,haps+M,std::default_random_engine(seed));
     PBWTWrapper * Graph=new PBWTWrapper(M,N);
     Graph->SetHaps(haps);
     Graph->CursorBackwards();

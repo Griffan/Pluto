@@ -473,7 +473,7 @@ int PBWTWrapper::MergeCluster(int site) {
     fprintf(stderr,"calculating Dmax:\n");
     for (int l = 0; l < clusterMembership.size(); ++l) {
         for (int i = l+1; i < clusterMembership.size(); ++i) {
-            fprintf(stderr,"state %d and %d: %f and thresh:%f and sample size:%d and %d\n",l,i,CalDmax(tmpRank[l],tmpRank[i]),1.5678*std::sqrt(double(clusterMembership[l].size()+clusterMembership[i].size())/(clusterMembership[l].size()*clusterMembership[i].size())),clusterMembership[l].size(),clusterMembership[i].size());
+            fprintf(stderr,"state %d and %d: %f and thresh:%f and sample size:%d and %d\n",l,i,CalDmax(tmpRank[l],tmpRank[i]),1.36*std::sqrt(double(clusterMembership[l].size()+clusterMembership[i].size())/(clusterMembership[l].size()*clusterMembership[i].size())),clusterMembership[l].size(),clusterMembership[i].size());
         }
     }
 
@@ -524,18 +524,21 @@ int PBWTWrapper::MergeCluster(int site) {
                 //if(dist[j][i]==1)
                 if(tmpDist[i]==1)//if j's ith slot is occupied
                 {
-                //    rankSum[j][k]+=1;//rankSum between j and k increase by 1
-                    //hapsCounted[j][k].first=(rankSum[j][k]+0.5)/total;//local rank between j and k updated and normalized by total rankSum
-                    hapsCounted[j][k].first++;
+                    rankSum[j][k]+=1;//rankSum between j and k increase by 1
+                    hapsCounted[j][k].first=rankSum[j][k];//local rank between j and k updated and normalized by total rankSum
+                    //hapsCounted[j][k].first++;
                 }
                 else if(dist[k][i]==1)//if k's ith slot is occupied
                 {
-                 //   rankSum[j][k]+=1;
-                    //hapsCounted[j][k].second=(rankSum[j][k]+0.5)/total;
-                    hapsCounted[j][k].second++;
+                    rankSum[j][k]+=1;
+                    hapsCounted[j][k].second=rankSum[j][k];
+                    //hapsCounted[j][k].second++;
                 }
+                else if(i!= numHaps-1)
+                    continue;
+
                 tmpABS=fabs(hapsCounted[j][k].first-hapsCounted[j][k].second);//tmp Dmax
-                //std::cerr<<"hapsCounted["<<j<<"]["<<k<<"]:"<<hapsCounted[j][k].first<<"\t"<<hapsCounted[j][k].second<<"\t"<<tmpABS<<std::endl;
+                //if(j==0 and k==1)std::cerr<<"hapsCounted["<<j<<"]["<<k<<"]:"<<hapsCounted[j][k].first<<"\t"<<hapsCounted[j][k].second<<"\t"<<tmpABS<<std::endl;
 
                 //_LIBCPP_ASSERT(total,rankSum[j][k]);
                 if(tmpABS>Dmax[j][k]) Dmax[j][k]=tmpABS;
