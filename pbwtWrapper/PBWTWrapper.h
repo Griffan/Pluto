@@ -9,7 +9,7 @@
  */
 #ifndef PLUTO_PBWTWRAPPER_H
 #define PLUTO_PBWTWRAPPER_H
-#define DEBUG 0
+#define DEBUG 1
 #include "pbwt/pbwt.h"
 #include <vector>
 #include <unordered_map>
@@ -174,11 +174,13 @@ public:
         }
         float Dmax(0);
         for (int k = 0; k < size; ++k) {
-            if(abs(A[k]-B[k])>Dmax) Dmax=abs(A[k]-B[k]);
+            float tmp=abs(A[k]-B[k]);
+            if(tmp>Dmax) Dmax=tmp;
         }
 
         return Dmax/size;
     }
+
     int PrintSummary();
 
 

@@ -8,7 +8,7 @@
 #define PREFIX 5
 MergingEventSimulator::MergingEventSimulator() {
     originalString="000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-    nHaps=100;
+    nHaps=600;
     markerIndex=PREFIX;
     finalStringArray=vector<string>(nHaps,originalString);
     Branch a;
@@ -128,17 +128,19 @@ void MergingEventSimulator::PutSimulatedEventIntoStringArray() {
     {
         do
         {
-            indexToPut = (rand() % originalString.length() - 1) + 1;
+            indexToPut = rand() % (originalString.length() - 80) + 1;
         }while(hasMutation[indexToPut]||indexToPut<=PREFIX+1);
         partitionToPut=(rand() % dag[indexToPut].size());
         a=dag[indexToPut][partitionToPut].first;
         b=dag[indexToPut][partitionToPut].second;
-    }while(a.size()<2);//||!IsBranchEqual(a,b));
+    }while(a.size()<10);//||!IsBranchEqual(a,b));
 
-    int numFlip=rand()%(a.size()-20)+20;
+    int numFlip=rand()%(a.size())+1;
+
     for (int i = 0; i <numFlip ; ++i) {
         std::shuffle(a.begin(),a.end(),std::default_random_engine(seed));
         int index=a[i];
+        //std::cerr<<"index:"<<index<<" indexToPut:"<<indexToPut<<std::endl;
         finalStringArray[index][indexToPut]='1';
     }
     cerr<<"Simulating event at Marker "<<indexToPut<<", Partition "<<partitionToPut<<", first "<<numFlip<<" individuals"<<endl;

@@ -454,28 +454,28 @@ int PBWTWrapper::MergeCluster(int site) {
     std::vector<std::vector<std::pair<double,double> > > hapsCounted(oldNumCluster,std::vector<std::pair<double,double> >(oldNumCluster,std::make_pair<int,int>(0,0)));
 
     std::vector<std::vector<int> > tmpRank(clusterMembership.size(),std::vector<int>());
-//    fprintf(stderr,"\n");
-//    fprintf(stderr,"membership for site %d:\n",site);
-//    for (int k = 0; k < clusterMembership.size(); ++k) {
-//        fprintf(stderr,"state:%d\n",k);
-//        for (int i = 0; i <clusterMembership[k].size(); ++i) {
-//            fprintf(stderr,"%d\t", alphaMap[site+1][a[site][clusterMembership[k][i]]]);
-//            tmpRank[k].push_back(alphaMap[site+1][a[site][clusterMembership[k][i]]]);
-//        }
-//        fprintf(stderr,"\n");
-//        fprintf(stderr,"seqID:%d\n",k);
-//        for (int i = 0; i <clusterMembership[k].size() ; ++i) {
-//            fprintf(stderr,"%d\t", a[site][clusterMembership[k][i]]);
-//        }
-//        fprintf(stderr,"\n");
-//    }
-//    fprintf(stderr,"\n");
-//    fprintf(stderr,"calculating Dmax:\n");
-//    for (int l = 0; l < clusterMembership.size(); ++l) {
-//        for (int i = l+1; i < clusterMembership.size(); ++i) {
-//            fprintf(stderr,"state %d and %d: %f and thresh:%f\n",l,i,CalDmax(tmpRank[l],tmpRank[i]),1.5678*std::sqrt(double(clusterMembership[l].size()+clusterMembership[i].size())/(clusterMembership[l].size()*clusterMembership[i].size())));
-//        }
-//    }
+    fprintf(stderr,"\n");
+    fprintf(stderr,"membership for site %d:\n",site);
+    for (int k = 0; k < clusterMembership.size(); ++k) {
+        fprintf(stderr,"state:%d\n",k);
+        for (int i = 0; i <clusterMembership[k].size(); ++i) {
+            fprintf(stderr,"%d\t", alphaMap[site+1][a[site][clusterMembership[k][i]]]);
+            tmpRank[k].push_back(alphaMap[site+1][a[site][clusterMembership[k][i]]]);
+        }
+        fprintf(stderr,"\n");
+        fprintf(stderr,"seqID:%d\n",k);
+        for (int i = 0; i <clusterMembership[k].size() ; ++i) {
+            fprintf(stderr,"%d\t", a[site][clusterMembership[k][i]]);
+        }
+        fprintf(stderr,"\n");
+    }
+    fprintf(stderr,"\n");
+    fprintf(stderr,"calculating Dmax:\n");
+    for (int l = 0; l < clusterMembership.size(); ++l) {
+        for (int i = l+1; i < clusterMembership.size(); ++i) {
+            fprintf(stderr,"state %d and %d: %f and thresh:%f and sample size:%d and %d\n",l,i,CalDmax(tmpRank[l],tmpRank[i]),1.5678*std::sqrt(double(clusterMembership[l].size()+clusterMembership[i].size())/(clusterMembership[l].size()*clusterMembership[i].size())),clusterMembership[l].size(),clusterMembership[i].size());
+        }
+    }
 
     double tmpABS=0;
     int currentNumCluster=oldNumCluster-1;
@@ -603,7 +603,7 @@ int PBWTWrapper::MergeCluster(int site) {
 
 bool PBWTWrapper::KStest(const double& Dmax, const int & sizeA, const int & sizeB) {
 
-    double thresh=1.5678*std::sqrt(double(sizeA+sizeB)/(sizeA*sizeB));
+    double thresh=1.36*std::sqrt(double(sizeA+sizeB)/(sizeA*sizeB));
     if(DEBUG)fprintf(stderr,"Dmax:%lf and threshold:%f\n",Dmax,thresh);
     if(isinf(thresh)||isnan(thresh))
         return false;
