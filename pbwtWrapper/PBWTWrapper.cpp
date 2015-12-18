@@ -516,13 +516,14 @@ int PBWTWrapper::MergeCluster(int site) {
             }
             std::vector<int> tmpDist(dist[j]);//record the pivot state
             int tmpMembershipSize=clusterMembership[j].size();
+            if(tmpMembershipSize<10) continue;
             for (int k = j+1; k < dist.size(); ++k)//comparing state j and state k
             {
                 if(/*clusterAllele[site][j]!=clusterAllele[site][k] ||*/ mergeIndicator[k]) continue;//if alleles are different or merged once
 
                 double total=tmpMembershipSize+clusterMembership[k].size();
                 double sizeRatio=tmpMembershipSize/total;
-                if(sizeRatio >0.99 || sizeRatio <0.01 ) continue;
+                if(sizeRatio >0.99 || sizeRatio <0.01 || clusterMembership[k].size()<10) continue;
 
 
                 if(tmpDist[i]==1)//if j's ith slot is occupied
