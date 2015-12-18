@@ -8,7 +8,7 @@
 #define PREFIX 5
 MergingEventSimulator::MergingEventSimulator() {
     originalString="000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-    nHaps=600;
+    nHaps=60;
     markerIndex=PREFIX;
     finalStringArray=vector<string>(nHaps,originalString);
     Branch a;

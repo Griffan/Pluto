@@ -85,8 +85,11 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
  *This function must be called along the sites, no skip permitted;
  *Mask the site you want to skip at the begining if you have to.
  */
-    int i, i0 = 0, ia, ib, na = 0, nb = 0, dmin;
+    int i, i0 = 0, ia;
     int group = 0;
+    int *tmpA,*tmpD;
+    tmpA=new int [M];
+    tmpD=new int [M];
     clusterMembership.clear();
     /*coppy array d*/
    // int *lastD = new int[forwardCursor->M + 1];
@@ -156,8 +159,10 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
         }
 
         if (forwardCursor->sortedY[i] == 0) {
-            forwardCursor->a[u] = forwardCursor->a[i];
-            forwardCursor->d[u] = p;
+            //forwardCursor->a[u] = forwardCursor->a[i];
+            //forwardCursor->d[u] = p;
+            tmpA[u] = forwardCursor->a[i];
+            tmpD[u] = p;
             ++u;
             p = 0;
            // na++;
@@ -209,6 +214,8 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
     //numCluster[k] = group;
     //forwardCursor->c = na;
     //numZero[k]=na;
+    memcpy(forwardCursor->a , tmpA, u * sizeof(int));
+    memcpy(forwardCursor->d , tmpD, u * sizeof(int));
     memcpy(forwardCursor->a + u, forwardCursor->b, v * sizeof(int));
     memcpy(forwardCursor->d + u, forwardCursor->e, v * sizeof(int));
     //forwardCursor->d[0] = k + 2;
@@ -516,14 +523,16 @@ int PBWTWrapper::MergeCluster(int site) {
             }
             std::vector<int> tmpDist(dist[j]);//record the pivot state
             int tmpMembershipSize=clusterMembership[j].size();
-            if(tmpMembershipSize<10) continue;
+
+           // if(tmpMembershipSize<10) continue;
+
             for (int k = j+1; k < dist.size(); ++k)//comparing state j and state k
             {
                 if(/*clusterAllele[site][j]!=clusterAllele[site][k] ||*/ mergeIndicator[k]) continue;//if alleles are different or merged once
 
                 double total=tmpMembershipSize+clusterMembership[k].size();
                 double sizeRatio=tmpMembershipSize/total;
-                if(sizeRatio >0.99 || sizeRatio <0.01 || clusterMembership[k].size()<10) continue;
+               // if(sizeRatio >0.99 || sizeRatio <0.01 || clusterMembership[k].size()<10) continue;
 
 
                 if(tmpDist[i]==1)//if j's ith slot is occupied
