@@ -521,7 +521,10 @@ int PBWTWrapper::MergeCluster(int site) {
                 if(/*clusterAllele[site][j]!=clusterAllele[site][k] ||*/ mergeIndicator[k]) continue;//if alleles are different or merged once
 
                 double total=tmpMembershipSize+clusterMembership[k].size();
-                //if(dist[j][i]==1)
+                double sizeRatio=tmpMembershipSize/total;
+                if(sizeRatio >0.99 || sizeRatio <0.01 ) continue;
+
+
                 if(tmpDist[i]==1)//if j's ith slot is occupied
                 {
                     rankSum[j][k]+=1;//rankSum between j and k increase by 1
