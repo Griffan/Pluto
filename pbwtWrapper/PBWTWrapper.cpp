@@ -56,7 +56,7 @@ PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)
 
 }
 
-#define PREFIX_LENGTH 20000
+#define PREFIX_LENGTH 1200
 int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
 
 
@@ -460,7 +460,7 @@ int PBWTWrapper::MergeCluster(int site) {
     std::vector<std::vector<float> > rankSum(oldNumCluster,std::vector<float>(oldNumCluster,0));
     std::vector<std::vector<std::pair<double,double> > > hapsCounted(oldNumCluster,std::vector<std::pair<double,double> >(oldNumCluster,std::make_pair<int,int>(0,0)));
 
-//    std::vector<std::vector<int> > tmpRank(clusterMembership.size(),std::vector<int>());
+    std::vector<std::vector<int> > tmpRank(clusterMembership.size(),std::vector<int>());
 //    fprintf(stderr,"\n");
 //    fprintf(stderr,"membership for site %d:\n",site);
 //    for (int k = 0; k < clusterMembership.size(); ++k) {
@@ -478,11 +478,11 @@ int PBWTWrapper::MergeCluster(int site) {
 //    }
 //    fprintf(stderr,"\n");
 //    fprintf(stderr,"calculating Dmax:\n");
-//    for (int l = 0; l < clusterMembership.size(); ++l) {
-//        for (int i = l+1; i < clusterMembership.size(); ++i) {
-//            fprintf(stderr,"state %d and %d: %f and thresh:%f and sample size:%d and %d\n",l,i,CalDmax(tmpRank[l],tmpRank[i]),1.36*std::sqrt(double(clusterMembership[l].size()+clusterMembership[i].size())/(clusterMembership[l].size()*clusterMembership[i].size())),clusterMembership[l].size(),clusterMembership[i].size());
-//        }
-//    }
+    for (int l = 0; l < clusterMembership.size(); ++l) {
+        for (int i = l+1; i < clusterMembership.size(); ++i) {
+            fprintf(stderr,"state %d and %d: %f and thresh:%f and sample size:%d and %d\n",l,i,CalDmax(tmpRank[l],tmpRank[i]),1.36*std::sqrt(double(clusterMembership[l].size()+clusterMembership[i].size())/(clusterMembership[l].size()*clusterMembership[i].size())),clusterMembership[l].size(),clusterMembership[i].size());
+        }
+    }
 
     double tmpABS=0;
     int currentNumCluster=oldNumCluster-1;
