@@ -3,6 +3,6 @@ project(PBWTWrapper)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0  -std=c++11")
 add_subdirectory(pbwt)
-set(SOURCE_FILES PBWTWrapper.cpp)
+set(SOURCE_FILES PBWTWrapper.cpp ks.c)
 add_library(PBWTWrapper ${SOURCE_FILES})
 target_link_libraries(PBWTWrapper pbwt)
