@@ -15,7 +15,7 @@
 #include <unordered_map>
 #include <iostream>
 #include <algorithm>
-
+#include "../TestUnit/MergingEventSimulator.h"
 class PBWTWrapper
 {
 public:
@@ -56,8 +56,10 @@ public:
     PBWTWrapper(const char ** haps, int nhaps, int nsnps);
     PBWTWrapper(int nhaps,int nsnps);
 
+    int CursorForwards(RESULT* result);
     int CursorForwards();
     int CursorBackwards();
+    int CursorForwardsTo_debug(int k, int T=5, RESULT* result=0);//for debugging
     int CursorForwardsTo(int k, int T=5);
     int CursorBackwardsTo(int k, int T=5);
 	int ObtainHapFromSinglePhasing(char ** haps);//I implement it here, but not using it for now
@@ -65,6 +67,7 @@ public:
 
 
 	int UpdateTransVector(int site);
+    int MergeCluster(int site, RESULT* result);
     int MergeCluster(int site);
 
     int MoveSegment(std::vector<std::vector<int> >& MemberShip);

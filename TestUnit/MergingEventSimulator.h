@@ -7,10 +7,17 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 using namespace std;
 typedef vector<int> Branch;
 typedef vector<pair<Branch, Branch> > Partition;//Partition of individuals per marker
 typedef vector<Partition> DAG;
+typedef unordered_map<int,int> INDIINDICATOR;
+struct RESULT {
+    int indexToPut;
+    INDIINDICATOR branchA;
+    INDIINDICATOR branchB;
+};
 
 class MergingEventSimulator {
     int nHaps;
@@ -26,7 +33,7 @@ public:
     void SimulateCoalescentTree();
     int FlipHaps(int start,int end,vector<string>&tmpStringArray, bool op, Branch& lastA);
     void PrintSimulatedEvent();
-    void PutSimulatedEventIntoStringArray();
+    RESULT* PutSimulatedEventIntoStringArray();
     void PrintTree();
     void PrintDAG();
     inline int GetNumHaps()

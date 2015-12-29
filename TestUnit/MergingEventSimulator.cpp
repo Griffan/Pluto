@@ -8,7 +8,7 @@
 #define PREFIX 5
 MergingEventSimulator::MergingEventSimulator() {
     originalString="000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-    nHaps=60;
+    nHaps=600;
     markerIndex=PREFIX;
     finalStringArray=vector<string>(nHaps,originalString);
     Branch a;
@@ -69,7 +69,7 @@ int MergingEventSimulator::FlipHaps(int start,int end, vector<string>&tmpStringA
 
         while(markerIndex<originalString.length()) {
             int randNum = rand();
-            if (randNum % 100 > 80) {
+            if (randNum % 100 >20 && markerIndex!=11) {
                 break;
             }
             else
@@ -119,32 +119,47 @@ static bool IsBranchEqual(Branch&a,Branch&b)
     else
 return false;
 }
-void MergingEventSimulator::PutSimulatedEventIntoStringArray() {
+RESULT* MergingEventSimulator::PutSimulatedEventIntoStringArray() {
     long long int seed = std::chrono::system_clock::now().time_since_epoch().count();
     srand(seed);
     int indexToPut,partitionToPut;
     Branch a,b;
     do
     {
-        do
-        {
-            indexToPut = rand() % (originalString.length() - 80) + 1;
-        }while(hasMutation[indexToPut]||indexToPut<=PREFIX+1);
+//        do
+//        {
+//            indexToPut = rand() % (originalString.length()-70) + 1;
+//        }while(hasMutation[indexToPut]||indexToPut<=PREFIX+1);
+        indexToPut=11;
         partitionToPut=(rand() % dag[indexToPut].size());
         a=dag[indexToPut][partitionToPut].first;
         b=dag[indexToPut][partitionToPut].second;
     }while(a.size()<10);//||!IsBranchEqual(a,b));
 
+    RESULT *result = new RESULT;
+    result->indexToPut=indexToPut;
     int numFlip=rand()%(a.size())+1;
-
+    //int numFlip=10;
+    int index(0);
     for (int i = 0; i <numFlip ; ++i) {
-        std::shuffle(a.begin(),a.end(),std::default_random_engine(seed));
-        int index=a[i];
+
+        while(finalStringArray[index][indexToPut]=='1') {
+
+            std::shuffle(a.begin(), a.end(), std::default_random_engine(seed));
+            index = a[i];
+        }
         //std::cerr<<"index:"<<index<<" indexToPut:"<<indexToPut<<std::endl;
         finalStringArray[index][indexToPut]='1';
+        result->branchA[index] = 0;
+    }
+    for (int j = 0; j <a.size() ; ++j) {
+        index = a[j];
+        if(finalStringArray[index][indexToPut]!='1')
+        result->branchB[index] = 5;
     }
     cerr<<"Simulating event at Marker "<<indexToPut<<", Partition "<<partitionToPut<<", first "<<numFlip<<" individuals"<<endl;
     //eventRecorder.push_back(make_pair(indexToPut,a));
+    return result;
 }
 
 void MergingEventSimulator::PrintSimulatedEvent() {

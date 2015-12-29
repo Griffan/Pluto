@@ -5,9 +5,7 @@
 #ifndef PLUTO_KS_H
 #define PLUTO_KS_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 
 //#include <R.h>
 //#include <Rinternals.h>
@@ -16,12 +14,9 @@ extern "C" {
 #define M_1_SQRT_2PI	0.398942280401432677939946059934	/* 1/sqrt(2pi) */
 #endif
 
+double ks_test(int *x, int nx, int *y, int xy );
 double K(int n, double d);
 void m_multiply(double *A, double *B, double *C, int m);
 void m_power(double *A, int eA, double *V, int *eV, int m, int n);
-
-#ifdef __cplusplus
-}
-#endif
-
+double psmirnov2x(double *x, int m, int n);
 #endif //PLUTO_KS_H

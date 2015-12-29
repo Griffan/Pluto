@@ -112,7 +112,7 @@ int main(int argc, char ** argv) {
     char ** haps= nullptr;
     MS.SimulateCoalescentTree();
  //   MS.PrintTree();
-    MS.PutSimulatedEventIntoStringArray();
+    RESULT* result=MS.PutSimulatedEventIntoStringArray();
     //MS.PrintSimulatedEvent();
     MS.PrintTree();
  //   MS.PrintDAG();
@@ -123,7 +123,7 @@ int main(int argc, char ** argv) {
     PBWTWrapper * Graph=new PBWTWrapper(MS.GetNumHaps(),MS.GetHapLength());
     Graph->SetHaps(haps);
     Graph->CursorBackwards();
-    Graph->CursorForwards();
+    Graph->CursorForwards(result);
 
 //TODO:deal with missing data
     return 0;
