@@ -319,10 +319,10 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
 
             //if (i < individuals - phased) {
            // fprintf(stderr, "phasing individual %d...\n", i);
-            ScoreLeftConditional();
+           // ScoreLeftConditional();
             t=clock();
             printf("forward algorithm time:%.2f sec\n", (float) (t-t1) / CLOCKS_PER_SEC);
-            SampleChromosomes(&globalRandom);
+            //SampleChromosomes(&globalRandom);
             t1=clock();
             printf("sampling time:%.2f sec\n", (float) (t1-t) / CLOCKS_PER_SEC);
             //exit(EXIT_SUCCESS);

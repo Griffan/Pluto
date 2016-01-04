@@ -69,7 +69,7 @@ int MergingEventSimulator::FlipHaps(int start,int end, vector<string>&tmpStringA
 
         while(markerIndex<originalString.length()) {
             int randNum = rand();
-            if (randNum % 100 >20 && markerIndex!=11) {
+            if (randNum % 100 >80 && markerIndex!=11) {
                 break;
             }
             else

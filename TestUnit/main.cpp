@@ -7,7 +7,7 @@
 #include "algorithm"
 #include "random"
 //#define DEBUG 1
-#define DEBUG3
+#define DEBUG5
 #ifdef DEBUG2
 using namespace std;
 char**  HapsInit(int M, int N)
@@ -124,6 +124,335 @@ int main(int argc, char ** argv) {
     Graph->SetHaps(haps);
     Graph->CursorBackwards();
     Graph->CursorForwards(result);
+
+//TODO:deal with missing data
+    return 0;
+}
+#endif
+
+#ifdef DEBUG4
+
+#include <fstream>
+#include "../SinglePhasing/libVcf/libVcfVcfFile.h"
+#include "DebugWrapper.h"
+using namespace libVcf;
+typedef std::unordered_map<string,string>  ID2POP;
+typedef std::unordered_map<int,string>  Index2ID;
+
+char** readVCF(string & fileName, int & nSamples, int& nMarkers, Index2ID& mapper)
+{
+
+    printf("starting LoadHaplotypesFromVCF\n");
+    bool warningsPrinted = false;
+    try {
+        VcfFile* pVcf = new VcfFile;
+        pVcf->bSiteOnly = true;
+        pVcf->bParseGenotypes = false;
+        pVcf->bParseDosages = false;
+        pVcf->bParseValues = false;
+
+        VcfMarker* pMarker = new VcfMarker;
+        //CalculatePhred2Prob();
+
+        pVcf->openForRead(fileName.c_str());
+
+        nSamples = pVcf->getSampleCount();
+        if (nSamples == 0) {
+            throw VcfFileException("No individual genotype information exist in the input VCF file %s", fileName.c_str());
+        }
+
+        for(int j=0; pVcf->iterateMarker(); ++j) {
+            //fprintf(stderr,"j=%d\n",j);
+            pMarker = pVcf->getLastMarker();
+        }
+        nMarkers=pVcf->nNumMarkers;
+        delete pVcf;
+        //delete pMarker;
+    }
+    catch ( VcfFileException e ) {
+        fprintf(stderr, e.what() );
+    }
+
+    char** haplotypes=0;
+    try {
+        VcfFile* pVcf = new VcfFile;
+        pVcf->bSiteOnly = false;
+        pVcf->bParseGenotypes = true;
+        pVcf->bParseDosages = false;
+        pVcf->bParseValues = false;
+
+        VcfMarker* pMarker = new VcfMarker;
+        //CalculatePhred2Prob();
+
+        pVcf->openForRead(fileName.c_str());
+
+//        nSamples = pVcf->getSampleCount();
+//        if (nSamples == 0) {
+//            throw VcfFileException("No individual genotype information exist in the input VCF file %s", fileName.c_str());
+//        }
+        haplotypes=new char* [2*nSamples];
+        for (int k = 0; k <2*nSamples ; ++k) {
+            haplotypes[k]= new char [nMarkers];
+        }
+        for(int j=0; pVcf->iterateMarker(); ++j) {
+            //fprintf(stderr,"j=%d\n",j);
+            pMarker = pVcf->getLastMarker();
+            for(int i=0; i < nSamples; ++i) {
+                //fprintf(stderr,"i=%d\n",j);
+                mapper[i]=string(pVcf->getSampleID(i).c_str());
+                //fprintf(stderr,"now reading %dth individual %s\n", i,mapper[i].c_str());
+                unsigned short g = pMarker->vnSampleGenotypes[i];
+                char g1, g2;
+
+                // genotype is missing
+                if ( g == 0xffff ) {
+                    //fprintf(stderr,"ERROR: Observed Missing genotypes");
+                    //abort();
+                }
+                else {
+                    // genotype is unphased
+                    if ( (g & 0x8000) == 0 ) {
+                        if ( !warningsPrinted ) {
+                            //fprintf(stderr,"ERROR: Observed unphased genotypes %x",g);
+                            //abort();
+                        }
+                    }
+                    g1 = (((g & 0x7f00) >> 8) & 0xff);
+                    g2 = (g & 0x7f);
+                }
+
+                if ( pMarker->asAlts.Length() > 1 ) {
+                    if ( g1 == 0 || g2 == 0 ) {
+                        fprintf(stderr,"ERROR: TriAllelic Site, but '0' genotype is observed");
+                        abort();
+                    }
+                    --g1;
+                    --g2;
+                }
+                haplotypes[ i * 2 ][ j ] = g1;
+                haplotypes[ i * 2 + 1][ j ] = g2;
+            }
+
+        }
+        delete pVcf;
+        //delete pMarker;
+    }
+    catch ( VcfFileException e ) {
+        fprintf(stderr, e.what() );
+    }
+    printf("finishing LoadHaplotypesFromVCF\n");
+    return haplotypes;
+
+}
+
+
+
+int readPed(string & fileName,ID2POP& mapper)
+{
+    ifstream fin(fileName);
+    if(!fin.is_open())
+    {
+        std::cerr<<"Cannot open file "<<fileName<<std::endl;
+    }
+    string line;
+    string ID,POP;
+    getline(fin,line);
+    while(getline(fin,line))
+    {
+        stringstream ss(line);
+        ss>>ID>>ID;
+        ss>>POP>>POP>>POP>>POP>>POP;
+        mapper[ID]=POP;
+        //std::cerr<<"reading individuals "<<ID<<" from population:"<<POP<<endl;
+
+    }
+    return 0;
+}
+int main(int argc, char ** argv) {
+
+
+    cerr << "Hello, World!" << endl;
+    char ** haps= nullptr;
+    //string inputVcf="/Users/fanzhang/Downloads/PlutoTest/OMNI.merged.chr20.phased_genotypes.20141111.vcf.gz";
+    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/test.OMNI.vcf.gz";
+    string inputPed="/Users/fanzhang/Downloads/PlutoTest/integrated_call_samples.20130502.ALL.ped";
+    int nSamples(0),nMarkers(0);
+    Index2ID MAP1;
+    haps=readVCF(inputVcf,nSamples,nMarkers, MAP1);
+    ID2POP MAP2;
+    readPed(inputPed,MAP2);
+    DebugWrapper  * Graph=new DebugWrapper(2*nSamples,nMarkers);
+    fprintf(stderr,"finished initializing graph\n");
+    Graph->SetHaps(haps);
+    Graph->CursorBackwards();
+    fprintf(stderr,"finished backward procedure\n");
+    Graph->CursorForwards(MAP1,MAP2);
+
+
+//TODO:deal with missing data
+    return 0;
+}
+#endif
+
+#ifdef DEBUG5
+
+#include <fstream>
+#include "../SinglePhasing/libVcf/libVcfVcfFile.h"
+#include "DebugWrapper.h"
+using namespace libVcf;
+typedef std::unordered_map<string,string>  ID2POP;
+typedef std::unordered_map<int,string>  Index2ID;
+
+char** readVCF(string & fileName, int & nSamples, int& nMarkers)
+{
+
+    printf("starting LoadHaplotypesFromVCF\n");
+    bool warningsPrinted = false;
+    try {
+        VcfFile* pVcf = new VcfFile;
+        pVcf->bSiteOnly = true;
+        pVcf->bParseGenotypes = false;
+        pVcf->bParseDosages = false;
+        pVcf->bParseValues = false;
+
+        VcfMarker* pMarker = new VcfMarker;
+        //CalculatePhred2Prob();
+
+        pVcf->openForRead(fileName.c_str());
+
+        nSamples = pVcf->getSampleCount();
+        if (nSamples == 0) {
+            throw VcfFileException("No individual genotype information exist in the input VCF file %s", fileName.c_str());
+        }
+
+        for(int j=0; pVcf->iterateMarker(); ++j) {
+            //fprintf(stderr,"j=%d\n",j);
+            pMarker = pVcf->getLastMarker();
+        }
+        nMarkers=pVcf->nNumMarkers;
+        delete pVcf;
+        //delete pMarker;
+    }
+    catch ( VcfFileException e ) {
+        fprintf(stderr, e.what() );
+    }
+
+    char** haplotypes=0;
+    try {
+        VcfFile* pVcf = new VcfFile;
+        pVcf->bSiteOnly = false;
+        pVcf->bParseGenotypes = true;
+        pVcf->bParseDosages = false;
+        pVcf->bParseValues = false;
+
+        VcfMarker* pMarker = new VcfMarker;
+        //CalculatePhred2Prob();
+
+        pVcf->openForRead(fileName.c_str());
+
+//        nSamples = pVcf->getSampleCount();
+//        if (nSamples == 0) {
+//            throw VcfFileException("No individual genotype information exist in the input VCF file %s", fileName.c_str());
+//        }
+        haplotypes=new char* [2*nSamples];
+        for (int k = 0; k <2*nSamples ; ++k) {
+            haplotypes[k]= new char [nMarkers];
+        }
+        for(int j=0; pVcf->iterateMarker(); ++j) {
+            //fprintf(stderr,"j=%d\n",j);
+            pMarker = pVcf->getLastMarker();
+            for(int i=0; i < nSamples; ++i) {
+                //fprintf(stderr,"i=%d\n",j);
+                //mapper[i]=string(pVcf->getSampleID(i).c_str());
+                //fprintf(stderr,"now reading %dth individual %s\n", i,mapper[i].c_str());
+                unsigned short g = pMarker->vnSampleGenotypes[i];
+                char g1, g2;
+
+                // genotype is missing
+                if ( g == 0xffff ) {
+                    //fprintf(stderr,"ERROR: Observed Missing genotypes");
+                    //abort();
+                }
+                else {
+                    // genotype is unphased
+                    if ( (g & 0x8000) == 0 ) {
+                        if ( !warningsPrinted ) {
+                            //fprintf(stderr,"ERROR: Observed unphased genotypes %x",g);
+                            //abort();
+                        }
+                    }
+                    g1 = (((g & 0x7f00) >> 8) & 0xff);
+                    g2 = (g & 0x7f);
+                }
+
+                if ( pMarker->asAlts.Length() > 1 ) {
+                    if ( g1 == 0 || g2 == 0 ) {
+                        fprintf(stderr,"ERROR: TriAllelic Site, but '0' genotype is observed");
+                        abort();
+                    }
+                    --g1;
+                    --g2;
+                }
+                haplotypes[ i * 2 ][ j ] = g1;
+                haplotypes[ i * 2 + 1][ j ] = g2;
+            }
+
+        }
+        delete pVcf;
+        //delete pMarker;
+    }
+    catch ( VcfFileException e ) {
+        fprintf(stderr, e.what() );
+    }
+    printf("finishing LoadHaplotypesFromVCF\n");
+    return haplotypes;
+
+}
+
+
+
+int readPed(string & fileName,ID2POP& mapper)
+{
+    ifstream fin(fileName);
+    if(!fin.is_open())
+    {
+        std::cerr<<"Cannot open file "<<fileName<<std::endl;
+    }
+    string line;
+    string ID,POP;
+    getline(fin,line);
+    while(getline(fin,line))
+    {
+        stringstream ss(line);
+        ss>>ID>>ID;
+        ss>>POP>>POP>>POP>>POP>>POP;
+        mapper[ID]=POP;
+        //std::cerr<<"reading individuals "<<ID<<" from population:"<<POP<<endl;
+
+    }
+    return 0;
+}
+
+#include <ctime>
+int main(int argc, char ** argv) {
+
+
+    cerr << "Hello, World!" << endl;
+    char ** haps= nullptr;
+    //string inputVcf="/Users/fanzhang/Downloads/PlutoTest/OMNI.merged.chr20.phased_genotypes.20141111.vcf.gz";
+    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/OMNI_1kg_unrel.recode.head500.vcf";
+    string inputPed="/Users/fanzhang/Downloads/PlutoTest/integrated_call_samples.20130502.ALL.ped";
+    int nSamples(0),nMarkers(0);
+
+    haps=readVCF(inputVcf,nSamples,nMarkers);
+
+
+    DebugWrapper  * Graph=new DebugWrapper(2*nSamples,nMarkers);
+    Graph->SetHaps(haps);
+    std::clock_t    start=std::clock();
+    Graph->Process(nMarkers,nSamples,haps);
+    std::cout << "Time: " << (std::clock() - start) / (double)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
+
 
 //TODO:deal with missing data
     return 0;

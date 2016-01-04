@@ -9,13 +9,20 @@
  */
 #ifndef PLUTO_PBWTWRAPPER_H
 #define PLUTO_PBWTWRAPPER_H
-#define DEBUG 1
+#define DEBUG 0
+
+
 #include "pbwt/pbwt.h"
 #include <vector>
 #include <unordered_map>
 #include <iostream>
 #include <algorithm>
 #include "../TestUnit/MergingEventSimulator.h"
+
+typedef std::unordered_map<std::string,std::string>  ID2POP;
+typedef std::unordered_map<int,std::string>  Index2ID;
+
+
 class PBWTWrapper
 {
 public:
@@ -24,9 +31,10 @@ public:
     PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<std::vector<int> > a,alpha/*reverse*/;
     std::vector<std::unordered_map<int,int> > aMap,alphaMap;
-    std::vector<std::vector<int> > d;//,delta/*reverse*/;
+    std::vector<std::vector<int> > d;//,delta;/*reverse*/;
     std::vector<std::vector<uchar> > sortedY/*only for test*/;
-    //std::vector<int> numZero;/*number of zero at each site*/
+    std::vector<int> c,celta;/*number of zero at each site*/
+    std::vector<std::vector<int> > u,ultra;/*relative rank within zeros*/
     std::vector<std::vector<int> > haplotypeCluster;//site, rank
     std::vector<std::vector<uchar> > clusterAllele;//numCluster;//at each site
 	//std::unordered_map<int,std::vector<std::vector<float> > > transVector;//transition probability: site,from,to
@@ -34,6 +42,7 @@ public:
     char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
     std::vector<std::vector<int> > clusterMembership;
 
+    PBWTWrapper(){}
     ~PBWTWrapper() {
         if(pbwtCore)
         {
@@ -56,18 +65,20 @@ public:
     PBWTWrapper(const char ** haps, int nhaps, int nsnps);
     PBWTWrapper(int nhaps,int nsnps);
 
-    int CursorForwards(RESULT* result);
+
     int CursorForwards();
     int CursorBackwards();
-    int CursorForwardsTo_debug(int k, int T=5, RESULT* result=0);//for debugging
+
     int CursorForwardsTo(int k, int T=5);
+
+
     int CursorBackwardsTo(int k, int T=5);
 	int ObtainHapFromSinglePhasing(char ** haps);//I implement it here, but not using it for now
     inline int CopyHap(int k, PbwtCursor* Cursor);
 
 
 	int UpdateTransVector(int site);
-    int MergeCluster(int site, RESULT* result);
+
     int MergeCluster(int site);
 
     int MoveSegment(std::vector<std::vector<int> >& MemberShip);
@@ -99,10 +110,13 @@ public:
             forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
         }
         //TODO:REVERSE
-        a=alpha=d=haplotypeCluster=std::vector<std::vector<int> >(pbwtCore->N,std::vector<int>(pbwtCore->M,0));
-        clusterAllele=std::vector<std::vector<uchar> >(pbwtCore->N,std::vector<uchar>());
+        a=alpha=d=u=ultra=haplotypeCluster=std::vector<std::vector<int> >(N,std::vector<int>(M,0));
+        c=celta=std::vector<int>(N,0);
+        clusterAllele=std::vector<std::vector<uchar> >(N,std::vector<uchar>());
         transVector.clear();
+        aMap=alphaMap=std::vector<std::unordered_map<int,int> >(N,std::unordered_map<int,int>());
     }
+
     /*
     function name: debug functions
     return value: :
@@ -185,7 +199,6 @@ public:
     }
 
     int PrintSummary();
-
 
 };
 
