@@ -4,6 +4,7 @@
 SinglePhasing/libStatGen
 libStatGen
 Debug
+Release
 build
 CMakeLists.txt
 pbwtWrapper/CMakeLists.txt

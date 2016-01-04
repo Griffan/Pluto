@@ -27,6 +27,8 @@ class PBWTWrapper
 {
 public:
     int N,M;//numSites,numHaps
+    int nSamples;
+    int nMarkers;
     PBWT* pbwtCore;
     PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<std::vector<int> > a,alpha/*reverse*/;
@@ -60,6 +62,13 @@ public:
             pbwtCursorDestroy(reverseCursor);
         }
         //TODO:REVERSE
+        if(haplotype)
+        {
+            for (int i = 0; i <nSamples ; ++i) {
+                delete [] haplotype[i];
+            }
+            delete [] haplotype;
+        }
     }
 
     PBWTWrapper(const char ** haps, int nhaps, int nsnps);
@@ -108,6 +117,11 @@ public:
             //delete forwardCursor;
             pbwtCursorDestroy(forwardCursor);
             forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
+        }
+        if(reverseCursor)
+        {
+            pbwtCursorDestroy(reverseCursor);
+            reverseCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
         }
         //TODO:REVERSE
         a=alpha=d=u=ultra=haplotypeCluster=std::vector<std::vector<int> >(N,std::vector<int>(M,0));

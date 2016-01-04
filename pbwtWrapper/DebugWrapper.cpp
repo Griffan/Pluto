@@ -228,7 +228,7 @@ int DebugWrapper::MergeCluster(int site, Index2ID& MAP1, ID2POP& MAP2) {
     int indexToPut=4000;
 
     if(site%1000==0)fprintf(stderr,"processing site:%d\n",site);
-    if(/*site%500==0)*/site>=indexToPut-10&&site<indexToPut+10) {
+    if(site%5==0&&site>=indexToPut-50&&site<indexToPut+50) {
 
         std::ofstream fout("/Users/fanzhang/Downloads/PlutoTest/scatter.txt",std::fstream::app);
         if(!fout.is_open()){fprintf(stderr,"open scatter.txt failed\n");exit(EXIT_FAILURE);}
@@ -806,10 +806,11 @@ int DebugWrapper::ConfidentOrNot(char** individual, int siteA, int siteB) {
     //delete altHaps[1];
 
     //find maximal length of shared suffix
-    length=N-siteB+1;
+    length=N-siteA;
     haps[0] = new char [length];//start from 0, hence siteB is length of prefix
     //haps[1] = new char [length];
-    memcpy(haps[0],&individual[0][siteA],length);
+    //if(siteA>=nMarkers || length>=nMarkers) cerr<<"siteA:"<<siteA<<endl;
+    memcpy(haps[0],individual[0]+siteA,length);
     //memcpy(haps[1],&individual[1][siteA],length);
 
     altHaps[0] = new char [length];
@@ -851,15 +852,18 @@ int DebugWrapper::FindLengthOfSuffix(char *haplotypeX,int siteA) {
 
 
         int f = 0;
-        int g = M;
+        int g = M-1;
 
 
         int f1 = 0;
-        int g1 = M;
+        int g1 = M-1;
 
         for (int k = siteA; k < N; ++k) {               /* use classic FM updates to extend [f,g) interval to next position */
             f1 = haplotypeX[k-siteA] ? c[k] + (f - u[k][f]) : u[k][f];
             g1 = haplotypeX[k-siteA] ? c[k] + (g - u[k][g]) : u[k][g];
+            //if(k>=c.size()||k<0) cerr<<"c size:"<<c.size()<<"\tk:"<<k<<endl;
+            //if(k>u.size()||f>u[k].size()||g1>u[k].size()) cerr<<"suffix:"<<k<<"\t"<<u.size()<<"\t"<<u[k].size()<<"\t"<<f<<"\t"<<g1<<"\t1st:"<<c[k]<<"\t2st:"<<u[k][g]<<endl;
+            if(f1<0||g1>M-1) continue;
             /* if the interval is non-zero we can just proceed */
             if (g1 > f1) {
                 f = f1;
@@ -881,17 +885,20 @@ int DebugWrapper::FindLengthOfPrefix(char *haplotypeX, int siteB) {
     /* match query in turn */
 
     int f = 0;
-    int g = M;
+    int g = M-1;
 
-
+    //cerr<<"in DebugWraooer M:"<<M<<endl;
     int f1 = 0;
-    int g1 = M;
+    int g1 = M-1;
 
 
     for (int k = siteB; k > -1; --k) {               /* use classic FM updates to extend [f,g) interval to next position */
         f1 = haplotypeX[k] ? celta[k] + (f - ultra[k][f]) : ultra[k][f];
         g1 = haplotypeX[k] ? celta[k] + (g - ultra[k][g]) : ultra[k][g];
         //cerr<<celta[k]<<"\t"<<ultra[k][f]<<"\t"<<ultra[k][g]<<endl;
+        //if(k>=celta.size()||k<0) cerr<<"celta size:"<<celta.size()<<"\tk:"<<k<<endl;
+        //if(k>ultra.size()||f>ultra[k].size()||g1>ultra[k].size()) cerr<<"Prefix:"<<k<<"\t"<<ultra.size()<<"\t"<<ultra[k].size()<<"\tf:"<<f<<"\tg:"<<g<<"\t"<<g1<<"\t1st:"<<celta[k]<<"\t2nd:"<<ultra[k][g]<<endl;
+        if(f1<0||g1>M-1) continue;
         /* if the interval is non-zero we can just proceed */
         if (g1 > f1) {
             f = f1;
@@ -1048,7 +1055,7 @@ int DebugWrapper::Process(int nMarkers, int nSamples, char** haps) {
 
     ofstream indvOUT("/Users/fanzhang/Downloads/PlutoTest/individual.out");
     ofstream SNPOUT("/Users/fanzhang/Downloads/PlutoTest/snp.out");
-    for (int k = 0; k <M ; ++k) {
+    for (int k = 0; k <nSamples ; ++k) {
         indvOUT<<k<<"\t"<<conreIndividual[k].confidentTotal<<"\t"<<conreIndividual[k].confidentRight<<"\t"<<conreIndividual[k].ambiguousTotal<<"\t"<<conreIndividual[k].ambiguousRight<<std::endl;
     }
     for (std::unordered_map<int,CONRE>::iterator iter = conreSNP.begin(); iter!=conreSNP.end(); ++iter) {

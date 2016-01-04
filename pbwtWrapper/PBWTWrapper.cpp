@@ -51,6 +51,8 @@ PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)
                                                haplotypeCluster(a),
                                                clusterAllele(nsnps,std::vector<uchar>())
 {
+    nSamples=nhaps/2;
+    nMarkers=nsnps;
     N=nsnps;
     M=nhaps;//last two haps are slots for current individual need to be phased
     //cerr<<"Inside PBWTWrapper M:"<<M<<endl;
@@ -60,7 +62,9 @@ PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):a(nsnps,std::vector<int>(nhaps,0)
     forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
 
     reverseCursor = pbwtCursorCreate(pbwtCore, FALSE, TRUE);
-    cerr<<"Inside PBWTWrapper M:"<<M<<endl;
+
+    haplotype= nullptr;
+    //cerr<<"Inside PBWTWrapper M:"<<M<<endl;
 }
 
 #define PREFIX_LENGTH 1200
