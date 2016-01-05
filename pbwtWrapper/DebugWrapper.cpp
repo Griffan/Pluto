@@ -774,7 +774,7 @@ int DebugWrapper::ConfidentOrNot(char** individual, int siteA, int siteB) {
     int length=siteB+1;
     char* haps[2];
     haps[0] = new char [length];//start from 0, hence siteB is length of prefix
-    haps[1] = new char [length];
+    //haps[1] = new char [length];
     memcpy(haps[0],individual[0],length);
     //memcpy(haps[1],individual[1],length);
     char* altHaps[2];
@@ -835,6 +835,9 @@ int DebugWrapper::ConfidentOrNot(char** individual, int siteA, int siteB) {
 //    cerr<<endl;
     //cerr<<siteB<<"\tright length:"<<rightLengthA<<endl;
    // cerr<<siteB<<"\taltRight length:"<<altRightLengthA<<endl;
+    delete haps[0];
+
+    delete altHaps[0];
     int ret(0);
     if(leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA) {/*numRight++; cerr<<"so far numRight:"<<numRight<<endl;*/ ret|=0x11;}//confident and right
     if(altLeftLengthA > leftLengthA && altRightLengthA > rightLengthA) {/*numAltRight++;cerr<<"so far numAltRight:"<<numAltRight<<endl;*/ ret|=0x1;}//confident  and wrong
@@ -963,7 +966,7 @@ int DebugWrapper::Process(int nMarkers, int nSamples, char** haps) {
 
     std::vector<CONRE> conreIndividual(nSamples,CONRE());
     std::unordered_map<int,CONRE> conreSNP;
-    for (int individual = 0; individual < 5/*nSamples*/; ++individual) {
+    for (int individual = 0; individual < 3/*nSamples*/; ++individual) {
 
 
         char** haplotypeX = ExtractSubset(individual);

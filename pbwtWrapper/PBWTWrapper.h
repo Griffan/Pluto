@@ -37,6 +37,7 @@ public:
     std::vector<std::vector<uchar> > sortedY/*only for test*/;
     std::vector<int> c,celta;/*number of zero at each site*/
     std::vector<std::vector<int> > u,ultra;/*relative rank within zeros*/
+
     std::vector<std::vector<int> > haplotypeCluster;//site, rank
     std::vector<std::vector<uchar> > clusterAllele;//numCluster;//at each site
 	//std::unordered_map<int,std::vector<std::vector<float> > > transVector;//transition probability: site,from,to

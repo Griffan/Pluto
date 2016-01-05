@@ -440,7 +440,7 @@ int main(int argc, char ** argv) {
     cerr << "Hello, World!" << endl;
     char ** haps= nullptr;
     //string inputVcf="/Users/fanzhang/Downloads/PlutoTest/OMNI.merged.chr20.phased_genotypes.20141111.vcf.gz";
-    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/OMNI_1kg_unrel.recode.vcf";
+    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/OMNI_1kg_unrel.recode.head500.vcf";
     string inputPed="/Users/fanzhang/Downloads/PlutoTest/integrated_call_samples.20130502.ALL.ped";
     int nSamples(0),nMarkers(0);
 
@@ -452,7 +452,7 @@ int main(int argc, char ** argv) {
     std::clock_t    start=std::clock();
     Graph->Process(nMarkers,nSamples,haps);
     std::cout << "Time: " << (std::clock() - start) / (double)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
-
+    delete Graph;
 
 //TODO:deal with missing data
     return 0;

@@ -213,6 +213,8 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
 
     memcpy(forwardCursor->a , tmpA, u * sizeof(int));
     memcpy(forwardCursor->d , tmpD, u * sizeof(int));
+    delete [] tmpA;
+    delete [] tmpD;
     memcpy(forwardCursor->a + u, forwardCursor->b, v * sizeof(int));
     memcpy(forwardCursor->d + u, forwardCursor->e, v * sizeof(int));
     c[k] = u;
