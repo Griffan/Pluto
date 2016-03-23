@@ -13,7 +13,8 @@
 #include <cstdlib>
 #include <string>
 #include <iostream>
-#include <climits>
+#include <limits>
+#include <algorithm>
 #define NA_INTEGER INT_MIN
 double R_PosInf = INFINITY;
 double R_NegInf = -INFINITY;
