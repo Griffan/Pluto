@@ -314,12 +314,10 @@ m_power(double *A, int eA, double *V, int *eV, int m, int n)
 //    return ScalarReal(p);
 //}
 
-using namespace std;
-
 double pkstwo_wrapper(int n, double* statistic, long tol = 1e-06) {
 
-    vector<double> p;
-    vector<int> index;
+    std::vector<double> p;
+    std::vector<int> index;
     for (int i = 0; i <n; ++i) {
         if(isnan(statistic[i]))
             continue;
@@ -335,21 +333,21 @@ double pkstwo_wrapper(int n, double* statistic, long tol = 1e-06) {
 }
 
 template <typename T>
-vector<size_t> sort_indexes(const vector<T> &v) {
+std::vector<size_t> sort_indexes(const std::vector<T> &v) {
 
     // initialize original index locations
-    vector<size_t> idx(v.size());
+    std::vector<size_t> idx(v.size());
     for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
 
     // sort indexes based on comparing values in v
-    sort(idx.begin(), idx.end(),
+    std::sort(idx.begin(), idx.end(),
          [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
 
     return idx;
 }
 
-double ks_test(vector<int> &x, vector<int> &y, int EXACT) {
-    vector<int> tmpx;
+double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
+    std::vector<int> tmpx;
     for (int i = 0; i < x.size(); ++i) {
         if (!isnan(x[i]))
             tmpx.push_back(x[i]);
@@ -379,13 +377,13 @@ double ks_test(vector<int> &x, vector<int> &y, int EXACT) {
             EXACT = (nx*ny < 10000);
         }
 
-        string METHOD("Two-sample Kolmogorov-Smirnov test");
+        std::string METHOD("Two-sample Kolmogorov-Smirnov test");
         bool TIES = FALSE;
         n = nx * ny / (nx + ny);
 
-        vector<int> w(x);
-        vector<size_t> wOrder;
-        vector<double> z;
+        std::vector<int> w(x);
+        std::vector<size_t> wOrder;
+        std::vector<double> z;
         std::move(y.begin(), y.end(), std::back_inserter(w));
 
         //std::sort(w.begin(),w.end());
@@ -458,7 +456,7 @@ double ks_test(vector<int> &x, vector<int> &y, int EXACT) {
         }
         std::sort(w.begin(),w.end());
 
-        vector<int> tmpW=w;
+        std::vector<int> tmpW=w;
 
         auto last=std::unique(tmpW.begin(),tmpW.end());
         tmpW.erase(last,tmpW.end());
@@ -469,7 +467,7 @@ double ks_test(vector<int> &x, vector<int> &y, int EXACT) {
                 EXACT=0;
             }
             else fprintf(stderr,"[Waring]p-value will be approximate in the presence of ties\n");
-            vector<double> tmp;
+            std::vector<double> tmp;
             for (int i = 0; i <w.size()-1; ++i) {
                 if((w[i+1]-w[i])!=0)
                     tmp.push_back(z[i]);
