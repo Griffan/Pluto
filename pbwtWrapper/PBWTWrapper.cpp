@@ -683,9 +683,9 @@ int PBWTWrapper::MergeCluster(int indexA, int indexB) {
 int PBWTWrapper::MergeAtSiteExperiment(int site) {
     int ret(0);
     int oldNumCluster = GetNumStates(site);
-    //std::cerr<<"Enter Site:"<<site<<" has "<< oldNumCluster<<" state"<<std::endl;
+    std::cerr<<"Enter Site:"<<site<<" has "<< oldNumCluster<<" state"<<std::endl;
     int numHaps = GetNumHaps(site);
-    if(DEBUG&&site<20) return 0;
+    //if(DEBUG&&site<20) return 0;
     //std::vector<std::vector<int> > dist(oldNumCluster,std::vector<int>(numHaps,0));//state->rank_occupied
     std::vector<std::vector<int> > dist(oldNumCluster,std::vector<int>(0,0));//state->rank_occupied
     std::vector<bool> mergeIndicator(oldNumCluster,false);
@@ -739,7 +739,7 @@ int PBWTWrapper::MergeAtSiteExperiment(int site) {
 
                     for (int statek = statej + 1; statek < dist.size(); ++statek)//comparing state j and state k
                     {
-                        if (/*clusterAllele[site][statej] != clusterAllele[site][statek] || */(mergeIndicator[statek] &&
+                        if (clusterAllele[site][statej] != clusterAllele[site][statek] || (mergeIndicator[statek] &&
                                                                                                clusterMembership[statek].size() ==
                                                                                                0))
                             continue;//if alleles are different or merged once
@@ -798,7 +798,7 @@ int PBWTWrapper::MergeAtSiteExperiment(int site) {
                     std::cerr << "exit membership section!\n" << std::endl;
                 }
 
-                if ( maxPVal > 0.05)//KStest(Dmax[j][k]/total,tmpMembershipSize,clusterMembership[k].size()))//last haplotypes, deal with merging test
+                if ( maxPVal > 0.1)//KStest(Dmax[j][k]/total,tmpMembershipSize,clusterMembership[k].size()))//last haplotypes, deal with merging test
                 {
                     prevPVal = maxPVal;
                     ret = 1;
@@ -868,7 +868,7 @@ int PBWTWrapper::MergeAtSiteExperiment(int site) {
         }
 
     }
-    //std::cerr<<"Exit Site:"<<site<<" has "<< GetNumStates(site)<<" state"<<std::endl;
+    std::cerr<<"Exit Site:"<<site<<" has "<< GetNumStates(site)<<" state"<<std::endl;
     return ret;
 }
 

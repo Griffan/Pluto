@@ -13,7 +13,7 @@
 #include <cstdlib>
 #include <string>
 #include <iostream>
-#include <algorithm>
+#include <climits>
 #define NA_INTEGER INT_MIN
 double R_PosInf = INFINITY;
 double R_NegInf = -INFINITY;
@@ -359,7 +359,7 @@ double ks_test(vector<int> &x, vector<int> &y, int EXACT) {
         fprintf(stderr, "not enough 'x' data");
         exit(EXIT_FAILURE);
     }
-    double PVAL = MAXFLOAT;
+    double PVAL = std::numeric_limits<double>::max();
     double STATISTIC=-1.0;
     /*if (isdigit(y[0]))*/ {
         tmpx.clear();
@@ -502,7 +502,7 @@ double ks_test(vector<int> &x, vector<int> &y, int EXACT) {
 //    names(STATISTIC) < -
 //    switch (alternative, two.sided = "D",
 //                         greater = "D^+", less = "D^-")
-        if (PVAL==MAXFLOAT) {
+        if (PVAL==std::numeric_limits<double>::max()) {
 //            pkstwo < -function(x, tol = 1e-06)
 //            {
 //                if (is.numeric(x))
