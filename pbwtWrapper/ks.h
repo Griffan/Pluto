@@ -13,8 +13,8 @@
 #ifndef M_1_SQRT_2PI
 #define M_1_SQRT_2PI	0.398942280401432677939946059934	/* 1/sqrt(2pi) */
 #endif
-
-double ks_test(int *x, int nx, int *y, int xy );
+#include <vector>
+double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT=-1);
 double K(int n, double d);
 void m_multiply(double *A, double *B, double *C, int m);
 void m_power(double *A, int eA, double *V, int *eV, int m, int n);

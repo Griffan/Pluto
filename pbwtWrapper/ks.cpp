@@ -10,10 +10,10 @@
 #include <stdlib.h>
 #include "ks.h"
 #include "pbwt/utils.h"
-#include <vector>
 #include <cstdlib>
 #include <string>
-
+#include <iostream>
+#include <algorithm>
 #define NA_INTEGER INT_MIN
 double R_PosInf = INFINITY;
 double R_NegInf = -INFINITY;
@@ -312,124 +312,215 @@ m_power(double *A, int eA, double *V, int *eV, int m, int n)
 //    p = K(n, st);
 //    return ScalarReal(p);
 //}
-/*
+
 using namespace std;
-double ks_test(vector<int>& x, vector<int>&y )
-{
+
+double pkstwo_wrapper(int n, double* statistic, long tol = 1e-06) {
+
+    vector<double> p;
+    vector<int> index;
+    for (int i = 0; i <n; ++i) {
+        if(isnan(statistic[i]))
+            continue;
+        else if(statistic[i]>0) {
+            index.push_back(i);
+            p.push_back(0);
+        }
+    }
+    if(n!=1) { std::cerr<<"only designed to handle 1 p value at a time!"<<std::endl;exit(EXIT_FAILURE);}
+    if (index.size()>0)
+        pkstwo(n,statistic,tol);
+    return *statistic;
+}
+
+template <typename T>
+vector<size_t> sort_indexes(const vector<T> &v) {
+
+    // initialize original index locations
+    vector<size_t> idx(v.size());
+    for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
+
+    // sort indexes based on comparing values in v
+    sort(idx.begin(), idx.end(),
+         [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
+
+    return idx;
+}
+
+double ks_test(vector<int> &x, vector<int> &y, int EXACT) {
     vector<int> tmpx;
-    for (int i = 0; i <x.size() ; ++i) {
-        if(!isnan(x[i]))
+    for (int i = 0; i < x.size(); ++i) {
+        if (!isnan(x[i]))
             tmpx.push_back(x[i]);
     }
     x = tmpx;
     double n = x.size();
-    if (n < 1)
-    {
-        fprintf(stderr,"not enough 'x' data");
+    if (n < 1) {
+        fprintf(stderr, "not enough 'x' data");
         exit(EXIT_FAILURE);
     }
-    double PVAL = INT32_MAX;
+    double PVAL = MAXFLOAT;
+    double STATISTIC=-1.0;
+    /*if (isdigit(y[0]))*/ {
+        tmpx.clear();
+        for (int i = 0; i < y.size(); ++i) {
+            if (!isnan(y[i]))
+                tmpx.push_back(y[i]);
+        }
+        y = tmpx;
+        double nx = n;
+        double ny = y.size();
+        if (ny < 1) {
+            fprintf(stderr, "not enough 'y' data");
+            exit(EXIT_FAILURE);
+        }
+        if(EXACT==-1) {
+            EXACT = (nx*ny < 10000);
+        }
 
-    tmpx.clear();
-    for (int i = 0; i <y.size() ; ++i) {
-        if(!isnan(y[i]))
-            tmpx.push_back(y[i]);
+        string METHOD("Two-sample Kolmogorov-Smirnov test");
+        bool TIES = FALSE;
+        n = nx * ny / (nx + ny);
+
+        vector<int> w(x);
+        vector<size_t> wOrder;
+        vector<double> z;
+        std::move(y.begin(), y.end(), std::back_inserter(w));
+
+        //std::sort(w.begin(),w.end());
+        wOrder=sort_indexes(w);
+//        for (auto i: wOrder) {
+//            cout << wOrder[i] << endl;
+//        }
+        int decline_cycle=0;
+        int previous_sign=0;
+        int num_switch=0;
+        for (int j = 0; j <wOrder.size() ; ++j) {
+//            if(j==0)
+//            {
+//                if(wOrder[j]+1 <= nx) {
+//                    z.push_back(1. / (nx+ny));
+//                    previous_sign=1;
+//                }else {
+//                    z.push_back(-1. / (nx+ny));
+//                    previous_sign=-1;
+//                }
+//            }
+//            else {
+//                double addOn=0;
+//                if(wOrder[j] + 1 <= nx)
+//                {
+//                    if(previous_sign==1) {
+//                        decline_cycle++;
+//                    }
+//                    else
+//                    {
+//                        num_switch++;
+//                        decline_cycle=0;
+//                    }
+//                    addOn=1. / (nx+ny) * pow(.5,decline_cycle);
+//                    previous_sign=1;
+//                }
+//                else
+//                {
+//                    if(previous_sign==-1) decline_cycle++;
+//                    else
+//                    {
+//                        num_switch++;
+//                        decline_cycle=0;
+//                    }
+//                    addOn=-1./(nx+ny) * pow(.5,decline_cycle);
+//                    previous_sign=-1;
+//                }
+//                z.push_back(z.back() + addOn);
+//            }
+            if(j==0)
+            {
+                if(wOrder[j]+1 <= nx) {
+                    z.push_back(1. / nx);
+                }else {
+                    z.push_back(-1. / ny);
+                }
+            }
+            else {
+                double addOn=0;
+                if(wOrder[j] + 1 <= nx)
+                {
+                    addOn=1. /nx;
+                }
+                else
+                {
+                    addOn=-1./ny;
+                }
+                z.push_back(z.back() + addOn);
+            }
+        }
+        std::sort(w.begin(),w.end());
+
+        vector<int> tmpW=w;
+
+        auto last=std::unique(tmpW.begin(),tmpW.end());
+        tmpW.erase(last,tmpW.end());
+
+        if (tmpW.size() < (nx + ny)) {
+            if (EXACT) {
+                fprintf(stderr,"[Waring]cannot compute exact p-value with ties\n");
+                EXACT=0;
+            }
+            else fprintf(stderr,"[Waring]p-value will be approximate in the presence of ties\n");
+            vector<double> tmp;
+            for (int i = 0; i <w.size()-1; ++i) {
+                if((w[i+1]-w[i])!=0)
+                    tmp.push_back(z[i]);
+            }
+            tmp.push_back(z[nx+ny-1]);
+            z=tmp;
+
+            TIES =TRUE;
+        }
+
+        /*STATISTIC < -
+        switch (alternative, two.sided = max(abs(z)),
+                             greater = max(z), less = -min(z))
+            nm_alternative < -
+        switch (alternative, two.sided = "two-sided",
+                             less = "the CDF of x lies below that of y", greater = "the CDF of x lies above that of y")
+            if (exact && (alternative == "two.sided") && !TIES)
+                PVAL < -1 - .Call(C_pSmirnov2x, STATISTIC, n.x, n.y)*/
+        //here we only consider two-sided(equal to)
+
+        for (int k = 0; k < z.size(); ++k) {
+            if(STATISTIC < fabs(z[k]))
+                STATISTIC=fabs(z[k]);
+        }
+        /*correction for switch numbers*/
+        //STATISTIC*=10./(num_switch+1e-6);
+        if(EXACT && !TIES)
+            PVAL = 1 - psmirnov2x(&STATISTIC,nx,ny);
     }
-    y = tmpx;
-    double nx = n;
-    double ny = y.size();
-    if (ny < 1)
-    {
-        fprintf(stderr,"not enough 'y' data");
-        exit(EXIT_FAILURE);
-    }
 
-    bool EXACT = true;
-    string METHOD("Two-sample Kolmogorov-Smirnov test");
-    bool TIES = FALSE;
-    n = nx * ny/(nx + ny);
+//    names(STATISTIC) < -
+//    switch (alternative, two.sided = "D",
+//                         greater = "D^+", less = "D^-")
+        if (PVAL==MAXFLOAT) {
+//            pkstwo < -function(x, tol = 1e-06)
+//            {
+//                if (is.numeric(x))
+//                    x < -as.double(x)
+//                else stop("argument 'x' must be numeric")
+//                p < -rep(0, length(x))
+//                p[is.na(x)] < -NA
+//                IND < -which(!is.na(x) & (x > 0))
+//                if (length(IND))
+//                    p[IND] < - .Call(C_pKS2, p = x[IND], tol)
+//                p
+//            }
+//            PVAL < -ifelse(alternative == "two.sided", 1 - pkstwo(sqrt(n) *
+//                                                                  STATISTIC), exp(-2 * n * STATISTIC ^ 2))
+            STATISTIC=sqrt(double(n)) * STATISTIC;
+            PVAL=1 - pkstwo_wrapper(1,&STATISTIC,1e-06);
+        }
+    PVAL = std::min(1., std::max(0., PVAL));
 
-    vector<int> w(x);
-    double z(0);
-    std::move(w.begin(), w.end(), std::back_inserter(y));
-    for(auto i: w) {
-    z += i < nx?1/nx:(-1/ny);
-    }
-
-z <- cumsum(ifelse(order(w) <= n.x, 1/n.x, -1/n.y))
-if (length(unique(w)) < (n.x + n.y)) {
-if (exact) {
-warning("cannot compute exact p-value with ties")
-exact <- FALSE
+    return (PVAL);
 }
-else warning("p-value will be approximate in the presence of ties")
-z <- z[c(which(diff(sort(w)) != 0), n.x + n.y)]
-TIES <- TRUE
-}
-STATISTIC <- switch(alternative, two.sided = max(abs(z)),
-        greater = max(z), less = -min(z))
-nm_alternative <- switch(alternative, two.sided = "two-sided",
-        less = "the CDF of x lies below that of y", greater = "the CDF of x lies above that of y")
-if (exact && (alternative == "two.sided") && !TIES)
-PVAL <- 1 - .Call(C_pSmirnov2x, STATISTIC, n.x, n.y)
-}
-else {
-if (is.character(y))
-y <- get(y, mode = "function", envir = parent.frame())
-if (!is.function(y))
-stop("'y' must be numeric or a function or a string naming a valid function")
-METHOD <- "One-sample Kolmogorov-Smirnov test"
-TIES <- FALSE
-if (length(unique(x)) < n) {
-warning("ties should not be present for the Kolmogorov-Smirnov test")
-TIES <- TRUE
-}
-if (is.null(exact))
-exact <- (n < 100) && !TIES
-        x <- y(sort(x), ...) - (0:(n - 1))/n
-        STATISTIC <- switch(alternative, two.sided = max(c(x,
-                                                           1/n - x)), greater = max(1/n - x), less = max(x))
-if (exact) {
-PVAL <- 1 - if (alternative == "two.sided")
-.Call(C_pKolmogorov2x, STATISTIC, n)
-else {
-pkolmogorov1x <- function(x, n) {
-if (x <= 0)
-return(0)
-if (x >= 1)
-return(1)
-j <- seq.int(from = 0, to = floor(n * (1 -
-                                       x)))
-1 - x * sum(exp(lchoose(n, j) + (n - j) * log(1 -
-                                              x - j/n) + (j - 1) * log(x + j/n)))
-}
-pkolmogorov1x(STATISTIC, n)
-}
-}
-nm_alternative <- switch(alternative, two.sided = "two-sided",
-        less = "the CDF of x lies below the null hypothesis",
-        greater = "the CDF of x lies above the null hypothesis")
-}
-names(STATISTIC) <- switch(alternative, two.sided = "D",
-        greater = "D^+", less = "D^-")
-if (is.null(PVAL)) {
-pkstwo <- function(x, tol = 1e-06) {
-if (is.numeric(x))
-x <- as.double(x)
-else stop("argument 'x' must be numeric")
-p <- rep(0, length(x))
-p[is.na(x)] <- NA
-        IND <- which(!is.na(x) & (x > 0))
-if (length(IND))
-p[IND] <- .Call(C_pKS2, p = x[IND], tol)
-p
-}
-PVAL <- ifelse(alternative == "two.sided", 1 - pkstwo(sqrt(n) *
-STATISTIC), exp(-2 * n * STATISTIC^2))
-}
-PVAL <- min(1, max(0, PVAL))
-RVAL <- list(statistic = STATISTIC, p.value = PVAL, alternative = nm_alternative,
-        method = METHOD, data.name = DNAME)
-class(RVAL) <- "htest"
-return(RVAL)
-}*/

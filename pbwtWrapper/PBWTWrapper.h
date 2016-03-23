@@ -40,10 +40,10 @@ public:
 
     std::vector<std::vector<int> > haplotypeCluster;//site, rank
     std::vector<std::vector<uchar> > clusterAllele;//numCluster;//at each site
-	//std::unordered_map<int,std::vector<std::vector<float> > > transVector;//transition probability: site,from,to
-    std::vector<std::vector<std::vector<float> > > transVector;
+
+    std::vector<std::vector<std::vector<float> > > transVector;	//transition probability: site,from,to
     char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
-    std::vector<std::vector<int> > clusterMembership;
+    std::vector<std::vector<int> > clusterMembership;//content is the fwd rank at that site
 
     PBWTWrapper(){}
     ~PBWTWrapper() {
@@ -63,13 +63,14 @@ public:
             pbwtCursorDestroy(reverseCursor);
         }
         //TODO:REVERSE
-        if(haplotype)
-        {
-            for (int i = 0; i <nSamples ; ++i) {
-                delete [] haplotype[i];
-            }
-            delete [] haplotype;
-        }
+        //Cannot delete haplotype because haplotype is obtained via SetHap()
+//        if(haplotype)
+//        {
+//            for (int i = 0; i <nSamples ; ++i) {
+//                delete [] haplotype[i];
+//            }
+//            delete [] haplotype;
+//        }
     }
 
     PBWTWrapper(const char ** haps, int nhaps, int nsnps);
@@ -89,9 +90,11 @@ public:
 
 	int UpdateTransVector(int site);
 
-    int MergeCluster(int site);
+    int MergeCluster(int indexA, int indexB);
+    int MergeAtSite(int site);
+    int MergeAtSiteExperiment(int site);
 
-    int MoveSegment(std::vector<std::vector<int> >& MemberShip);
+    int MoveSegment(std::vector<std::vector<int> >&Membership);
     //bool KStest(std::vector<int>& a,std::vector<int>& b);
     bool KStest(const double& Dmax, const int & sizeA, const int & sizeB);
     int UpdateRankWithinState(std::vector<std::vector<int> > &dist,int stateA, int stateB);
@@ -104,6 +107,14 @@ public:
         if(clusterAllele.size()<=k) fprintf(stderr,"site: %d not in clusterAllele\n",k);
         return clusterAllele[k].size();
     }
+    inline unsigned long GetNumHaps(int site) const { return haplotypeCluster[site].size(); }
+
+    inline int GetOriginalHapIDFromBack(int site, int i) const { return alpha[site + 1][i]; }
+    inline int GetOriginalHapIDFromFwd(int site, int i) const { return a[site][i]; }//youshould only use it after a being updated
+
+    inline int GetHapState(int site, int hapID) { return haplotypeCluster[site][aMap[site][hapID]]; }
+
+
     inline void resetWrapper()
     {
 
@@ -132,6 +143,10 @@ public:
         aMap=alphaMap=std::vector<std::unordered_map<int,int> >(N,std::unordered_map<int,int>());
     }
 
+    //fast update pbwt
+    int RemoveIndividualFromPBWT(int individualIndex);
+
+    int InsertIndividualBackToPBWT(int individualIndex, char** haps);
     /*
     function name: debug functions
     return value: :

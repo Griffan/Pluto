@@ -7,7 +7,7 @@
 #include "algorithm"
 #include "random"
 //#define DEBUG 1
-#define DEBUG5
+#define DEBUG3
 #ifdef DEBUG2
 using namespace std;
 char**  HapsInit(int M, int N)
@@ -105,8 +105,21 @@ int main(int argc, char ** argv) {
 
 #ifdef DEBUG3
 #include "MergingEventSimulator.h"
+#include "../pbwtWrapper/ks.h"
 int main(int argc, char ** argv) {
 
+//    /*ks.test test*/
+//    vector<int> a={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,18,18,20,21,21,23,24,25,26,27,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,84,85,85,85,88,89,90,91,92,93,94,95,96,97,97,97,97};
+//    vector<int> b={0,0,0,0,0,0,0,0,9,10,11,11,11,11,15,16,17,17,17,17,17,22,22,22,22,22,22,22,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73};
+//
+//    std::cerr<<"P value:"<<ks_test(a,b)<<std::endl;//expected p=1.071e-06
+//
+//    vector<int> c={4,19,20,25,57,58,59,60,83,84,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,120,122,125,126,127,128,129,130,131,132,133,134,135,165,166,167,168,169,170,171,172,173,174,175,176,178,179,180,181,194};
+//    vector<int> d={26,82,85,86,182,183,184,185,186,187,188,189,190,191,192,193,195,196,197,198,199};
+//
+//    std::cerr<<"P value:"<<ks_test(c,d)<<std::endl;//expected p=3.054e-10
+//    exit(0);
+    /*MergingEventSimulator test*/
     MergingEventSimulator MS;
     cerr << "Hello, World!" << endl;
     char ** haps= nullptr;
@@ -123,7 +136,7 @@ int main(int argc, char ** argv) {
     PBWTWrapper * Graph=new PBWTWrapper(MS.GetNumHaps(),MS.GetHapLength());
     Graph->SetHaps(haps);
     Graph->CursorBackwards();
-    Graph->CursorForwards(result);
+    Graph->CursorForwards();
 
 //TODO:deal with missing data
     return 0;
@@ -358,6 +371,9 @@ char** readVCF(string & fileName, int & nSamples, int& nMarkers)
         for (int k = 0; k <2*nSamples ; ++k) {
             haplotypes[k]= new char [nMarkers];
         }
+
+        srand(1234567);
+
         for(int j=0; pVcf->iterateMarker(); ++j) {
             //fprintf(stderr,"j=%d\n",j);
             pMarker = pVcf->getLastMarker();
@@ -393,6 +409,10 @@ char** readVCF(string & fileName, int & nSamples, int& nMarkers)
                     --g1;
                     --g2;
                 }
+//                if(rand()%2==1)
+//                {
+//                    swap(g1,g2);
+//                }
                 haplotypes[ i * 2 ][ j ] = g1;
                 haplotypes[ i * 2 + 1][ j ] = g2;
             }
@@ -440,7 +460,7 @@ int main(int argc, char ** argv) {
     cerr << "Hello, World!" << endl;
     char ** haps= nullptr;
     //string inputVcf="/Users/fanzhang/Downloads/PlutoTest/OMNI.merged.chr20.phased_genotypes.20141111.vcf.gz";
-    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/OMNI_1kg_unrel.recode.head500.vcf";
+    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/OMNI_1kg_unrel.recode.vcf";
     string inputPed="/Users/fanzhang/Downloads/PlutoTest/integrated_call_samples.20130502.ALL.ped";
     int nSamples(0),nMarkers(0);
 

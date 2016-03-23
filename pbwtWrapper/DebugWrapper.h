@@ -24,6 +24,8 @@ public:
     int MergeCluster(int site, Index2ID &a, ID2POP &b);
     /*The below are implementations for finding maximal length of shared prefix and suffix*/
     int ConfidentOrNot(char** individual, int siteA, int siteB);
+    int Phase(char** individual, int siteA, int siteB);
+    int MajorVoting(char** individual, char*** voteHapVec, int round, std::vector<int>& heterIndex);
     int FindLengthOfSuffix(char* haplotype, int siteA);
     int FindLengthOfPrefix(char* haplotype, int siteB);
     char** ExtractSubset(int individual);

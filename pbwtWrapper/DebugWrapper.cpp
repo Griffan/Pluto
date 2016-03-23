@@ -6,6 +6,7 @@
 #include <fstream>
 #include "ks.h"
 #define PREFIX_LENGTH 1200
+#define ROUND 10
 DebugWrapper::DebugWrapper(int a, int b):PBWTWrapper(a,b) {
     numRight=0;
     numAltRight=0;
@@ -774,76 +775,212 @@ int DebugWrapper::ConfidentOrNot(char** individual, int siteA, int siteB) {
     int length=siteB+1;
     char* haps[2];
     haps[0] = new char [length];//start from 0, hence siteB is length of prefix
-    //haps[1] = new char [length];
+
     memcpy(haps[0],individual[0],length);
-    //memcpy(haps[1],individual[1],length);
+
     char* altHaps[2];
     altHaps[0] = new char [length];
     //altHaps[1] = new char [length];
     memcpy(altHaps[0],individual[0],length);
-    //memcpy(altHaps[1],individual[1],length);
-//    char tmp=altHaps[1][siteA];
-//    altHaps[1][siteA]=altHaps[0][siteA];
-//    altHaps[0][siteA]=tmp;
+
     altHaps[0][siteA]=individual[1][siteA];
-//    for (int i = 0; i < length; ++i) {
-//        cerr<<char(haps[0][i]+48);
-//    }
-//    cerr<<endl;
-//    for (int j = 0; j < length; ++j) {
-//        cerr<<char(altHaps[0][j]+48);
-//    }
-//   cerr<<endl;
+
     int leftLengthA=FindLengthOfPrefix(haps[0],siteB);
-    //int leftLengthB=FindLengthOfPrefix(haps[1],siteB);
+
     int altLeftLengthA=FindLengthOfPrefix(altHaps[0],siteB);
-    //int altLeftLengthB=FindLengthOfPrefix(altHaps[1],siteB);
-    //cerr<<siteA<<"\tleft length:"<<leftLengthA<<endl;
-    //cerr<<siteA<<"\taltLeft length:"<<altLeftLengthA<<endl;
+
     delete haps[0];
-    //delete haps[1];
+
     delete altHaps[0];
-    //delete altHaps[1];
 
     //find maximal length of shared suffix
     length=N-siteA;
     haps[0] = new char [length];//start from 0, hence siteB is length of prefix
-    //haps[1] = new char [length];
-    //if(siteA>=nMarkers || length>=nMarkers) cerr<<"siteA:"<<siteA<<endl;
+
     memcpy(haps[0],individual[0]+siteA,length);
-    //memcpy(haps[1],&individual[1][siteA],length);
 
     altHaps[0] = new char [length];
-    //altHaps[1] = new char [length];
+
     memcpy(altHaps[0],&individual[0][siteA],length);
-    //memcpy(altHaps[1],&individual[1][siteA],length);
-//    tmp=altHaps[1][siteB];
-//    altHaps[1][siteB]=altHaps[0][siteB];
-//    altHaps[0][siteB]=tmp;
+
     altHaps[0][siteB-siteA] = individual[1][siteB];
     int rightLengthA=FindLengthOfSuffix(haps[0],siteA);
-    //int rightLengthB=FindLengthOfSuffix(haps[1],siteA);
+
     int altRightLengthA=FindLengthOfSuffix(altHaps[0],siteA);
-    //int altRightLengthB=FindLengthOfSuffix(altHaps[1],siteA);
-//    for (int i = 0; i < length; ++i) {
-//        cerr<<char(haps[0][i]+48);
-//    }
-//    cerr<<endl;
-//    for (int j = 0; j < length; ++j) {
-//        cerr<<char(altHaps[0][j]+48);
-//    }
-//    cerr<<endl;
-    //cerr<<siteB<<"\tright length:"<<rightLengthA<<endl;
-   // cerr<<siteB<<"\taltRight length:"<<altRightLengthA<<endl;
+
+
+    int ret(0);
+//    if(leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA) {/*numRight++; cerr<<"so far numRight:"<<numRight<<endl;*/ ret|=0x11;}//confident and right
+//    if(altLeftLengthA > leftLengthA && altRightLengthA > rightLengthA) {/*numAltRight++;cerr<<"so far numAltRight:"<<numAltRight<<endl;*/ ret|=0x1;}//confident  and wrong
+//    if(leftLengthA * rightLengthA >= altLeftLengthA*altRightLengthA) ret|=0x1100;//ambiguous and right
+//    if(altLeftLengthA * altRightLengthA > leftLengthA * rightLengthA) ret|=0x100;//ambiguous and wrong
+    //cerr<<siteA<<"\t"<<siteB<<"\t"<<leftLengthA<<"\t"<<altLeftLengthA<<"\t"<<rightLengthA<<"\t"<<altRightLengthA<<endl;
+    if (leftLengthA == altLeftLengthA && rightLengthA == altRightLengthA)
+    {
+        ret=rand()%2;
+        if(ret)
+        {
+            ret=0;
+            ret|=0x11;
+        }
+        else
+        {
+            ret=0;
+            ret|=0x1;
+        }
+    } //then it is ambiguous and use random guess or fractional counts
+    else if (leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA)
+    {
+        if((haps[0][siteA-siteA]==this->haplotype[M][siteA]&&haps[0][siteB-siteA]==this->haplotype[M][siteB])||(haps[0][siteA-siteA]==this->haplotype[M+1][siteA]&&haps[0][siteB-siteA]==this->haplotype[M+1][siteB]))//haps is the same with ref
+        {
+            ret|=0x11;
+            //cerr<<siteA<<"\t"<<siteB<<"\tphasing via hap"<<endl;
+        }//confident right
+        else
+            ret|=0x1;//confident wrong
+    }
+    else if (leftLengthA <= altLeftLengthA && rightLengthA <= altRightLengthA)
+    {
+        if((altHaps[0][siteA-siteA]==this->haplotype[M][siteA]&&altHaps[0][siteB-siteA]==this->haplotype[M][siteB])||(altHaps[0][siteA-siteA]==this->haplotype[M+1][siteA]&&altHaps[0][siteB-siteA]==this->haplotype[M+1][siteB]))
+        {
+            ret|=0x11;
+            //cerr<<siteA<<"\t"<<siteB<<"\tphasing via althap"<<endl;
+
+        }//confident right
+        else
+            ret|=0x1;//confident wrong
+    }
+    else if (leftLengthA * rightLengthA == altLeftLengthA * altRightLengthA )
+    {
+        ret=rand()%2;
+        if(ret)
+        {
+            ret=0;
+            ret|=0x1100;
+        }
+        else
+        {
+            ret=0;
+            ret|=0x100;
+        }
+    }//then it is ambiguous and use random guess or fractional counts
+    else if (leftLengthA * rightLengthA > altLeftLengthA * altRightLengthA)
+    {
+        if((haps[0][siteA-siteA]==this->haplotype[M][siteA]&&haps[0][siteB-siteA]==this->haplotype[M][siteB])||(haps[0][siteA-siteA]==this->haplotype[M+1][siteA]&&haps[0][siteB-siteA]==this->haplotype[M+1][siteB]))//haps is the same with ref
+        {
+            ret|=0x1100;
+            //cerr<<siteA<<"\t"<<siteB<<"\tphasing via ambiguous hap"<<endl;
+        }
+        else
+            ret|=0x100;
+    }// then it is ambiguous right
+    else if (leftLengthA * rightLengthA < altLeftLengthA * altRightLengthA)
+    {
+        if((altHaps[0][siteA-siteA]==this->haplotype[M][siteA]&&altHaps[0][siteB-siteA]==this->haplotype[M][siteB])||(altHaps[0][siteA-siteA]==this->haplotype[M+1][siteA]&&altHaps[0][siteB-siteA]==this->haplotype[M+1][siteB]))
+        {
+            ret |= 0x1100;
+            //cerr<<siteA<<"\t"<<siteB<<"\tphasing via ambiguous althap"<<endl;
+        }
+        else
+            ret|=0x100;
+    }// then it is ambiguous wrong
+    else { std::cerr<<"matching length error"<<std::endl;exit(EXIT_FAILURE);}//spit error message.
+
+
     delete haps[0];
 
     delete altHaps[0];
+
+    return ret;
+}
+
+
+int DebugWrapper::Phase(char** individual, int siteA, int siteB) {
+    if(siteA>siteB) swap(siteA,siteB);
+    //find maximal length of shared prefix
+    int length=siteB+1;
+    char* haps[2];
+    haps[0] = new char [length];//start from 0, hence siteB is length of prefix
+
+    memcpy(haps[0],individual[0],length);
+
+    char* altHaps[2];
+    altHaps[0] = new char [length];
+    //altHaps[1] = new char [length];
+    memcpy(altHaps[0],individual[0],length);
+
+    altHaps[0][siteA]=individual[1][siteA];
+
+    int leftLengthA=FindLengthOfPrefix(haps[0],siteB);
+
+    int altLeftLengthA=FindLengthOfPrefix(altHaps[0],siteB);
+
+    delete haps[0];
+
+    delete altHaps[0];
+
+    //find maximal length of shared suffix
+    length=N-siteA;
+    haps[0] = new char [length];//start from 0, hence siteB is length of prefix
+
+    memcpy(haps[0],individual[0]+siteA,length);
+
+    altHaps[0] = new char [length];
+
+    memcpy(altHaps[0],&individual[0][siteA],length);
+
+    altHaps[0][siteB-siteA] = individual[1][siteB];
+    int rightLengthA=FindLengthOfSuffix(haps[0],siteA);
+
+    int altRightLengthA=FindLengthOfSuffix(altHaps[0],siteA);
+
+
     int ret(0);
-    if(leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA) {/*numRight++; cerr<<"so far numRight:"<<numRight<<endl;*/ ret|=0x11;}//confident and right
-    if(altLeftLengthA > leftLengthA && altRightLengthA > rightLengthA) {/*numAltRight++;cerr<<"so far numAltRight:"<<numAltRight<<endl;*/ ret|=0x1;}//confident  and wrong
-    if(leftLengthA * rightLengthA >= altLeftLengthA*altRightLengthA) ret|=0x1100;//ambiguous and right
-    if(altLeftLengthA * altRightLengthA > leftLengthA * rightLengthA) ret|=0x100;//ambiguous and wrong
-    //if(leftLengthA + rightLengthA > altLeftLengthA+altRightLengthA) return 3;
+//    if(leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA) {/*numRight++; cerr<<"so far numRight:"<<numRight<<endl;*/ ret|=0x11;}//confident and right
+//    if(altLeftLengthA > leftLengthA && altRightLengthA > rightLengthA) {/*numAltRight++;cerr<<"so far numAltRight:"<<numAltRight<<endl;*/ ret|=0x1;}//confident  and wrong
+//    if(leftLengthA * rightLengthA >= altLeftLengthA*altRightLengthA) ret|=0x1100;//ambiguous and right
+//    if(altLeftLengthA * altRightLengthA > leftLengthA * rightLengthA) ret|=0x100;//ambiguous and wrong
+
+    if (leftLengthA == altLeftLengthA && rightLengthA == altRightLengthA)
+    {
+
+    } //then it is ambiguous and use random guess or fractional counts
+    else if (leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA)
+    {
+
+            ret|=0x11;
+
+    }
+    else if (leftLengthA <= altLeftLengthA && rightLengthA <= altRightLengthA)
+    {
+
+            swap(individual[1][siteB],individual[0][siteB]);
+
+            ret|=0x1;//confident wrong
+    }
+    else if (leftLengthA * rightLengthA == altLeftLengthA * altRightLengthA )
+    {
+
+    }//then it is ambiguous and use random guess or fractional counts
+    else if (leftLengthA * rightLengthA > altLeftLengthA * altRightLengthA)
+    {
+
+            ret|=0x1100;
+
+    }// then it is ambiguous right
+    else if (leftLengthA * rightLengthA < altLeftLengthA * altRightLengthA)
+    {
+
+            swap(individual[1][siteB],individual[0][siteB]);
+            ret|=0x100;
+    }// then it is ambiguous wrong
+    else { std::cerr<<"matching length error"<<std::endl;exit(EXIT_FAILURE);}//spit error message.
+
+
+    delete haps[0];
+
+    delete altHaps[0];
+
     return ret;
 }
 
@@ -864,9 +1001,12 @@ int DebugWrapper::FindLengthOfSuffix(char *haplotypeX,int siteA) {
         for (int k = siteA; k < N; ++k) {               /* use classic FM updates to extend [f,g) interval to next position */
             f1 = haplotypeX[k-siteA] ? c[k] + (f - u[k][f]) : u[k][f];
             g1 = haplotypeX[k-siteA] ? c[k] + (g - u[k][g]) : u[k][g];
+            //cerr<<"suffix->k:"<<k<<"\tg:"<<g<<endl;
             //if(k>=c.size()||k<0) cerr<<"c size:"<<c.size()<<"\tk:"<<k<<endl;
-            //if(k>u.size()||f>u[k].size()||g1>u[k].size()) cerr<<"suffix:"<<k<<"\t"<<u.size()<<"\t"<<u[k].size()<<"\t"<<f<<"\t"<<g1<<"\t1st:"<<c[k]<<"\t2st:"<<u[k][g]<<endl;
-            if(f1<0||g1>M-1) continue;
+            /*if(k>u.size()||f>u[k].size()||g1>u[k].size())*/
+            //cerr<<"M:"<<M<<"\tSuffix->k:"<<k<<"\t"<<u[k].size()<<"\tf:"<<f<<"\tg1:"<<g1<<"\tg:"<<g<<"\t1st:"<<c[k]<<"\t2st:"<<u[k][g]<<endl;
+            if(f1<0) f1=0;
+            if(g1>M-1) g1=M-1;
             /* if the interval is non-zero we can just proceed */
             if (g1 > f1) {
                 f = f1;
@@ -898,10 +1038,14 @@ int DebugWrapper::FindLengthOfPrefix(char *haplotypeX, int siteB) {
     for (int k = siteB; k > -1; --k) {               /* use classic FM updates to extend [f,g) interval to next position */
         f1 = haplotypeX[k] ? celta[k] + (f - ultra[k][f]) : ultra[k][f];
         g1 = haplotypeX[k] ? celta[k] + (g - ultra[k][g]) : ultra[k][g];
+        //cerr<<"prefix->k:"<<k<<"\tg:"<<g<<endl;
         //cerr<<celta[k]<<"\t"<<ultra[k][f]<<"\t"<<ultra[k][g]<<endl;
         //if(k>=celta.size()||k<0) cerr<<"celta size:"<<celta.size()<<"\tk:"<<k<<endl;
-        //if(k>ultra.size()||f>ultra[k].size()||g1>ultra[k].size()) cerr<<"Prefix:"<<k<<"\t"<<ultra.size()<<"\t"<<ultra[k].size()<<"\tf:"<<f<<"\tg:"<<g<<"\t"<<g1<<"\t1st:"<<celta[k]<<"\t2nd:"<<ultra[k][g]<<endl;
-        if(f1<0||g1>M-1) continue;
+        /*if(k>ultra.size()||f>ultra[k].size()||g1>ultra[k].size())*/
+        //cerr<<"M"<<M<<"Prefix->k:"<<k<<"\t"<<ultra[k].size()<<"\tf:"<<f<<"\tg:"<<g<<"\tg1:"<<g1<<"\t1st:"<<celta[k]<<"\t2nd:"<<ultra[k][g]<<endl;
+        //if(f1<0||g1>M-1) continue;
+        if(f1<0) f1=0;
+        if(g1>M-1) g1=M-1;
         /* if the interval is non-zero we can just proceed */
         if (g1 > f1) {
             f = f1;
@@ -928,14 +1072,26 @@ char **DebugWrapper::ExtractSubset(int individual) {
     this->haplotype[M-2] = tmpHapA;
     this->haplotype[M-1] = tmpHapB;
     char** haplotypeX = new char*[2];
-    haplotypeX[0] = tmpHapA;
-    haplotypeX[1] = tmpHapB;
+    //haplotypeX[0] = tmpHapA;
+    //haplotypeX[1] = tmpHapB;
+    haplotypeX[0]=new char [N];
+    haplotypeX[1]=new char [N];
+    memcpy(haplotypeX[0],this->haplotype[M-2],N);
+    memcpy(haplotypeX[1],this->haplotype[M-1],N);
+
+//    srand(time(NULL));
+//    for (int i = 0; i <N ; ++i) {
+//        if(rand()%2==1)
+//        swap(haplotypeX[0][i],haplotypeX[1][i]);
+//    }
     M-=2;
     resetWrapper();
     return haplotypeX;
 }
 
 int DebugWrapper::SubsetResume(char **haplotypeX, int individual) {
+
+    M+=2;
     char* tmpHapA,*tmpHapB;
     tmpHapA = this->haplotype[individual*2];
     tmpHapB = this->haplotype[individual*2+1];
@@ -943,8 +1099,10 @@ int DebugWrapper::SubsetResume(char **haplotypeX, int individual) {
     this->haplotype[individual*2+1] = this->haplotype[M-1];
     this->haplotype[M-2] = tmpHapA;
     this->haplotype[M-1] = tmpHapB;
+    delete haplotypeX[0];
+    delete haplotypeX[1];
     delete haplotypeX;
-    M+=2;
+
     return 0;
 }
 
@@ -962,29 +1120,80 @@ struct CONRE
         ambiguousTotal=0;
     }
 };
+
+
 int DebugWrapper::Process(int nMarkers, int nSamples, char** haps) {
 
     std::vector<CONRE> conreIndividual(nSamples,CONRE());
     std::unordered_map<int,CONRE> conreSNP;
-    for (int individual = 0; individual < 3/*nSamples*/; ++individual) {
+    char*hapInUse[2];
+    hapInUse[0]= new char [N];
+    hapInUse[1]= new char [N];
 
+    for (int individual = 0; individual < 5/*nSamples*/; ++individual) {
 
-        char** haplotypeX = ExtractSubset(individual);
+            char **haplotypeX = ExtractSubset(individual);
 
+            fprintf(stderr, "finished initializing graph\n");
 
-        fprintf(stderr,"finished initializing graph\n");
+            CursorBackwards();
+            fprintf(stderr, "finished backward procedure\n");
+            PBWTWrapper::CursorForwards();
+            fprintf(stderr, "finished forward procedure\n");
 
-        CursorBackwards();
-        fprintf(stderr,"finished backward procedure\n");
-        PBWTWrapper::CursorForwards();
-        fprintf(stderr,"finished forward procedure\n");
+            std::vector<int> heterIndex;
+            for (int i = 0; i < N; ++i) {
+                if (haplotypeX[0][i] != haplotypeX[1][i]) heterIndex.push_back(i);
+            }
+            fprintf(stderr, "number of heterozygous site for individual %d :%d\n", individual, heterIndex.size());
 
+        //phasing multiple rounds
+        char*** voteHapVec = new char** [ROUND];
+        int seed=time(NULL);
+        srand(seed);
+        //std::cerr<<"Seed:"<<seed<<std::endl;
+        for (int k = 0; k <ROUND; ++k) {//phasing round
+            voteHapVec[k]=new char* [2];
+            voteHapVec[k][0]=new char [N];
+            voteHapVec[k][1]=new char [N];
 
-        std::vector<int> heterIndex;
-        for (int i = 0; i <N ; ++i) {
-            if(haplotypeX[0][i]!=haplotypeX[1][i]) heterIndex.push_back(i);
+            memcpy(hapInUse[0], haplotypeX[0], N);
+            memcpy(hapInUse[1], haplotypeX[1], N);
+
+            for (int i = 0; i <N ; ++i) {
+                if(rand()%2==1)
+                    swap(hapInUse[0][i],hapInUse[1][i]);
+            }
+            for (int j = 0; j < heterIndex.size() - 1; ++j) {
+                Phase(hapInUse, heterIndex[j], heterIndex[j + 1]);
+            }
+            memcpy(voteHapVec[k][0],hapInUse[0],N);
+            memcpy(voteHapVec[k][1],hapInUse[1],N);
         }
-        fprintf(stderr,"number of heterozygous site for individual %d :%d\n",individual,heterIndex.size());
+////iterative updating
+//        for (int i = 0; i <N ; ++i) {
+//                if(rand()%2==1)
+//                    swap(haplotypeX[0][i],haplotypeX[1][i]);
+//        }
+//        for (int k = 0; k <ROUND; ++k) {//phasing round
+//            voteHapVec[k]=new char* [2];
+//            voteHapVec[k][0]=new char [N];
+//            voteHapVec[k][1]=new char [N];
+//
+//            for (int j = 0; j < heterIndex.size() - 1; ++j) {
+//                Phase(haplotypeX, heterIndex[j], heterIndex[j + 1]);
+//            }
+//            memcpy(voteHapVec[k][0],haplotypeX[0],N);
+//            memcpy(voteHapVec[k][1],haplotypeX[1],N);
+//        }
+        //major voting
+        MajorVoting(haplotypeX,voteHapVec,ROUND,heterIndex);
+
+        for (int l = 0; l < ROUND; ++l) {
+            delete [] voteHapVec[l][0];
+            delete [] voteHapVec[l][1];
+        }
+
         for (int j = 0; j < heterIndex.size()-1; ++j) {
             int ret = ConfidentOrNot(haplotypeX,heterIndex[j],heterIndex[j+1]);
             if((ret&0x10)&&(ret&0x1))
@@ -1066,5 +1275,50 @@ int DebugWrapper::Process(int nMarkers, int nSamples, char** haps) {
     }
 
     conreSNP.clear();
+    delete [] hapInUse[0];
+    delete [] hapInUse[1];
+    return 0;
+}
+
+int DebugWrapper::MajorVoting(char **individual, char ***voteHapVec, int round,std::vector<int>& heterIndex) {
+    std::cerr<<"Enter Major Voting..."<<std::endl;
+    int vote(0);
+    int tmp1(0),tmp2(0);
+    for (int j = 0; j <heterIndex.size()-1; ++j) {
+        vote=0;
+        for (int i = 0; i < round; ++i) {
+           // std::cerr<<"Site:"<<heterIndex[j]<<"\ttmp1-tmp2:"<<tmp1<<tmp2<<"\tRound:"<<i<<"\t hap1:"<<(int)voteHapVec[i][0][heterIndex[j]]<<(int)voteHapVec[i][0][heterIndex[j+1]]<<"\thap2:"<<(int)voteHapVec[i][1][heterIndex[j]]<<(int)voteHapVec[i][1][heterIndex[j+1]]<<"\tvote:"<<vote<<std::endl;
+            if(i==0)
+            {
+                tmp1=voteHapVec[i][0][heterIndex[j]];
+                tmp2=voteHapVec[i][0][heterIndex[j+1]];
+                vote=1;
+            }
+            else if(tmp1==voteHapVec[i][0][heterIndex[j]] && tmp2==voteHapVec[i][0][heterIndex[j+1]])
+            {
+                vote++;
+            }
+            else if(tmp1==voteHapVec[i][1][heterIndex[j]] && tmp2==voteHapVec[i][1][heterIndex[j+1]])
+            {
+                vote++;
+            }
+        }
+        //std::cerr<<"vote:"<<vote<<"\tM/2:"<<round/2<<std::endl;
+        if(vote > round/2)
+        {
+            //std::cerr<<"voting success at site "<<heterIndex[j]<<std::endl;
+            individual[0][heterIndex[j]]=voteHapVec[0][0][heterIndex[j]];
+            individual[0][heterIndex[j+1]]=voteHapVec[0][0][heterIndex[j+1]];
+            individual[1][heterIndex[j]]=voteHapVec[0][1][heterIndex[j]];
+            individual[1][heterIndex[j+1]]=voteHapVec[0][1][heterIndex[j+1]];
+        }
+        else
+        {
+            individual[0][heterIndex[j]]=voteHapVec[0][0][heterIndex[j]];
+            individual[0][heterIndex[j+1]]=voteHapVec[0][1][heterIndex[j+1]];
+            individual[1][heterIndex[j]]=voteHapVec[0][0][heterIndex[j]];
+            individual[1][heterIndex[j+1]]=voteHapVec[0][1][heterIndex[j+1]];
+        }
+    }
     return 0;
 }
