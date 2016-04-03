@@ -14,6 +14,7 @@
 #define M_1_SQRT_2PI	0.398942280401432677939946059934	/* 1/sqrt(2pi) */
 #endif
 #include <vector>
+double pkstwo_wrapper(int n, double* statistic, double tol = 1e-06);
 double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT=-1);
 double K(int n, double d);
 void m_multiply(double *A, double *B, double *C, int m);

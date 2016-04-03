@@ -314,7 +314,7 @@ m_power(double *A, int eA, double *V, int *eV, int m, int n)
 //    return ScalarReal(p);
 //}
 
-double pkstwo_wrapper(int n, double* statistic, long tol = 1e-06) {
+double pkstwo_wrapper(int n, double* statistic, double tol) {
 
     std::vector<double> p;
     std::vector<int> index;

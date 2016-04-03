@@ -17,7 +17,7 @@
 #include <unordered_map>
 #include <iostream>
 #include <algorithm>
-#include "../TestUnit/MergingEventSimulator.h"
+//#include "../TestUnit/MergingEventSimulator.h"
 
 typedef std::unordered_map<std::string,std::string>  ID2POP;
 typedef std::unordered_map<int,std::string>  Index2ID;
@@ -38,7 +38,7 @@ public:
     std::vector<int> c,celta;/*number of zero at each site*/
     std::vector<std::vector<int> > u,ultra;/*relative rank within zeros*/
 
-    std::vector<std::vector<int> > haplotypeCluster;//site, rank
+    std::vector<std::vector<int> > haplotypeCluster;//site, hapID
     std::vector<std::vector<uchar> > clusterAllele;//numCluster;//at each site
 
     std::vector<std::vector<std::vector<float> > > transVector;	//transition probability: site,from,to
@@ -94,7 +94,7 @@ public:
     int MergeAtSite(int site);
     int MergeAtSiteExperiment(int site);
 
-    int MoveSegment(std::vector<std::vector<int> >&Membership);
+    int MoveSegment(const std::unordered_map<int,int>& mergedMembership,int site);
     //bool KStest(std::vector<int>& a,std::vector<int>& b);
     bool KStest(const double& Dmax, const int & sizeA, const int & sizeB);
     int UpdateRankWithinState(std::vector<std::vector<int> > &dist,int stateA, int stateB);
@@ -109,10 +109,13 @@ public:
     }
     inline unsigned long GetNumHaps(int site) const { return haplotypeCluster[site].size(); }
 
-    inline int GetOriginalHapIDFromBack(int site, int i) const { return alpha[site + 1][i]; }
-    inline int GetOriginalHapIDFromFwd(int site, int i) const { return a[site][i]; }//youshould only use it after a being updated
+    inline int GetHapIDFromBack(int site, int backRank) const { return alpha[site + 1][backRank]; }
+    inline int GetHapIDFromFwd(int site, int fwdRank) const { return a[site][fwdRank]; }//you should only use it after a being updated
 
-    inline int GetHapState(int site, int hapID) { return haplotypeCluster[site][aMap[site][hapID]]; }
+    inline int GetRankFromBack(int site, int hapID) {return alphaMap[site][hapID];}
+    inline int GetRankFromFwd(int site, int hapID) {return aMap[site][hapID];}
+
+    inline int GetHapState(int site, int hapID) { return haplotypeCluster[site][hapID]; }
 
 
     inline void resetWrapper()
@@ -230,6 +233,9 @@ public:
 
     int PrintSummary();
 
+    void DoMerge(int site, int clusterA, int clusterB, std::vector<std::vector<int>> &dist,
+                 std::vector<bool, std::allocator<bool>> &removeIndicator,
+                 std::vector<bool, std::allocator<bool>> &retainIndicator, std::unordered_map<int, int> &removeMembership);
 };
 
 #endif //PLUTO_PBWTWRAPPER_H

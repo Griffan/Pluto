@@ -207,7 +207,7 @@ int DebugWrapper::MergeCluster(int site, RESULT* result) {
     }
     if(ret) {
         //adjust d array and a array
-        MoveSegment(clusterMembership);
+       //MoveSegment(clusterMembership);
         //fprintf(stderr,"site:%d merged...\n",site);
 
         //PrintVector(clusterAllele[site],"allele cluster states after");
@@ -421,7 +421,7 @@ int DebugWrapper::MergeCluster(int site, Index2ID& MAP1, ID2POP& MAP2) {
     }
     if(ret) {
         //adjust d array and a array
-        MoveSegment(clusterMembership);
+//        MoveSegment(clusterMembership);
         //fprintf(stderr,"site:%d merged...\n",site);
 
         //PrintVector(clusterAllele[site],"allele cluster states after");

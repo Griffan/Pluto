@@ -7,6 +7,7 @@
 
 
 #include "PBWTWrapper.h"
+#include "../TestUnit/MergingEventSimulator.h"
 
 class DebugWrapper: public PBWTWrapper
 {

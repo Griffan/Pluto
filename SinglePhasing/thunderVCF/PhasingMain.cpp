@@ -464,7 +464,7 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
                     }
                     else {
                         //fprintf(stderr,"pMarker->asSampleValues.size:%s nFormtas:%d\tDSidx:%d\tsDose:%s\n",pMarker->asSampleValues[nFormats * i + DSidx].c_str(),nFormats,DSidx,sDose);
-                        pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3s", sDose);
+                        pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3lf", sDose);
                     }
                 }
             }
