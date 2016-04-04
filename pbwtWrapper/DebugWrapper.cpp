@@ -153,8 +153,8 @@ int DebugWrapper::MergeCluster(int site, RESULT* result) {
                 //_LIBCPP_ASSERT(total,rankSum[j][k]);
                 if (tmpABS > Dmax[j][k]) Dmax[j][k] = tmpABS;
 
-
-                if (0 && DEBUG && i == numHaps - 1) {
+#ifdef DEBUG
+                if (0  && i == numHaps - 1) {
                     std::cerr << "\nenter rank distribution section, site " << site << ":" << std::endl;
                     for (auto i = 0; i != dist.size(); ++i) {
                         // PrintDistributionAtSite(i,haplotypeCluster[i]);
@@ -163,6 +163,7 @@ int DebugWrapper::MergeCluster(int site, RESULT* result) {
                     std::cerr << "exit rank distribution section!\n" << std::endl;
                     //exit(0);
                 }
+#endif
 //                if(i==numHaps-1)
 //                {
 //                    std::cerr<<"Testing state "<<j<<" and "<<k<<std::endl;
@@ -182,8 +183,6 @@ int DebugWrapper::MergeCluster(int site, RESULT* result) {
                     ret = 1;
                     //PrintVector(dist[i],"state i");
                     //PrintVector(dist[j],"state j");
-
-                    if(DEBUG)fprintf(stderr,"merge state:%d and state:%d\n",j,k);
                     currentNumCluster--;
                     //Merge Action, change mergeIndicator
                     for(int t=0;t!=dist[j].size();++t)
@@ -367,8 +366,8 @@ int DebugWrapper::MergeCluster(int site, Index2ID& MAP1, ID2POP& MAP2) {
                 //_LIBCPP_ASSERT(total,rankSum[j][k]);
                 if (tmpABS > Dmax[j][k]) Dmax[j][k] = tmpABS;
 
-
-                if (0 && DEBUG && i == numHaps - 1) {
+#ifdef DEBUG
+                if (0 && i == numHaps - 1) {
                     std::cerr << "\nenter rank distribution section, site " << site << ":" << std::endl;
                     for (auto i = 0; i != dist.size(); ++i) {
                         // PrintDistributionAtSite(i,haplotypeCluster[i]);
@@ -377,6 +376,7 @@ int DebugWrapper::MergeCluster(int site, Index2ID& MAP1, ID2POP& MAP2) {
                     std::cerr << "exit rank distribution section!\n" << std::endl;
                     //exit(0);
                 }
+#endif
 //                if(i==numHaps-1)
 //                {
 //                    std::cerr<<"Testing state "<<j<<" and "<<k<<std::endl;
@@ -397,7 +397,6 @@ int DebugWrapper::MergeCluster(int site, Index2ID& MAP1, ID2POP& MAP2) {
                     //PrintVector(dist[i],"state i");
                     //PrintVector(dist[j],"state j");
 
-                    if(DEBUG)fprintf(stderr,"merge state:%d and state:%d\n",j,k);
                     currentNumCluster--;
                     //Merge Action, change mergeIndicator
                     for(int t=0;t!=dist[j].size();++t)
@@ -499,7 +498,8 @@ int DebugWrapper::CursorForwardsTo(int k, int T, RESULT *result) {
     // uchar *lastY = new uchar[forwardCursor->M +1];
     // memcpy(lastD, forwardCursor->d, (forwardCursor->M + 1) * sizeof(int));
     //memcpy(lastY, forwardCursor->sortedY, (forwardCursor->M + 1) * sizeof(uchar));
-    if(DEBUG && (k>=64||k==63||k==62||k==61)) {
+#ifdef DEBUG
+    if((k>=64||k==63||k==62||k==61)) {
         fprintf(stderr, "last a array %d:\n",k);
         for (int kt = 0; kt < M; ++kt) {
             fprintf(stderr, "%d\t", forwardCursor->a[kt]);
@@ -511,6 +511,7 @@ int DebugWrapper::CursorForwardsTo(int k, int T, RESULT *result) {
         }
         fprintf(stderr, "\n");
     }
+#endif
     //copy haplotypes into forwardCursor->y
     CopyHap(k, forwardCursor);
 
@@ -551,7 +552,6 @@ int DebugWrapper::CursorForwardsTo(int k, int T, RESULT *result) {
 
                 clusterAllele[k - 1].push_back(haplotype[forwardCursor->a[i0]][k-1]);
                 clusterMembership.push_back(tmpMem);
-                if(DEBUG && k==64) fprintf(stderr,"i0:%d\tallele:%d\n",i0,haplotype[forwardCursor->a[i0]][k-1]);
                 // na = 0;
                 // nb = 0;
                 i0 = i;
@@ -590,7 +590,6 @@ int DebugWrapper::CursorForwardsTo(int k, int T, RESULT *result) {
                 haplotypeCluster[k-1][ia] = group;
                 tmpMem.push_back(ia);
             }
-            if(DEBUG && k==64) fprintf(stderr,"i0:%d\tallele:%d\n",i0,haplotype[forwardCursor->a[i0]][k-1]);
             clusterAllele[k-1].push_back(haplotype[forwardCursor->a[i0]][k-1]);
             clusterMembership.push_back(tmpMem);
             //fprintf(stderr,"site:%d\tnumStates:%d\n",k-1,clusterAllele[k-1].size());
@@ -599,21 +598,24 @@ int DebugWrapper::CursorForwardsTo(int k, int T, RESULT *result) {
 
     }
     int test = 0;
-    if(DEBUG&&k!=0){
+#ifdef DEBUG
+    if(k!=0){
         fprintf(stderr, "at site:%d\n", k-1);
-
         PrintVector(haplotypeCluster[k-1],"haplotype state before merge state");
         PrintVector(clusterAllele[k-1],"state allele before merge allele");
     }
+#endif
     if(k!=0&&clusterAllele[k-1].size()==0) {fprintf(stderr,"0 states, abort!");abort();}
     if(k!=0&&clusterAllele[k-1].size()!=1) test=MergeCluster(k-1, result);//TODO:implement this function
-    if(k!=0&&DEBUG&&test) {
+#ifdef DEBUG
+    if(k!=0&&test) {
         fprintf(stderr, "at site:%d\n", k-1);
 
         PrintVector(haplotypeCluster[k-1], "haplotype state after merge state");
         PrintVector(clusterAllele[k-1],"state allele after merge allele");
         fprintf(stderr,"\n");
     }
+#endif
     //numCluster[k] = group;
     //forwardCursor->c = na;
     //numZero[k]=na;
@@ -689,7 +691,6 @@ int DebugWrapper::CursorForwardsTo(int k, Index2ID &MAP1, ID2POP& MAP2, int T) {
 
                 clusterAllele[k - 1].push_back(haplotype[forwardCursor->a[i0]][k-1]);
                 clusterMembership.push_back(tmpMem);
-                if(DEBUG && k==64) fprintf(stderr,"i0:%d\tallele:%d\n",i0,haplotype[forwardCursor->a[i0]][k-1]);
                 i0 = i;
                 group++;
 
@@ -726,31 +727,29 @@ int DebugWrapper::CursorForwardsTo(int k, Index2ID &MAP1, ID2POP& MAP2, int T) {
                 haplotypeCluster[k-1][ia] = group;
                 tmpMem.push_back(ia);
             }
-            if(DEBUG && k==64) fprintf(stderr,"i0:%d\tallele:%d\n",i0,haplotype[forwardCursor->a[i0]][k-1]);
             clusterAllele[k-1].push_back(haplotype[forwardCursor->a[i0]][k-1]);
             clusterMembership.push_back(tmpMem);
-            //fprintf(stderr,"site:%d\tnumStates:%d\n",k-1,clusterAllele[k-1].size());
-
         }
 
     }
     int test = 0;
-    if(DEBUG&&k!=0){
+#ifdef DEBUG
+    if(k!=0){
         fprintf(stderr, "at site:%d\n", k-1);
-
         PrintVector(haplotypeCluster[k-1],"haplotype state before merge state");
         PrintVector(clusterAllele[k-1],"state allele before merge allele");
     }
+#endif
     if(k!=0&&clusterAllele[k-1].size()==0) {fprintf(stderr,"0 states, abort!");abort();}
     if(k!=0&&clusterAllele[k-1].size()!=1) test=MergeCluster(k-1, MAP1, MAP2);//TODO:implement this function
-    if(k!=0&&DEBUG&&test) {
+#ifdef DEBUG
+    if(k!=0&&test) {
         fprintf(stderr, "at site:%d\n", k-1);
-
         PrintVector(haplotypeCluster[k-1], "haplotype state after merge state");
         PrintVector(clusterAllele[k-1],"state allele after merge allele");
         fprintf(stderr,"\n");
     }
-
+#endif
     memcpy(forwardCursor->a , tmpA, u * sizeof(int));
     memcpy(forwardCursor->d , tmpD, u * sizeof(int));
     memcpy(forwardCursor->a + u, forwardCursor->b, v * sizeof(int));

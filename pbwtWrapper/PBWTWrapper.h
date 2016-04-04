@@ -9,7 +9,7 @@
  */
 #ifndef PLUTO_PBWTWRAPPER_H
 #define PLUTO_PBWTWRAPPER_H
-#define DEBUG 0
+//#define DEBUG 0
 
 
 #include "pbwt/pbwt.h"
@@ -18,6 +18,26 @@
 #include <iostream>
 #include <algorithm>
 //#include "../TestUnit/MergingEventSimulator.h"
+#include <queue>
+
+
+struct max_pair_t
+{
+    int clusterA;
+    int clusterB;
+    double Dmax;
+    bool exact;
+    double pval;
+    max_pair_t(int a,int b,double c, bool d,double e)
+    {
+        clusterA=a;
+        clusterB=b;
+        Dmax=c;
+        exact=d;
+        pval=e;
+    }
+};
+bool comparator(const max_pair_t& lhs, const max_pair_t& rhs);
 
 typedef std::unordered_map<std::string,std::string>  ID2POP;
 typedef std::unordered_map<int,std::string>  Index2ID;
@@ -42,8 +62,19 @@ public:
     std::vector<std::vector<uchar> > clusterAllele;//numCluster;//at each site
 
     std::vector<std::vector<std::vector<float> > > transVector;	//transition probability: site,from,to
+    std::vector<std::vector<std::vector<int> > > transVectorEdges;//valid edges:site, to, from; record indices of states that can reach current site and current state
     char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
     std::vector<std::vector<int> > clusterMembership;//content is the fwd rank at that site
+
+    //mergeSite function variables
+    std::priority_queue<max_pair_t,std::vector<max_pair_t>, std::function<bool(const max_pair_t&,const max_pair_t&)> >mergePairList;
+    double tmpABS;
+    std::unordered_map<int, int> stateOrder;//mapping oldState to newOrder
+    int tmpOrder;
+    std::vector<uchar> tmpAllele;
+    double pval;
+    bool EXACT;
+    std::unordered_map<int, int> removeMembership;//rankID,state
 
     PBWTWrapper(){}
     ~PBWTWrapper() {
@@ -95,8 +126,7 @@ public:
     int MergeAtSiteExperiment(int site);
 
     int MoveSegment(const std::unordered_map<int,int>& mergedMembership,int site);
-    //bool KStest(std::vector<int>& a,std::vector<int>& b);
-    bool KStest(const double& Dmax, const int & sizeA, const int & sizeB);
+
     int UpdateRankWithinState(std::vector<std::vector<int> > &dist,int stateA, int stateB);
 
     int SetHaps(char **haps);
