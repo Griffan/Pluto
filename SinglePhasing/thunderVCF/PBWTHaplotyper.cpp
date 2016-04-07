@@ -393,7 +393,7 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 
 //    if(toWhere==468)
 //    {
-//        for (auto i:Wrapper->transVectorEdges[toWhere][0]) {
+//        for (auto i:Wrapper->inEdges[toWhere][0]) {
 //            std::cerr<<"at marker 468, there are:"<<i<<"\tto 0 available."<<std::endl;
 //        }
 //
@@ -415,10 +415,10 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 //                            (*probability) * GetTransitionProb(fromWhere, i, k) * GetTransitionProb(fromWhere, i, l)*2;
 //                    probability++;
 //                }
-                for (auto i:Wrapper->transVectorEdges[toWhere][k]) {
-                    for(auto j:Wrapper->transVectorEdges[toWhere][l]){
+                for (auto kvi:Wrapper->inEdges[toWhere][k]) {
+                    for(auto kvj:Wrapper->inEdges[toWhere][l]){
                             *output +=
-                                    (*GetProbability(source,i,j)) * GetTransitionProb(fromWhere, i, k) * GetTransitionProb(fromWhere, j, l);
+                                    (*GetProbability(source,kvi.first,kvj.first)) * GetTransitionProb(fromWhere, kvi.first, k) * GetTransitionProb(fromWhere, kvj.first, l);
                     }
                 }
                 *output *=factor;
@@ -443,9 +443,9 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 //            for (int m = 0; m <numFromStates ; ++m) {
 //                fprintf(stderr,"site:%d:(from state %d to state %d) %f\t\n",site,m,k,GetTransitionProb(fromWhere, m, k));
 //            }
-            for (auto i:Wrapper->transVectorEdges[toWhere][k]) {
-                for(auto j:Wrapper->transVectorEdges[toWhere][k]){
-                    *output += (*GetProbability(source,i,j)) * GetTransitionProb(fromWhere, i, k) * GetTransitionProb(fromWhere, j, k);
+            for (auto kvi:Wrapper->inEdges[toWhere][k]) {
+                for(auto kvj:Wrapper->inEdges[toWhere][k]){
+                    *output += (*GetProbability(source,kvi.first,kvj.first)) * GetTransitionProb(fromWhere, kvi.first, k) * GetTransitionProb(fromWhere, kvj.first, k);
                 }
             }
             *output *= factor;
@@ -587,10 +587,10 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
     // printf("        Selected state: %g\n", *(probability - 1));
 
     for (int j = markers - 2; j >= 0; j--) {
-        fprintf(stderr,"marker:%d\tlastSum:%9.9f\tSum: %9.9f, choice:%9.9f,Chose (%d,%d) out of (%d) states\n",j+1, lastSum,sum, choice,first, second,GetStateNumFrom(j+1));
+        //fprintf(stderr,"marker:%d\tlastSum:%9.9f\tSum: %9.9f, choice:%9.9f,Chose (%d,%d) out of (%d) states\n",j+1, lastSum,sum, choice,first, second,GetStateNumFrom(j+1));
         //Wrapper->PrintVector(Wrapper->haplotypeCluster[j],"states");
-        if(j==255||j==255+1)
-        printLeftMatrix(leftMatrices[j+1],GetStateNumFrom(j+1));
+//        if(j==255||j==255+1)
+//        printLeftMatrix(leftMatrices[j+1],GetStateNumFrom(j+1));
 
         ImputeAlleles(j + 1, first, second, rand);//TODO:modify needed, like the part before fillpath
         int j0 = j;

@@ -9,10 +9,11 @@
  */
 #ifndef PLUTO_PBWTWRAPPER_H
 #define PLUTO_PBWTWRAPPER_H
-//#define DEBUG 0
+//#define DEBUG 1
 
 
 #include "pbwt/pbwt.h"
+#include "ks.h"
 #include <vector>
 #include <unordered_map>
 #include <iostream>
@@ -21,20 +22,25 @@
 #include <queue>
 
 
+
 struct max_pair_t
 {
     int clusterA;
+    size_t sizeA;
     int clusterB;
+    size_t sizeB;
     double Dmax;
     bool exact;
     double pval;
-    max_pair_t(int a,int b,double c, bool d,double e)
+    max_pair_t(int a,int b,double c, bool d,double e, size_t A, size_t B)
     {
         clusterA=a;
         clusterB=b;
         Dmax=c;
         exact=d;
         pval=e;
+        sizeA=A;
+        sizeB=B;
     }
 };
 bool comparator(const max_pair_t& lhs, const max_pair_t& rhs);
@@ -42,6 +48,7 @@ bool comparator(const max_pair_t& lhs, const max_pair_t& rhs);
 typedef std::unordered_map<std::string,std::string>  ID2POP;
 typedef std::unordered_map<int,std::string>  Index2ID;
 
+typedef std::unordered_map<int,std::unordered_map<int,bool> > EDGE;
 
 class PBWTWrapper
 {
@@ -52,7 +59,8 @@ public:
     PBWT* pbwtCore;
     PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<std::vector<int> > a,alpha/*reverse*/;
-    std::vector<std::unordered_map<int,int> > aMap,alphaMap;
+    //std::vector<std::unordered_map<int,int> > aMap,alphaMap;
+    std::vector<std::vector<int> > aMap,alphaMap;
     std::vector<std::vector<int> > d;//,delta;/*reverse*/;
     std::vector<std::vector<uchar> > sortedY/*only for test*/;
     std::vector<int> c,celta;/*number of zero at each site*/
@@ -62,11 +70,15 @@ public:
     std::vector<std::vector<uchar> > clusterAllele;//numCluster;//at each site
 
     std::vector<std::vector<std::vector<float> > > transVector;	//transition probability: site,from,to
-    std::vector<std::vector<std::vector<int> > > transVectorEdges;//valid edges:site, to, from; record indices of states that can reach current site and current state
+    std::vector<EDGE > inEdges;//valid edges:site, to, from; record indices of states that can arrive at current site and current state
+    std::vector<EDGE > outEdges;//valid edges:site, from, to; record number of states that can reach out from current site and current state
     char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
+
     std::vector<std::vector<int> > clusterMembership;//content is the fwd rank at that site
+    std::vector<bool> hasSiblings;
 
     //mergeSite function variables
+    std::vector<std::vector<int> > dist;
     std::priority_queue<max_pair_t,std::vector<max_pair_t>, std::function<bool(const max_pair_t&,const max_pair_t&)> >mergePairList;
     double tmpABS;
     std::unordered_map<int, int> stateOrder;//mapping oldState to newOrder
@@ -75,6 +87,7 @@ public:
     double pval;
     bool EXACT;
     std::unordered_map<int, int> removeMembership;//rankID,state
+
 
     PBWTWrapper(){}
     ~PBWTWrapper() {
@@ -118,7 +131,7 @@ public:
 	int ObtainHapFromSinglePhasing(char ** haps);//I implement it here, but not using it for now
     inline int CopyHap(int k, PbwtCursor* Cursor);
 
-
+    int LabelNoSiblingCluster(int site);
 	int UpdateTransVector(int site);
 
     int MergeCluster(int indexA, int indexB);
@@ -147,6 +160,30 @@ public:
 
     inline int GetHapState(int site, int hapID) { return haplotypeCluster[site][hapID]; }
 
+    //KS D value related
+    std::vector<std::vector<double> > DvalueMatrix;//10k X 10k
+    float exact_ks_test_p_val;
+    inline int CalculateDvalueMatrix()
+    {
+        DvalueMatrix=std::vector<std::vector<double> >(10000,std::vector<double>(10000,-1.0));
+        for (int i = 1; i <10000 ; ++i) {
+            for (int j = i; j <floor(10000/i+0.5); ++j) {
+
+                double D=1;
+                for(;D>0;D-=0.01)
+                {
+                    if((1 - psmirnov2x(&D, i, j)) > exact_ks_test_p_val) break;
+                }
+                DvalueMatrix[i][j]=D;
+                DvalueMatrix[j][i]=D;
+            }
+        }
+    }
+    inline int GetExactThresh(int n1, int n2)
+    {
+        return DvalueMatrix[n1][n2];
+    }
+
 
     inline void resetWrapper()
     {
@@ -169,11 +206,13 @@ public:
             reverseCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
         }
         //TODO:REVERSE
-        a=alpha=d=u=ultra=haplotypeCluster=std::vector<std::vector<int> >(N,std::vector<int>(M,0));
+        alphaMap=aMap=a=alpha=d=u=ultra=haplotypeCluster=std::vector<std::vector<int> >(N,std::vector<int>(M,0));
         c=celta=std::vector<int>(N,0);
         clusterAllele=std::vector<std::vector<uchar> >(N,std::vector<uchar>());
         transVector.clear();
-        aMap=alphaMap=std::vector<std::unordered_map<int,int> >(N,std::unordered_map<int,int>());
+        //aMap=alphaMap=std::vector<std::unordered_map<int,int> >(N,std::unordered_map<int,int>());
+        inEdges.clear();
+        outEdges.clear();
     }
 
     //fast update pbwt
@@ -203,7 +242,7 @@ public:
         for (int i = 0; i < M; ++i) {
             std::cerr<<i<<"\t";
             for (int j = 0; j < N; ++j) {
-                std::cerr<<(ushort)a[j][i]<<"\t";
+                std::cerr<<a[j][i]<<"\t";
             }
             std::cerr<<std::endl;
         }
@@ -263,7 +302,7 @@ public:
 
     int PrintSummary();
 
-    void DoMerge(int site, int clusterA, int clusterB, std::vector<std::vector<int>> &dist,
+    void DoMerge(int site, int retainState, int removeState, std::vector<std::vector<int>> &dist,
                  std::vector<bool, std::allocator<bool>> &removeIndicator,
                  std::vector<bool, std::allocator<bool>> &retainIndicator, std::unordered_map<int, int> &removeMembership);
 };

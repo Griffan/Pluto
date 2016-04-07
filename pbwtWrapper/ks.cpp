@@ -139,13 +139,14 @@ pkstwo(int n, double *x, double tol)
 }
 
 /* Two-sided two-sample */
-double psmirnov2x(double *x, int m, int n)
-{
+double psmirnov2x(double *x, int m, int n) {
     double md, nd, q, *u, w;
     int i, j;
 
-    if(m > n) {
-	i = n; n = m; m = i;
+    if (m > n) {
+        i = n;
+        n = m;
+        m = i;
     }
     md = (double) m;
     nd = (double) n;
@@ -157,21 +158,21 @@ double psmirnov2x(double *x, int m, int n)
     q = (0.5 + floor(*x * md * nd - 1e-7)) / (md * nd);
     u = (double *) calloc(n + 1, sizeof(double));
 
-    for(j = 0; j <= n; j++) {
-	u[j] = ((j / nd) > q) ? 0 : 1;
+    for (j = 0; j <= n; j++) {
+        u[j] = ((j / nd) > q) ? 0 : 1;
     }
-    for(i = 1; i <= m; i++) {
-	w = (double)(i) / ((double)(i + n));
-	if((i / md) > q)
-	    u[0] = 0;
-	else
-	    u[0] = w * u[0];
-	for(j = 1; j <= n; j++) {
-	    if(fabs(i / md - j / nd) > q) 
-		u[j] = 0;
-	    else
-		u[j] = w * u[j] + u[j - 1];
-	}
+    for (i = 1; i <= m; i++) {
+        w = (double) (i) / ((double) (i + n));
+        if ((i / md) > q)
+            u[0] = 0;
+        else
+            u[0] = w * u[0];
+        for (j = 1; j <= n; j++) {
+            if (fabs(i / md - j / nd) > q)
+                u[j] = 0;
+            else
+                u[j] = w * u[j] + u[j - 1];
+        }
     }
     return u[n];
 }

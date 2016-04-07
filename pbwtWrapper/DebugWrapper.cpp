@@ -629,7 +629,8 @@ int DebugWrapper::CursorForwardsTo(int k, int T, RESULT *result) {
 
     for (int j = 0; j <a[k].size() ; ++j) {
         //std::cerr<<"a size:"<<a[k].size()<<" and "<<a[k][j]<<std::endl;
-        aMap[k].insert(std::make_pair(a[k][j],j));
+        //aMap[k].insert(std::make_pair(a[k][j],j));
+        aMap[k][a[k][j]]=j;
     }
     d[k].assign(forwardCursor->d,forwardCursor->d+forwardCursor->M);
     //sortedY[k].assign(forwardCursor->sortedY,forwardCursor->sortedY+forwardCursor->M);
@@ -760,7 +761,8 @@ int DebugWrapper::CursorForwardsTo(int k, Index2ID &MAP1, ID2POP& MAP2, int T) {
 
     for (int j = 0; j <a[k].size() ; ++j) {
         //std::cerr<<"a size:"<<a[k].size()<<" and "<<a[k][j]<<std::endl;
-        aMap[k].insert(std::make_pair(a[k][j],j));
+        //aMap[k].insert(std::make_pair(a[k][j],j));
+        aMap[k][a[k][j]]=j;
     }
     d[k].assign(forwardCursor->d,forwardCursor->d+forwardCursor->M);
 
@@ -1135,9 +1137,9 @@ int DebugWrapper::Process(int nMarkers, int nSamples, char** haps) {
 
             fprintf(stderr, "finished initializing graph\n");
 
-            CursorBackwards();
+        CursorBackwards();
             fprintf(stderr, "finished backward procedure\n");
-            PBWTWrapper::CursorForwards();
+        PBWTWrapper::CursorForwards();
             fprintf(stderr, "finished forward procedure\n");
 
             std::vector<int> heterIndex;
