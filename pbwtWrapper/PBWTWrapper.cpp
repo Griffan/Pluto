@@ -456,8 +456,27 @@ static void mergeSortedArrayToA(std::vector<int>&a, std::vector<int>&b)
         a=mergedDist;
 }
 
+static bool isRecipricalLengthOK(std::vector<int>&a, std::vector<int>&b)
+{
+    double size=a.size()<b.size()?a.size():b.size();
+       if(a.front()<b.front())
+       {
+           if(a.back()<b.back())
+               return (a.back()-b.front()+1)/size>0.8;
+           else
+               return true;
+       }
+        else
+       {
+            if(a.back()<b.back())
+                return true;
+           else
+                return (b.back()-a.front()+1)/size>0.8;
+       }
+}
+
 int PBWTWrapper::MergeAtSite(int site) {
-    if(dist.size()<200) return 1;
+    if(dist.size()<400) return 1;
     int ret(0);
     int currentNumCluster = GetNumStates(site);
 //    std::cerr<<"Enter Site:"<<site<<" has "<< currentNumCluster<<" state and List size:"<<mergePairList.size()<<std::endl;
@@ -510,7 +529,7 @@ int PBWTWrapper::MergeAtSite(int site) {
         if (/*!hasSiblings[j] ||*/ clusterMembership[j].size() == 0) continue;
         for (int k = 0; k < j; ++k) {
 
-            if (clusterAllele[site][j] != clusterAllele[site][k] || clusterMembership[k].size() == 0)
+            if (clusterAllele[site][j] != clusterAllele[site][k] || clusterMembership[k].size() == 0)//||!isRecipricalLengthOK(dist[j],dist[k]))
                 continue;//if alleles are different
             if (clusterMembership[j].size() * clusterMembership[k].size() < 10000)//exact
             {
