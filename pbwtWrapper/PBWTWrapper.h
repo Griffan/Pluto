@@ -128,19 +128,15 @@ public:
 
 
     int CursorBackwardsTo(int k, int T=5);
-	int ObtainHapFromSinglePhasing(char ** haps);//I implement it here, but not using it for now
+
     inline int CopyHap(int k, PbwtCursor* Cursor);
 
     int LabelNoSiblingCluster(int site);
 	int UpdateTransVector(int site);
 
-    int MergeCluster(int indexA, int indexB);
     int MergeAtSite(int site);
-    int MergeAtSiteExperiment(int site);
 
     int MoveSegment(const std::unordered_map<int,int>& mergedMembership,int site);
-
-    int UpdateRankWithinState(std::vector<std::vector<int> > &dist,int stateA, int stateB);
 
     int SetHaps(char **haps);
 
@@ -216,7 +212,7 @@ public:
     }
 
     //fast update pbwt
-    int RemoveIndividualFromPBWT(int individualIndex);
+    int RemoveIndividualFromPBWT(int individualToProcess);
 
     int InsertIndividualBackToPBWT(int individualIndex, char** haps);
     /*
@@ -258,46 +254,6 @@ public:
             std::cerr<<std::endl;
         }
         std::cerr<<std::endl;
-    }
-
-    inline float CalDmax(std::vector<int> a, std::vector<int> b)
-    {
-        int size=a.size()+b.size();
-        if(a.size()>b.size())
-        {
-            std::vector<int> tmp=a;
-            a=b;
-            b=tmp;
-        }
-        std::vector<int> A(size,0),B(size,0);
-        std::sort(a.begin(),a.end());
-        std::sort(b.begin(),b.end());
-        int currentA(a[0]),currentB(b[0]);
-        for (int totalRank(0),i(0),j(0),cumuNumA(0),cumuNumB(0);totalRank<size;totalRank++) {
-            if((currentA<currentB&&i<a.size())||j==b.size())
-            {
-                cumuNumA=totalRank;
-                A[totalRank]=cumuNumA;
-                B[totalRank]=cumuNumB;
-                i++;
-                currentA=a[i];
-            }
-            else
-            {
-                cumuNumB=totalRank;
-                A[totalRank]=cumuNumA;
-                B[totalRank]=cumuNumB;
-                j++;
-                currentB=b[j];
-            }
-        }
-        float Dmax(0);
-        for (int k = 0; k < size; ++k) {
-            float tmp=abs(A[k]-B[k]);
-            if(tmp>Dmax) Dmax=tmp;
-        }
-
-        return Dmax/size;
     }
 
     int PrintSummary();

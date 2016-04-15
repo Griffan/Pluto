@@ -34,6 +34,8 @@ void PBWTHaplotyper::InitAuxillary() {
 
     tmpGeno = AllocateCharMatrix(individuals, markers*3);
 
+    tmpPenetrance = new float [markers * 9];
+
     Wrapper=NULL;
 }
 
@@ -51,6 +53,9 @@ PBWTHaplotyper::~PBWTHaplotyper() {
         }
         delete [] tmpGeno;
     }
+    if(tmpPenetrance != NULL)
+        delete [] tmpPenetrance;
+
     if(Wrapper != NULL)
         delete Wrapper;
 	ReleaseMemoryBlock();
@@ -298,6 +303,7 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
 
         if (i < individuals - phased) {
             SwapIndividuals(i, individuals - 1);
+            if(useRev) ReverseInput();
             clock_t t=clock();
             ExtractHeterSites(individuals-1);
             Wrapper->SetHaps(haplotypes);
@@ -348,6 +354,7 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
             FillHeterSitesBack(individuals - 1);
             SwapIndividuals(i, individuals - 1);
             //Wrapper->resetWrapper();
+            if(useRev) ReverseInput();
         }
 
     }
@@ -367,6 +374,30 @@ static float * GetOutPut(float* dest, int stateA, int stateB)
     //00,10,11,20,21,22,30,31,32,33...
     if(stateB>stateA) std::swap(stateA,stateB);
     return &dest[stateA*(stateA+1)/2+stateB];
+}
+
+bool PBWTHaplotyper::ReverseInput()
+{
+    int begin=0;
+    int end=markers-1;
+    for (; begin <end; ++begin,--end) {
+        for (int i = 0; i <individuals; ++i) {
+            //haplotypes
+            std::swap(haplotypes[i*2][begin],haplotypes[i*2][end]);
+            std::swap(haplotypes[i*2+1][begin],haplotypes[i*2+1][end]);
+            //genotypes
+            std::swap(genotypes[i][begin*3],genotypes[i][end*3]);
+            std::swap(genotypes[i][begin*3+1],genotypes[i][end*3+1]);
+            std::swap(genotypes[i][begin*3+2],genotypes[i][end*3+2]);
+        }
+        //penetrance
+        for (int j = 0; j <3 ; ++j) {
+            for (int k = 0; k < 3; ++k) {
+                std::swap(Penetrance(begin, j, k),Penetrance(end, j, k));
+            }
+        }
+    }
+    return true;
 }
 
 void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indicate dest marker index
@@ -725,58 +756,52 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
 
 int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after swap individualToProcess to the back
 
-    if(Wrapper!=NULL) {
+    if(Wrapper!= nullptr) {
         delete Wrapper;
-
+        Wrapper = nullptr;
     }
     absoluteIndexToRelative.clear();
     relativeIndexToAbsolute.clear();
     tmpMarkers=0;
 
     if(onlyHeterSite){
-        //fprintf(stderr,"through heeter part\n");
-        std::vector<int> HeterIndex(markers,0);
+
+        std::vector<bool> HeterIndex(markers,false);
         for (int i = 0; i < markers ; ++i) {
-            if(haplotypes[2*individualToProcess][i]!=haplotypes[2*individualToProcess+1][i])
+//            fprintf(stderr,"through heter partat marker %d: %d\t%d\t%d\n",i,genotypes[individualToProcess][i*3],genotypes[individualToProcess][i*3+1],genotypes[individualToProcess][i*3+2]);
+            if(genotypes[individualToProcess][i*3+1] < genotypes[individualToProcess][i*3]&&
+                    genotypes[individualToProcess][i*3+1] < genotypes[individualToProcess][i*3+2])
             {
-                HeterIndex[i] = 1;
+                HeterIndex[i] = true;
                 absoluteIndexToRelative[i] = tmpMarkers++;
                 relativeIndexToAbsolute.push_back(i);
             }
         }
 
-        for (int j = 0; j <individuals; ++j) {
-            for (int i = 0; i < tmpMarkers ; ++i) {
-                int markerAbsoluteNow=relativeIndexToAbsolute[i];
-                if(!HeterIndex[markerAbsoluteNow])
-                {
-                    continue;
-                }//homo
+        for (int i = 0; i < tmpMarkers ; ++i) {
+            int markerAbsoluteNow=relativeIndexToAbsolute[i];
+            if(!HeterIndex[markerAbsoluteNow])
+            {
+                continue;
+            }//homo
+            for (int j = 0; j <individuals; ++j) {
+
                 tmpHaps[2*j][i]=haplotypes[2*j][markerAbsoluteNow];
                 tmpHaps[2*j+1][i]=haplotypes[2*j+1][markerAbsoluteNow];
                 tmpGeno[j][i*3]=genotypes[j][markerAbsoluteNow*3];
                 tmpGeno[j][i*3+1]=genotypes[j][markerAbsoluteNow*3+1];
                 tmpGeno[j][i*3+2]=genotypes[j][markerAbsoluteNow*3+2];
             }
+            for (int j = 0; j <3 ; ++j) {
+                for (int k = 0; k < 3; ++k) {
+                    tmpPenetrance[i * 9 + j * 3 + k]=Penetrance(markerAbsoluteNow, j, k);
+                }
+            }
         }
         SwapTempHaps();
     }
     else
     {
-//        for (int j = 0; j <individuals-DEBUG; ++j) {
-//            for (int i = 0; i < markers ; ++i) {
-//                tmpHaps[2*j][i]=haplotypes[2*j][i];
-//                tmpHaps[2*j+1][i]=haplotypes[2*j+1][i];
-//                tmpGeno[j][i*3]=genotypes[j][i*3];
-//                tmpGeno[j][i*3+1]=genotypes[j][i*3+1];
-//                tmpGeno[j][i*3+2]=genotypes[j][i*3+2];
-//                if(j==0) {
-//                    absoluteIndexToRelative[i] = tmpMarkers++;
-//                    relativeIndexToAbsolute.push_back(i);
-//                }
-//
-//            }
-//        }
         tmpMarkers=markers;
     }
 
@@ -797,19 +822,9 @@ int PBWTHaplotyper::FillHeterSitesBack(int individualToProcess) {
         int markerAbsoluteNow = 0;
         for (int i = 0; i < tmpMarkers; ++i) {
             markerAbsoluteNow = relativeIndexToAbsolute[i];
-            haplotypes[2 * (individualToProcess - 1)][markerAbsoluteNow] = tmpHaps[2 * (individualToProcess - 1)][i];
-            haplotypes[2 * (individualToProcess - 1) + 1][markerAbsoluteNow] = tmpHaps[2 * (individualToProcess - 1) +
-                                                                                       1][i];
+            haplotypes[2 * individualToProcess][markerAbsoluteNow] = tmpHaps[2 * individualToProcess][i];
+            haplotypes[2 * individualToProcess + 1][markerAbsoluteNow] = tmpHaps[2 * individualToProcess+1][i];
         }
     }
-
-//    if(Wrapper!=NULL) {
-//        delete Wrapper;
-//        Wrapper=NULL;
-//    }
-//    absoluteIndexToRelative.clear();
-//    relativeIndexToAbsolute.clear();
-//    tmpMarkers=0;
-
     return 0;
 }

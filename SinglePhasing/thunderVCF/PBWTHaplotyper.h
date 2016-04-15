@@ -24,7 +24,11 @@ public:
     virtual void FillPath(int haplotype, int fromMarker, int toMarker, int state);
     virtual void SampleChromosomes(Random * rand);
 
+    void SetUseRev(bool useOrNot){useRev=useOrNot;}
+	bool ReverseInput();
 
+    void SetOnlyGT(bool onlyOrNot){onlyGT=onlyOrNot;}
+    bool GetOnlyGT(){ return onlyGT;}
 
 	int ExtractHeterSites(int individualToProcess);
 	int FillHeterSitesBack(int individualToProcess);
@@ -36,9 +40,9 @@ public:
 
     //inline section
 	inline float GetTransitionProb(int site, int from, int to) {
-		if(Wrapper->transVector.size()<= site) {fprintf(stderr,"%d doesn't exist!\n",site);abort();}
-		if(Wrapper->transVector[site].size()<=from) {fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);abort();}
-		if(Wrapper->transVector[site][from].size()<=to) {fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
+//		if(Wrapper->transVector.size()<= site) {fprintf(stderr,"%d doesn't exist!\n",site);abort();}
+//		if(Wrapper->transVector[site].size()<=from) {fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);abort();}
+//		if(Wrapper->transVector[site][from].size()<=to) {fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
 		return Wrapper->transVector[site][from][to];
 	}
 	inline uchar GetAllele(int site, int state)
@@ -68,10 +72,14 @@ protected:
 	//subset markers related
 	char** tmpHaps;
 	char ** tmpGeno;
+    float* tmpPenetrance;
 	int tmpMarkers;
 	double max_num;
 
-	std::vector<char> relativeIndexToAbsolute;
+	bool useRev;
+    bool onlyGT;
+
+	std::vector<int> relativeIndexToAbsolute;
 	std::unordered_map<int,int> absoluteIndexToRelative;
 	inline int SwapTempHaps()
 	{
@@ -82,6 +90,10 @@ protected:
 		tmpH=genotypes;
 		genotypes=tmpGeno;
 		tmpGeno=tmpH;
+
+        float * tmpP=penetrances;
+        penetrances=tmpPenetrance;
+        tmpPenetrance=tmpP;
 
 		int tmpM=markers;
 		markers=tmpMarkers;
