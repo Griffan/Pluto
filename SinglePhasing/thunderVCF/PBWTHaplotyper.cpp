@@ -530,20 +530,20 @@ void  PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *
     else if (copied1 != copied2)//heter states and heter alleles
     {
         //fprintf(stdout,"from 01\t");
-        double rate = GetErrorRate(marker);
+//        double rate = GetErrorRate(marker);
 
-        if (rand->Next() < rate * rate / ((rate * rate) + (1.0 - rate) * (1.0 - rate)))//if both alleles mutated
-        {
-            copied1 = !copied1;
-            copied2 = !copied2;
-        }
+//        if (rand->Next() < rate * rate / ((rate * rate) + (1.0 - rate) * (1.0 - rate)))//if both alleles mutated
+//        {
+//            copied1 = !copied1;
+//            copied2 = !copied2;
+//        }
 
         haplotypes[currentHap1][marker] = copied1;
         haplotypes[currentHap2][marker] = copied2;
     }
     else//homo states but heter alleles
     {
-        //fprintf(stdout,"from else\t");
+        fprintf(stdout,"Marker:%d from else (%d,%d)\n",marker,copied1,copied2);
         bool bit = rand->Binary();
 
         haplotypes[currentHap1][marker] = bit;

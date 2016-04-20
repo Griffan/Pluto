@@ -835,7 +835,7 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
                     }
                     else//found GT
                     {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], "|\\");
+                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], "|\/");
                         int geno=phred[0].AsInteger()+phred[1].AsInteger();
                         if(geno==0)
                         {
