@@ -225,16 +225,18 @@ int DebugWrapper::MergeCluster(int site, Index2ID& MAP1, ID2POP& MAP2) {
     int ret(0);
     int oldNumCluster = GetNumStates(site);
     int numHaps = haplotypeCluster[site].size();
-    int indexToPut=4000;
+    int indexToPut=2000;
 
     if(site%1000==0)fprintf(stderr,"processing site:%d\n",site);
     if(site%5==0&&site>=indexToPut-50&&site<indexToPut+50) {
 
-        std::ofstream fout("/Users/fanzhang/Downloads/PlutoTest/scatter.txt",std::fstream::app);
+        std::ofstream fout("/Users/fanzhang/Downloads/PlutoTest/scatter.txt",std::iostream::app);
         if(!fout.is_open()){fprintf(stderr,"open scatter.txt failed\n");exit(EXIT_FAILURE);}
 
         int ID;
         int TotalNum=0;
+        int leftD=0;
+        int rightD=0;
         std::vector<std::vector<int> > tmpRank(clusterMembership.size(), std::vector<int>());
 //        fprintf(stderr, "\n");
 //        fprintf(stderr, "membership for site %d:\n", site);
@@ -254,8 +256,9 @@ int DebugWrapper::MergeCluster(int site, Index2ID& MAP1, ID2POP& MAP2) {
 
             for (int j = 0; j < clusterMembership[k].size(); ++j) {
                 ID=a[site][clusterMembership[k][j]];
-
-                fout << site<<"\t"<<ID<<"\t"<<clusterMembership[k][j] << "\t" << alphaMap[site + 1][ID] <<"\t"<<3<<"\t"<<site-indexToPut<<"\t"<<MAP1[ID/2]<<"\t";
+                leftD=d[site][clusterMembership[k][j]];
+                rightD=delta[site][alphaMap[site ][ID]];
+                fout << site<<"\t"<<ID<<"\t"<<clusterMembership[k][j] << "\t" << alphaMap[site][ID] <<"\t"<<leftD<<"\t"<<rightD<<"\t"<<3<<"\t"<<site-indexToPut<<"\t"<<MAP1[ID/2]<<"\t";
                 if(MAP2.find(MAP1[ID/2])!=MAP2.end()) {
                     fout << MAP2[MAP1[ID / 2]] << std::endl;
                 }
@@ -281,158 +284,6 @@ int DebugWrapper::MergeCluster(int site, Index2ID& MAP1, ID2POP& MAP2) {
 
 
     return 0;//debug
-
-
-    //std::vector<std::vector<int> > clusterMemberShip(oldNumCluster,std::vector<int>());// state->position in current M array
-    std::vector<std::vector<int> > dist(oldNumCluster,std::vector<int>(numHaps,0));//state->rank_occupied
-    std::vector<bool> mergeIndicator(oldNumCluster,false);
-
-    std::vector<std::vector<double> > Dmax(oldNumCluster,std::vector<double>(oldNumCluster,0));
-    std::vector<std::vector<float> > rankSum(oldNumCluster,std::vector<float>(oldNumCluster,0));
-    std::vector<std::vector<std::pair<double,double> > > hapsCounted(oldNumCluster,std::vector<std::pair<double,double> >(oldNumCluster,std::make_pair<int,int>(0,0)));
-
-
-
-    double tmpABS=0;
-    int currentNumCluster=oldNumCluster-1;
-    std::unordered_map<int,int> stateOrder;//mapping oldState to newOrder
-    int tmpOrder(0);
-    std::vector<uchar> tmpAllele;
-    double pval(0);
-
-    for (int i = 0; i != numHaps; ++i)//from rank 0 to rank numHaps-1
-    {
-        //alpha[site][i]:original index of haps at i th place, e.g. david is the ith haplotype
-        //haplotypeCluster[site][alpha[site][i]]: david's state status, saying state is michigan
-        //dist[haplotypeCluster[site][alpha[site][i]]][i]: state michigan's ith slot is occupied, or where is the ith haplotype located, michigan state's ith slot
-        //the structure looks like:
-        //state 1:0000001000100
-        //state 2:0100100000010
-        //state 3:1011010111001
-        int hapID = alpha[site + 1][i];//original ID
-        int hapState = haplotypeCluster[site][aMap[site][hapID]];
-        //std::cerr<<"rank:hapID:hapState\t"<<i<<"\t"<<hapID<<"\t"<<hapState<<std::endl;
-
-        dist[hapState][i] = 1;//record rank occupation indicator for each cluster, haplotypeCluster record state status for haplotype alpha[site][i]]
-//    }
-//    for (int i = 0; i != numHaps; ++i)//from rank 0 to rank numHaps-1
-//    {
-        for (int j = 0; j < dist.size(); ++j) {//enumerate through all the states
-            if(i==numHaps-1)
-            {
-                if(mergeIndicator[j])//ToDO: need adjustment for trangle situation
-                {
-                    continue;
-                }
-                else
-                {
-                    tmpAllele.push_back(clusterAllele[site][j]);
-                    stateOrder[j]=tmpOrder;
-                    tmpOrder++;
-                }
-            }
-            std::vector<int> tmpDist(dist[j]);//record the pivot state
-            int tmpMembershipSize=clusterMembership[j].size();
-
-            //if(tmpMembershipSize<5) continue;
-
-            for (int k = j+1; k < dist.size(); ++k)//comparing state j and state k
-            {
-                if (clusterAllele[site][j]!=clusterAllele[site][k] || mergeIndicator[k]) continue;//if alleles are different or merged once
-
-                double total = tmpMembershipSize + clusterMembership[k].size();
-                //double sizeRatio = tmpMembershipSize / total;
-                //if (sizeRatio > 0.99 || sizeRatio < 0.01 || clusterMembership[k].size() < 5) continue;
-
-
-                if (tmpDist[i] == 1)//if j's ith slot is occupied
-                {
-                    rankSum[j][k] += 1;//rankSum between j and k increase by 1
-                    hapsCounted[j][k].first = rankSum[j][k];//local rank between j and k updated and normalized by total rankSum
-                    //hapsCounted[j][k].first++;
-                }
-                else if (dist[k][i] == 1)//if k's ith slot is occupied
-                {
-                    rankSum[j][k] += 1;
-                    hapsCounted[j][k].second = rankSum[j][k];
-                    //hapsCounted[j][k].second++;
-                }
-                else if (i != numHaps - 1)
-                    continue;
-
-                tmpABS = fabs(hapsCounted[j][k].first - hapsCounted[j][k].second);//tmp Dmax
-                //if(j==0 and k==1)std::cerr<<"hapsCounted["<<j<<"]["<<k<<"]:"<<hapsCounted[j][k].first<<"\t"<<hapsCounted[j][k].second<<"\t"<<tmpABS<<std::endl;
-
-                //_LIBCPP_ASSERT(total,rankSum[j][k]);
-                if (tmpABS > Dmax[j][k]) Dmax[j][k] = tmpABS;
-
-#ifdef DEBUG
-                if (0 && i == numHaps - 1) {
-                    std::cerr << "\nenter rank distribution section, site " << site << ":" << std::endl;
-                    for (auto i = 0; i != dist.size(); ++i) {
-                        // PrintDistributionAtSite(i,haplotypeCluster[i]);
-                        PrintDistributionAtSite(i, dist[i]);
-                    }
-                    std::cerr << "exit rank distribution section!\n" << std::endl;
-                    //exit(0);
-                }
-#endif
-//                if(i==numHaps-1)
-//                {
-//                    std::cerr<<"Testing state "<<j<<" and "<<k<<std::endl;
-//                    //std::cerr<<"hapsCounted["<<j<<"]["<<k<<"]:"<<hapsCounted[j][k].first<<"\t"<<hapsCounted[j][k].second<<std::endl;
-//                }
-
-                if (i == numHaps - 1)
-                {
-                    Dmax[j][k] /= total;
-
-                    pval = 1-psmirnov2x(&Dmax[j][k], tmpMembershipSize, clusterMembership[k].size());
-
-                    //fprintf(stderr,"state %d and %d: %f\n",j,k,pval);
-                }
-                if(i==numHaps-1 && pval< 0.1)//KStest(Dmax[j][k]/total,tmpMembershipSize,clusterMembership[k].size()))//last haplotypes, deal with merging test
-                {
-                    ret = 1;
-                    //PrintVector(dist[i],"state i");
-                    //PrintVector(dist[j],"state j");
-
-                    currentNumCluster--;
-                    //Merge Action, change mergeIndicator
-                    for(int t=0;t!=dist[j].size();++t)
-                    {
-                        dist[j][t]+=dist[k][t];
-                        dist[k][t]=-65534;
-                    }
-                    mergeIndicator[k]=true;// j th cluster has been merged into i th cluster
-
-                    for(int t=0;t!=clusterMembership[k].size();++t)
-                    {
-                        haplotypeCluster[site][clusterMembership[k][t]]=j;
-                        clusterMembership[j].push_back(clusterMembership[k][t]);
-                    }
-                    clusterMembership[k].clear();
-
-                }
-            }
-        }
-
-    }
-    if(ret) {
-        //adjust d array and a array
-//        MoveSegment(clusterMembership);
-        //fprintf(stderr,"site:%d merged...\n",site);
-
-        //PrintVector(clusterAllele[site],"allele cluster states after");
-        //PrintVector(haplotypeCluster[site],"haplotype cluster states after");
-        for (int k = 0; k < haplotypeCluster[site].size(); ++k) {
-            haplotypeCluster[site][k] = stateOrder[haplotypeCluster[site][k]];
-        }
-        clusterAllele[site] = tmpAllele;//update merged cluster allele
-        //PrintVector(clusterAllele[site],"allele cluster states final");
-        //PrintVector(haplotypeCluster[site],"haplotype cluster states final");
-    }
-    return ret;
 }
 
 int DebugWrapper::CursorForwards(RESULT* result) {//so far only implemented for test purpose

@@ -4,11 +4,11 @@
 
 #include <iostream>
 #include "PBWTWrapper.h"
-#include "algorithm"
 #include "random"
-//#define DEBUG 1
-#define DEBUG3
-#ifdef DEBUG2
+#include "gtest/gtest.h"
+
+#define GTEST
+#ifdef GTEST
 using namespace std;
 char**  HapsInit(int M, int N)
 {
@@ -20,90 +20,262 @@ char**  HapsInit(int M, int N)
         strncpy(haps[i],haps[0],N);
     }
     haps[21]                  ="0001";
-    for (int i = 22; i <79+21 ; ++i) {
+    for (int i = 21+1; i <79+21 ; ++i) {
         strncpy(haps[i],haps[21],N);
     }
-    haps[79+21]               ="0011";
+    haps[79+21]               ="0010";
     for (int i = 79+21+1; i <95+79+21 ; ++i) {
         strncpy(haps[i],haps[79+21],N);
     }
-    haps[95+79+21]            ="0110";
+    haps[95+79+21]            ="0011";
     for (int i = 95+79+21+1; i <116+95+79+21 ; ++i) {
         strncpy(haps[i],haps[95+79+21],N);
     }
-    haps[116+95+79+21]        ="1000";
+    haps[116+95+79+21]        ="0100";
     for (int i = 116+95+79+21+1; i <25+116+95+79+21 ; ++i) {
         strncpy(haps[i],haps[116+95+79+21],N);
     }
-    haps[25+116+95+79+21]     ="1001";
+    haps[25+116+95+79+21]     ="0101";
     for (int i = 25+116+95+79+21+1; i <112+25+116+95+79+21 ; ++i) {
         strncpy(haps[i],haps[25+116+95+79+21],N);
     }
-    haps[112+25+116+95+79+21] ="1011";
+    haps[112+25+116+95+79+21] ="0111";
     for (int i = 112+25+116+95+79+21+1; i <152+112+25+116+95+79+21 ; ++i) {
         strncpy(haps[i],haps[112+25+116+95+79+21],N);
     }
     return haps;
 }
-int RandomShuffle(char** &haps,int M)
-{
-    char* tmp;
-    for (int i = 0; i <M*1000 ; ++i) {
-        int index=rand() % (M-1);
-        int index2=rand() % (M-1);
-        tmp=haps[index];
-        haps[index]=haps[index2];
-        haps[index2]=tmp;
+
+class PBWTWrapperTest : public ::testing::Test {
+protected:
+    PBWTWrapper* Wrapper;
+    int M,N;
+    PBWTWrapperTest()
+    {
+        M=21+79+95+116+25+112+152;
+        N=4;
+        Wrapper = new PBWTWrapper(M,N);
     }
 
-    return 0;
-}
+    virtual ~PBWTWrapperTest(){}
 
-char** AddRandomSuffix(char** &haps,int M, unsigned seed)
-{
-    srand(seed);
-    for (int i = 0; i <M ; ++i) {
-        int suffix=rand() % 8;
-        char* tmp=new char[1+strlen(haps[i])+strlen(string(to_string(suffix)).c_str())];
-        strcpy(tmp,haps[i]);
-        strcat(tmp,string(to_string(suffix)).c_str());
-        haps[i]=tmp;
+    virtual void SetUp(){
+        cerr << "Hello, World!" << endl;
+        char ** haps=HapsInit(M,N);
+        Wrapper->SetHaps(haps);
     }
 
-    return haps;
+    virtual void TearDown(){}
+
+
+};
+
+/*
+   PBWTWrapper(){}
+    ~PBWTWrapper(){}
+
+    PBWTWrapper(const char ** haps, int nhaps, int nsnps);
+    PBWTWrapper(int nhaps,int nsnps);
+
+    int CursorForwards();
+    int CursorBackwards();
+
+    int CursorForwardsTo(int k, int T=5);
+
+    int CursorBackwardsTo(int k, int T=5);
+
+    int CopyHap(int k, PbwtCursor* Cursor);
+
+    int LabelNoSiblingCluster(int site);
+	int UpdateTransVector(int site);
+
+    bool IsEditDistanceOK(const std::vector< std::vector<char*> >& backBone,int stateA, int stateB, int index, double thresh);
+    int MergeAtSite(int site);
+
+    int MoveSegment(const std::unordered_map<int,int>& mergedMembership,int site);
+
+    int SetHaps(char **haps);
+
+    //inline functions
+    inline int GetNumStates(int k)
+
+    inline unsigned long GetNumHaps(int site) const { return haplotypeCluster[site].size(); }
+
+    inline int GetHapIDFromBack(int site, int backRank) const { return alpha[site + 1][backRank]; }
+    inline int GetHapIDFromFwd(int site, int fwdRank) const { if(site<0) return fwdRank; else return a[site][fwdRank]; }//you should only use it after a being updated
+
+    inline int GetRankFromBack(int site, int hapID) {return alphaMap[site][hapID];}
+    inline int GetRankFromFwd(int site, int hapID) {return aMap[site][hapID];}
+
+    inline int GetHapState(int site, int hapID) { return haplotypeCluster[site][hapID]; }
+    inline void resetWrapper()
+
+ * */
+TEST_F(PBWTWrapperTest, IsEditDistanceOK) {
+    std::vector< std::vector<char*> > backBone(2,std::vector<char*>(0,0));
+    backBone[0].push_back(Wrapper->haplotype[0]);
+    backBone[1].push_back(Wrapper->haplotype[21]);
+    bool result=Wrapper->IsEditDistanceOK(backBone,0,1,0,0.5);
+    EXPECT_EQ(true,result);
+    result=Wrapper->IsEditDistanceOK(backBone,0,1,0,0.25);
+    EXPECT_EQ(true,result);
+    result=Wrapper->IsEditDistanceOK(backBone,0,1,0,0.24);
+    EXPECT_EQ(false,result);
 }
+
+TEST_F(PBWTWrapperTest, IsRecipricalLengthOK)
+{
+    std::vector<int> a={1,2,3,4,6,7};
+    std::vector<int> b={5,8,9};
+    bool result=Wrapper->IsRecipricalLengthOK(a,b);
+    EXPECT_EQ(false,result);
+
+    std::vector<int> c={1,2,3,4,6,7};
+    std::vector<int> d={5};
+    result = Wrapper->IsRecipricalLengthOK(c,d);
+    EXPECT_EQ(true,result);
+
+    std::vector<int> e={1,2,3,4,6,7};
+    std::vector<int> f={9};
+    result = Wrapper->IsRecipricalLengthOK(e,f);
+    EXPECT_EQ(false,result);
+
+    std::vector<int> g={1,2,3,4,6,7};
+    std::vector<int> h={-1,9};
+    result = Wrapper->IsRecipricalLengthOK(g,h);
+    EXPECT_EQ(true,result);
+
+}
+
+TEST_F(PBWTWrapperTest, MergeSortedArrayToA)
+{
+    std::vector<int> a={1,2,3,4,6,7};
+    std::vector<int> b={5,8,9};
+    std::vector<int> c={1,2,3,4,5,6,7,8,9};
+    Wrapper->MergeSortedArrayToA(a,b);
+    EXPECT_EQ(c,a);
+
+    std::vector<int> a1={1};
+    std::vector<int> b1={2};
+    std::vector<int> c1={1,2};
+    Wrapper->MergeSortedArrayToA(a1,b1);
+    EXPECT_EQ(c1,a1);
+}
+
+TEST_F(PBWTWrapperTest, CursorForwards)
+{
+
+    std::vector<int> a(M,0);
+    for (int i = 0; i <21 ; ++i) {
+        a[i]=i;
+    }
+    for (int j = 21; j <21+25 ; ++j) {
+        a[j]=116+95+79+21+j-21;
+    }
+    for (int k = 21+25; k <21+25+95; ++k) {
+        a[k]=79+21+k-(21+25);
+    }
+    for (int l = 21+25+95; l <21+25+95+79 ; ++l) {
+        a[l]=21 + l-(21+25+95);
+    }
+    for (int m = 21+25+95+79; m <21+25+95+79+112 ; ++m) {
+        a[m]=25+116+95+79+21+m-(21+25+95+79);
+    }
+    for (int n = 21+25+95+79+112; n <21+25+95+79+112+116 ; ++n) {
+        a[n]=95+79+21+n-(21+25+95+79+112);
+    }
+    for (int i1 = 21+25+95+79+112+116; i1 <21+25+95+79+112+116+152 ; ++i1) {
+        a[i1]=112+25+116+95+79+21+i1-(21+25+95+79+112+116);
+    }
+
+    std::vector<int> d(M,0);
+    d[0]=4;//0000
+    for (int i = 1; i <21 ; ++i) {
+        d[i]=0;
+    }
+    d[21]=2;//0100
+    for (int j = 21+1; j <21+25 ; ++j) {
+        d[j]=0;
+    }
+    d[21+25]=3;//0010
+    for (int k = 21+25+1; k <21+25+95; ++k) {
+        d[k]=0;
+    }
+    d[21+25+95]=4;//0001
+    for (int l = 21+25+95+1; l <21+25+95+79 ; ++l) {
+        d[l]=0;
+    }
+    d[21+25+95+79]=2;//0101
+    for (int m = 21+25+95+79+1; m <21+25+95+79+112 ; ++m) {
+        d[m]=0;
+    }
+    d[21+25+95+79+112]=3;//0011
+    for (int n = 21+25+95+79+112+1; n <21+25+95+79+112+116 ; ++n) {
+        d[n]=0;
+    }
+    d[21+25+95+79+112+116]=2;//0111
+    for (int i1 = 21+25+95+79+112+116+1; i1 <21+25+95+79+112+116+152 ; ++i1) {
+        d[i1]=0;
+    }
+
+    Wrapper->CursorForwards();
+    EXPECT_EQ(a,Wrapper->a[Wrapper->N-1]);
+//    Wrapper->PrintVector(d,"expected");
+//    Wrapper->PrintVector(Wrapper->d[Wrapper->N-1],"actual");
+    EXPECT_EQ(d,Wrapper->d[Wrapper->N-1]);
+}
+
+TEST_F(PBWTWrapperTest, CursorBackwards)
+{
+    std::vector<int> a(M,0);
+    for (int k1 = 0; k1 <M; ++k1) {
+        a[k1]=k1;
+    }
+    std::vector<int> d(M,0);
+    d[0]=4;//0000
+    for (int i = 1; i <21 ; ++i) {
+        d[i]=0;
+    }
+    d[21]=1;//0001
+    for (int j = 21+1; j <21+79 ; ++j) {
+        d[j]=0;
+    }
+    d[21+79]=2;//0010
+    for (int k = 21+79+1; k <21+79+95; ++k) {
+        d[k]=0;
+    }
+    d[21+79+95]=1;//0011
+    for (int l = 21+79+95+1; l <21+79+95+116 ; ++l) {
+        d[l]=0;
+    }
+    d[21+79+95+116]=3;//0100
+    for (int m =21+79+95+116+1; m <21+79+95+116+25 ; ++m) {
+        d[m]=0;
+    }
+    d[21+79+95+116+25]=1;//0101
+    for (int n = 21+79+95+116+25+1; n <21+79+95+116+25+112 ; ++n) {
+        d[n]=0;
+    }
+    d[21+79+95+116+25+112]=2;//0111
+    for (int i1 = 21+79+95+116+25+112+1; i1 <21+79+95+116+25+112+152 ; ++i1) {
+        d[i1]=0;
+    }
+
+    Wrapper->CursorBackwards();
+
+    EXPECT_EQ(a,Wrapper->alpha[0]);
+
+    EXPECT_EQ(d,Wrapper->delta[0]);
+}
+
 int main(int argc, char ** argv) {
 
-
-    cerr << "Hello, World!" << endl;
-    int M=21+79+95+116+25+112+152;
-    int N=8;
-    char ** haps=HapsInit(M,N);
-
-    //RandomShuffle(haps,M);
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    haps=AddRandomSuffix(haps,M,seed);
-    std::shuffle(haps,haps+M,std::default_random_engine(seed));
-    std::shuffle(haps,haps+M,std::default_random_engine(seed));
-    PBWTWrapper * Graph=new PBWTWrapper(M,N);
-    Graph->SetHaps(haps);
-    Graph->CursorBackwards();
-    Graph->CursorForwards();
-
-
-
-        //Graph->PrintHap(haps, Graph->a[0]);
-        // Wrapper->PrintHap(tmpHaps,Wrapper->a[6]);
-        //Graph->PrintHap(haps, Graph->a[Graph->N - 1]);
-        // Wrapper->PrintMatrix(Wrapper->a,"a array matrix");
-    //Graph->PrintMatrix(Graph->d, "d array");
-        //Wrapper->PrintVector(Wrapper->a[Wrapper->N-7],"last a array");
-//TODO:deal with missing data
-    return 0;
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }
 #endif
 
-#ifdef DEBUG3
+#ifdef RUN_SIMPLE_SIMULATOR
 #include "MergingEventSimulator.h"
 #include "../pbwtWrapper/ks.h"
 int main(int argc, char ** argv) {
@@ -143,7 +315,7 @@ int main(int argc, char ** argv) {
 }
 #endif
 
-#ifdef DEBUG4
+#ifdef DRAW_PLOT
 
 #include <fstream>
 #include "../SinglePhasing/libVcf/libVcfVcfFile.h"
@@ -307,7 +479,7 @@ int main(int argc, char ** argv) {
 }
 #endif
 
-#ifdef DEBUG5
+#ifdef SIMPLIFIED_PHASING
 
 #include <fstream>
 #include "../SinglePhasing/libVcf/libVcfVcfFile.h"

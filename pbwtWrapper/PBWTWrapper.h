@@ -20,7 +20,7 @@
 #include <algorithm>
 //#include "../TestUnit/MergingEventSimulator.h"
 #include <queue>
-
+#include <map>
 
 
 struct max_pair_t
@@ -48,7 +48,7 @@ bool comparator(const max_pair_t& lhs, const max_pair_t& rhs);
 typedef std::unordered_map<std::string,std::string>  ID2POP;
 typedef std::unordered_map<int,std::string>  Index2ID;
 
-typedef std::unordered_map<int,std::unordered_map<int,bool> > EDGE;
+typedef std::map<int,std::map<int,bool> > EDGE;
 
 class PBWTWrapper
 {
@@ -61,7 +61,7 @@ public:
     std::vector<std::vector<int> > a,alpha/*reverse*/;
     //std::vector<std::unordered_map<int,int> > aMap,alphaMap;
     std::vector<std::vector<int> > aMap,alphaMap;
-    std::vector<std::vector<int> > d;//,delta;/*reverse*/;
+    std::vector<std::vector<int> > d,delta;/*reverse*/;
     std::vector<std::vector<uchar> > sortedY/*only for test*/;
     std::vector<int> c,celta;/*number of zero at each site*/
     std::vector<std::vector<int> > u,ultra;/*relative rank within zeros*/
@@ -129,10 +129,15 @@ public:
 
     int CursorBackwardsTo(int k, int T=5);
 
-    inline int CopyHap(int k, PbwtCursor* Cursor);
+    int CopyHap(int k, PbwtCursor* Cursor);
 
     int LabelNoSiblingCluster(int site);
 	int UpdateTransVector(int site);
+
+    bool IsEditDistanceOK(const std::vector< std::vector<char*> >& backBone,int stateA, int stateB, int index, double thresh);
+    void MergeSortedArrayToA(std::vector<int> &a, std::vector<int> &b);
+    bool IsRecipricalLengthOK(std::vector<int> &a, std::vector<int> &b);
+    int CalculateDmax(double & pval, double & Dmax, std::vector<int> & j, std::vector<int>& k);
 
     int MergeAtSite(int site);
 
@@ -156,29 +161,29 @@ public:
 
     inline int GetHapState(int site, int hapID) { return haplotypeCluster[site][hapID]; }
 
-    //KS D value related
-    std::vector<std::vector<double> > DvalueMatrix;//10k X 10k
-    float exact_ks_test_p_val;
-    inline int CalculateDvalueMatrix()
-    {
-        DvalueMatrix=std::vector<std::vector<double> >(10000,std::vector<double>(10000,-1.0));
-        for (int i = 1; i <10000 ; ++i) {
-            for (int j = i; j <floor(10000/i+0.5); ++j) {
-
-                double D=1;
-                for(;D>0;D-=0.01)
-                {
-                    if((1 - psmirnov2x(&D, i, j)) > exact_ks_test_p_val) break;
-                }
-                DvalueMatrix[i][j]=D;
-                DvalueMatrix[j][i]=D;
-            }
-        }
-    }
-    inline int GetExactThresh(int n1, int n2)
-    {
-        return DvalueMatrix[n1][n2];
-    }
+//    //KS D value related
+//    std::vector<std::vector<double> > DvalueMatrix;//10k X 10k
+//    float exact_ks_test_p_val;
+//    inline int CalculateDvalueMatrix()
+//    {
+//        DvalueMatrix=std::vector<std::vector<double> >(10000,std::vector<double>(10000,-1.0));
+//        for (int i = 1; i <10000 ; ++i) {
+//            for (int j = i; j <floor(10000/i+0.5); ++j) {
+//
+//                double D=1;
+//                for(;D>0;D-=0.01)
+//                {
+//                    if((1 - psmirnov2x(&D, i, j)) > exact_ks_test_p_val) break;
+//                }
+//                DvalueMatrix[i][j]=D;
+//                DvalueMatrix[j][i]=D;
+//            }
+//        }
+//    }
+//    inline int GetExactThresh(int n1, int n2)
+//    {
+//        return DvalueMatrix[n1][n2];
+//    }
 
 
     inline void resetWrapper()
@@ -228,7 +233,7 @@ public:
     {
         fprintf(stderr,"debug array %s:\n",str);
         for (int i = 0; i < a.size(); ++i) {
-            fprintf(stderr,"%d\t",a[i]);
+            fprintf(stderr,"%d\t",(int)a[i]);
         }
         fprintf(stderr,"\n");
     }
@@ -261,6 +266,9 @@ public:
     void DoMerge(int site, int retainState, int removeState, std::vector<std::vector<int>> &dist,
                  std::vector<bool, std::allocator<bool>> &removeIndicator,
                  std::vector<bool, std::allocator<bool>> &retainIndicator, std::unordered_map<int, int> &removeMembership);
+private:
+    PBWTWrapper(const PBWTWrapper&);
+    PBWTWrapper & operator=(const PBWTWrapper&);
 };
 
 #endif //PLUTO_PBWTWRAPPER_H
