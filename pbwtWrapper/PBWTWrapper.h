@@ -73,6 +73,7 @@ public:
     std::vector<EDGE > inEdges;//valid edges:site, to, from; record indices of states that can arrive at current site and current state
     std::vector<EDGE > outEdges;//valid edges:site, from, to; record number of states that can reach out from current site and current state
     char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
+    double * freq1s;
 
     std::vector<std::vector<int> > clusterMembership;//content is the fwd rank at that site
     std::vector<bool> hasSiblings;
@@ -134,7 +135,7 @@ public:
     int LabelNoSiblingCluster(int site);
 	int UpdateTransVector(int site);
 
-    bool IsEditDistanceOK(const std::vector< std::vector<char*> >& backBone,int stateA, int stateB, int index, double thresh);
+    bool IsEditDistanceOK(const std::vector< std::vector<char*> >& backBone,int stateA, int stateB, int index, int thresh);
     void MergeSortedArrayToA(std::vector<int> &a, std::vector<int> &b);
     bool IsRecipricalLengthOK(std::vector<int> &a, std::vector<int> &b);
     int CalculateDmax(double & pval, double & Dmax, std::vector<int> & j, std::vector<int>& k);
@@ -143,7 +144,7 @@ public:
 
     int MoveSegment(const std::unordered_map<int,int>& mergedMembership,int site);
 
-    int SetHaps(char **haps);
+    int SetHaps(char **haps,double * freq1s);
 
     //inline functions
     inline int GetNumStates(int k)

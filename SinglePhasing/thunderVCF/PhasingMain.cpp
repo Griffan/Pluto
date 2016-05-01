@@ -1352,6 +1352,7 @@ int PhasingMain(int argc, char **argv) {
 
     for (int i = 0; i < rounds; i++) {
         engine.SetUseRev(i%2);
+//        engine.orderedGenotypes=true;
         engine.LoopThroughChromosomesViaPBWT();
         if (!fixTrans) engine.UpdateThetas();
         errorRate = engine.UpdateErrorRate();

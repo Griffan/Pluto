@@ -578,9 +578,8 @@ bool PBWTWrapper::IsRecipricalLengthOK(std::vector<int> &a, std::vector<int> &b)
        }
 }
 
-bool PBWTWrapper::IsEditDistanceOK(const std::vector< std::vector<char*> >& backBone,int stateA, int stateB, int index, double eror_thresh)
+bool PBWTWrapper::IsEditDistanceOK(const std::vector< std::vector<char*> >& backBone,int stateA, int stateB, int index, int eror_thresh)
 {
-    double distance(0.0);
     int size=N-index>500?500:N-index;
     int end=index+size;
     int start=index;
@@ -588,13 +587,12 @@ bool PBWTWrapper::IsEditDistanceOK(const std::vector< std::vector<char*> >& back
     for (int i = 0; i <backBone[stateA].size(); ++i) {
         for (int j = 0; j <backBone[stateB].size(); ++j) {
             start=index;
-            distance=0.0;
             while (start < end) {
-                if (backBone[stateA][i][start] != backBone[stateB][j][start]) distance++;
-                if (distance / size > eror_thresh) break;
+                if (backBone[stateA][i][start] != backBone[stateB][j][start]) break;
+                else if (start > eror_thresh) return true;
                 start++;
             }
-            if(start>=end) return true;
+
         }
     }
     return false;
@@ -647,12 +645,12 @@ int PBWTWrapper::CalculateDmax(double & pval, double & Dmax, std::vector<int> & 
 int PBWTWrapper::MergeAtSite(int site)
 {
 //    if(dist.size()<400) return 1;
-
+//    if(freq1s[site]<0.1 or freq1s[site]>0.9) return 1;
     int ret(0);
     int currentNumCluster = GetNumStates(site);
     std::cerr<<"Enter Site:"<<site<<" has "<< currentNumCluster<<" state and List size:"<<mergePairList.size()<<std::endl;
 
-    int numHaps = haplotypeCluster[site].size();
+//    unsigned long numHaps = haplotypeCluster[site].size();
 
 
     std::vector<bool> removeIndicator(currentNumCluster, false);
@@ -683,13 +681,25 @@ int PBWTWrapper::MergeAtSite(int site)
         if (!hasSiblings[j]/* || clusterMembership[j].size() == 0*/) continue;
         for (int k = 0; k < j; ++k) {
 
-            if (clusterAllele[site][j] != clusterAllele[site][k] /*|| clusterMembership[k].size() == 0*/) continue;
-            if(dist[j].size()<= 1 || dist[k].size() <= 1)
+            if (hasSiblings[k]||clusterAllele[site][j] != clusterAllele[site][k] /*|| clusterMembership[k].size() == 0*/) continue;
+            if(dist[j].size()<= 2 )
             {
-                if (!IsEditDistanceOK(backBone,j,k,site,0.1))
-                continue;
+                if(dist[k].size() <= 2) {//both rare
+                    if (!IsEditDistanceOK(backBone, j, k, site, 40))
+                        continue;
+                }
+                else//j rare, k not
+                {
+                    if (!IsEditDistanceOK(backBone, j, k, site, 10))
+                        continue;
+                }
             }
-            else
+            else if(dist[k].size() <= 2)//j not, k rare
+            {
+                if (!IsEditDistanceOK(backBone, j, k, site, 10))
+                    continue;
+            }
+
             {
                 if(!IsRecipricalLengthOK(dist[j], dist[k]))//||!IsEditDistanceOK(backBone,j,k,site,0.5))
                     continue;
@@ -810,9 +820,9 @@ int PBWTWrapper::MergeAtSite(int site)
                 }
 
 #endif
-        //fprintf(stderr, "fail to merge state:%d and state:%d, num of states remained %d at site:%d with P value:%f\t and Dmax:%f\n", clusterA, clusterB, currentNumCluster-1,site,pval,iter_pair.Dmax);
+//        fprintf(stderr, "fail to merge state:%d and state:%d, num of states remained %d at site:%d with P value:%f\t and Dmax:%f\n", clusterA, clusterB, currentNumCluster-1,site,pval,iter_pair.Dmax);
 
-//        fprintf(stderr,"second:(%d,%d) Dmax:%f and Thresh:%f and Pval:%f, with sample size:%d,%d \n", clusterA,clusterB,iter_pair.Dmax,thresh,iter_pair.pval,dist[clusterA].size(),dist[clusterB].size());
+//        fprintf(stderr,"second:(%d,%d) Dmax:%f and Pval:%f, with sample size:%d,%d \n", clusterA,clusterB,iter_pair.Dmax,iter_pair.pval,dist[clusterA].size(),dist[clusterB].size());
 
 
         if (iter_pair.pval > 0.01)
@@ -839,11 +849,11 @@ int PBWTWrapper::MergeAtSite(int site)
 
             //finish merge, look for next candidate pair
         }
-//        else// if(clusterMembership[clusterA].size()<=2 && clusterMembership[clusterA].size()<=2)
-//        {
-//            mergePairList= std::priority_queue<max_pair_t,std::vector<max_pair_t>, std::function<bool(const max_pair_t&,const max_pair_t&)> >(comparator);
-//            break;
-//        }
+        else// if(clusterMembership[clusterA].size()<=2 && clusterMembership[clusterA].size()<=2)
+        {
+            mergePairList= std::priority_queue<max_pair_t,std::vector<max_pair_t>, std::function<bool(const max_pair_t&,const max_pair_t&)> >(comparator);
+            break;
+        }
         END_WHILE:
         continue;
     }
@@ -902,9 +912,10 @@ void PBWTWrapper::DoMerge(int site, int retainState, int removeState, std::vecto
 //    }
 }
 
-int PBWTWrapper::SetHaps(char **haps)
+int PBWTWrapper::SetHaps(char **haps,double * freq)
 {
     haplotype=haps;
+    freq1s=freq;
     return 0;
 }
 

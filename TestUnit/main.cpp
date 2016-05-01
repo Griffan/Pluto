@@ -115,11 +115,11 @@ TEST_F(PBWTWrapperTest, IsEditDistanceOK) {
     std::vector< std::vector<char*> > backBone(2,std::vector<char*>(0,0));
     backBone[0].push_back(Wrapper->haplotype[0]);
     backBone[1].push_back(Wrapper->haplotype[21]);
-    bool result=Wrapper->IsEditDistanceOK(backBone,0,1,0,0.5);
+    bool result=Wrapper->IsEditDistanceOK(backBone,0,1,0,1);
     EXPECT_EQ(true,result);
-    result=Wrapper->IsEditDistanceOK(backBone,0,1,0,0.25);
+    result=Wrapper->IsEditDistanceOK(backBone,0,1,0,0);
     EXPECT_EQ(true,result);
-    result=Wrapper->IsEditDistanceOK(backBone,0,1,0,0.24);
+    result=Wrapper->IsEditDistanceOK(backBone,0,1,0,4);
     EXPECT_EQ(false,result);
 }
 
@@ -266,6 +266,13 @@ TEST_F(PBWTWrapperTest, CursorBackwards)
     EXPECT_EQ(a,Wrapper->alpha[0]);
 
     EXPECT_EQ(d,Wrapper->delta[0]);
+}
+
+TEST_F(PBWTWrapperTest, MoveSegment)
+{
+
+    Wrapper->CursorBackwards();
+
 }
 
 int main(int argc, char ** argv) {
