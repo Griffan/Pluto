@@ -645,7 +645,7 @@ int PBWTWrapper::CalculateDmax(double & pval, double & Dmax, std::vector<int> & 
 int PBWTWrapper::MergeAtSite(int site)
 {
 //    if(dist.size()<400) return 1;
-//    if(freq1s[site]<0.1 or freq1s[site]>0.9) return 1;
+    if(freq1s[site]<0.1 or freq1s[site]>0.9) return 1;
     int ret(0);
     int currentNumCluster = GetNumStates(site);
     std::cerr<<"Enter Site:"<<site<<" has "<< currentNumCluster<<" state and List size:"<<mergePairList.size()<<std::endl;
@@ -825,7 +825,7 @@ int PBWTWrapper::MergeAtSite(int site)
 //        fprintf(stderr,"second:(%d,%d) Dmax:%f and Pval:%f, with sample size:%d,%d \n", clusterA,clusterB,iter_pair.Dmax,iter_pair.pval,dist[clusterA].size(),dist[clusterB].size());
 
 
-        if (iter_pair.pval > 0.01)
+        if (iter_pair.pval > 0.1)
         {
 
             retainState=clusterA;

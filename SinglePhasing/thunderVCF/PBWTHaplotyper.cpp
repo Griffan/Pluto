@@ -633,8 +633,8 @@ bool PBWTHaplotyper::ReverseInput()
     return true;
 }
 
-//#define HMM_PRUNE 1
-//#define HMM_PRUNE2 1
+#define HMM_PRUNE 1
+#define HMM_PRUNE2 1
 void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indicate dest marker index
 {
     bool passOnce=false;
@@ -694,7 +694,8 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 //                            fprintf(stderr,"(%d,%d)to (%d,%d):probability:%g\tk-first:%g\tl-second:%g\tk-second:%g\tl-first:%g\t\n",k,l,kvi.first,kvj.first,*GetProbability(source,kvi.first,kvj.first),
 //                                    GetTransitionProb(fromWhere, k, kvi.first), GetTransitionProb(fromWhere, l, kvj.first),GetTransitionProb(fromWhere, k, kvj.first) , GetTransitionProb(fromWhere, l, kvi.first));
 //                        }
-                        if(sum < std::numeric_limits<float>::min()) sum=0;
+                        if((sum < std::numeric_limits<float>::min()) &&
+                                    (*GetProbability(source,kvi.first,kvj.first) > 0.)) sum=std::numeric_limits<float>::min();
                         *output += sum;
                     }
                 }
@@ -741,7 +742,8 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 //                        fprintf(stderr,"(%d,%d)to (%d,%d):probability:%g\tk-first:%g\tl-second:%g\tk-second:%g\tl-first:%g\t\n",k,k,iter->first,iter2->first,*GetProbability(source,iter->first,iter2->first),
 //                                GetTransitionProb(fromWhere, k, iter->first), GetTransitionProb(fromWhere, k, iter2->first),GetTransitionProb(fromWhere, k, iter2->first) , GetTransitionProb(fromWhere, k, iter->first));
 //                    }
-                    if(sum <= std::numeric_limits<float>::min()) sum=0;
+                    if((sum < std::numeric_limits<float>::min()) &&
+                       (*GetProbability(source,iter->first,iter2->first) > 0.)) sum=std::numeric_limits<float>::min();
                     *output += sum;
                 }
                 sum=(*GetProbability(source,iter->first,iter->first)) * GetTransitionProb(fromWhere, iter->first, k) * GetTransitionProb(fromWhere, iter->first, k);
@@ -750,7 +752,8 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 //                    fprintf(stderr,"(%d,%d)to (%d,%d):probability:%g\tk-first:%g\tl-second:%g\tk-second:%g\tl-first:%g\t\n",k,k,iter->first,iter->first,*GetProbability(source,iter->first,iter->first),
 //                            GetTransitionProb(fromWhere, k, iter->first), GetTransitionProb(fromWhere, k, iter->first),GetTransitionProb(fromWhere, k, iter->first) , GetTransitionProb(fromWhere, k, iter->first));
 //                }
-                if(sum <= std::numeric_limits<float>::min()) sum=0;
+                if((sum < std::numeric_limits<float>::min()) &&
+                   (*GetProbability(source,iter->first,iter->first) > 0.)) sum=std::numeric_limits<float>::min();
                 *output += sum;
             }
             *output *= factor;
@@ -960,12 +963,13 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
     // printf("Cumulative probability: %g\n", sum);
     // printf("           Random draw: %g\n", choice);
     // printf("        Selected state: %g\n", *(probability - 1));
-    float max_prob(0),tmp_sum(0),last_sum(0);
-    int tmpK,tmpL;
+//    float max_prob(0),tmp_sum(0);
+    float last_sum(0);
+
     for (int j = markers - 2; j >= 0; j--) {
 
         fprintf(stderr,"marker:%d\tTotalSum:%g\tSum: %9.9g, choice:%9.9g,Chose (%d,%d) out of (%d) states and geno:%d and GL:%d,%d,%d\n",j+1,last_sum,sum, choice,first, second,GetStateNumFrom(j+1),GetAllele(fromWhere, first) + GetAllele(fromWhere, second),genotypes[individuals - 1][fromWhere * 3],genotypes[individuals - 1][fromWhere * 3+1],genotypes[individuals - 1][fromWhere * 3+2]);
-        max_prob=0;
+//        max_prob=0;
         last_sum=0.;
         //Wrapper->PrintVector(Wrapper->haplotypeCluster[j],"states");
 //        if(j==8356)
@@ -995,7 +999,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
 //                            tmpK=k;
 //                            tmpL=l;
 //                        }
-                        tmp_sum=sum;
+//                        tmp_sum=sum;
                         sum += *probability *
                                (GetTransitionProb(fromWhere, k, first) *
                                 GetTransitionProb(fromWhere, l, second)
@@ -1019,12 +1023,12 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
 //                    tmpK=k;
 //                    tmpL=k;
 //                }
-                tmp_sum=sum;
+//                tmp_sum=sum;
                     sum += *probability *
                            GetTransitionProb(fromWhere, k, first) *
                            GetTransitionProb(fromWhere, k, second);
                 last_sum=sum;
-                if(sum-tmp_sum>0) fprintf(stderr,"(%d,%d) to (%d,%d):probability:%g\tmid:%g\n",k,k,first,second,*probability ,GetTransitionProb(fromWhere, k, first)*GetTransitionProb(fromWhere, k, second));
+//                if(sum-tmp_sum>0) fprintf(stderr,"(%d,%d) to (%d,%d):probability:%g\tmid:%g\n",k,k,first,second,*probability ,GetTransitionProb(fromWhere, k, first)*GetTransitionProb(fromWhere, k, second));
                     probability++;
             }
 
@@ -1304,7 +1308,7 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
         fprintf(stderr,"found 0 markers available...abort!\n");
         abort();
     }
-    Wrapper = new PBWTWrapper(2*(individuals-1)/*not include individualToProcess*/, tmpMarkers);
+    Wrapper = new PBWTWrapper(2*(individuals)/*not include individualToProcess*/, tmpMarkers);
 
     return 0;
 }
