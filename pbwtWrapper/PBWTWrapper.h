@@ -21,6 +21,8 @@
 //#include "../TestUnit/MergingEventSimulator.h"
 #include <queue>
 #include <map>
+#include <numeric>
+#include "Rmath.h"
 
 
 struct max_pair_t
@@ -45,9 +47,170 @@ struct max_pair_t
 };
 bool comparator(const max_pair_t& lhs, const max_pair_t& rhs);
 
+
+template<typename T>
+struct square
+{
+    T operator()(const T& Left, const T& Right) const
+    {
+        return (Left + Right*Right);
+    }
+};
+struct r_stat_t
+{
+    float S0x,S1x;
+    float Sy;
+    float S0xx,S1xx;
+    float Syy;
+    float S0xy,S1xy;
+    int size;
+    r_stat_t(const std::vector<float>& yCoordinate)
+    {
+        size=yCoordinate.size();
+        S0x=0;
+        S1x=yCoordinate.size();
+        Sy=std::accumulate(yCoordinate.begin(), yCoordinate.end(), 0.0);
+        S0xx=0;
+        S1xx=S1x;
+        Syy=std::accumulate(yCoordinate.begin(), yCoordinate.end(), 0.0, square<float>());
+        S0xy=0;
+        S1xy=Sy;
+    }
+    r_stat_t()
+    {
+        size=0;
+        S0x=0;
+        S1x=0;
+        Sy=0;
+        S0xx=0;
+        S1xx=0;
+        Syy=0;
+        S0xy=0;
+        S1xy=0;
+    }
+    r_stat_t& operator=(const r_stat_t&a)
+    {
+        size=a.size;
+        S1x=a.S1x;
+        Sy=a.Sy;
+        S1xx=a.S1xx;
+        Syy=a.Syy;
+        S0xy=a.S0xy;
+        S1xy=a.S1xy;
+        return *this;
+    }
+    r_stat_t Combine(const r_stat_t& a)
+    {
+        r_stat_t b;
+        b.size=size+a.size;
+        b.S0x=S0x+a.S1x;
+        b.S1x=S1x+a.S0x;
+        b.Sy=Sy+a.Sy;
+        b.S0xx=S0xx+a.S1xx;
+        b.S1xx=S1xx+a.S0xx;
+        b.Syy=Syy+a.Syy;
+        b.S0xy=S0xy+a.S1xy;
+        b.S1xy=S1xy+a.S0xy;
+        return b;
+    }
+    r_stat_t& operator+(const r_stat_t&a)
+    {
+        size+=a.size;
+        S0x+=a.S0x;
+        S1x+=a.S1x;
+        Sy+=a.Sy;
+        S0xx+=a.S0xx;
+        S1xx+=a.S1xx;
+        Syy+=a.Syy;
+        S0xy+=a.S0xy;
+        S1xy+=a.S1xy;
+        return *this;
+    }
+    bool IsSignificant()
+    {
+        double r=(size*S0xy-S0x*Sy)/(sqrt(size*S0xx-S0x*S0x)*sqrt(size*Syy-Sy*Sy));
+//        double r2=(size*S1xy-S1x*Sy)/(sqrt(size*S1xx-S1x*S1x)*sqrt(size*Syy-Sy*Sy));
+        double t=r*sqrt(size-2)/sqrt(1-r*r);
+//        double t2=r2*sqrt(size-2)/sqrt(1-r2*r2);
+        double p=pt(t,size-2,1,0);
+
+//        double SSEfull=(Syy-(S0xy)*S0xy)/S0xx;
+//        double SSEreduced=Syy-Sy*Sy/size;
+//        double p=pf(((SSEreduced-SSEfull)*(size-2)/SSEfull),1.,(double)size-2,1,0);
+//if(p<0.25||p>0.75)        fprintf(stderr,"r:%f,\tbeta hat:%f,\tp value:%f,\t df:%d\n",r,S0xy/S0xx,p,size-2);
+        return p<0.05||p>0.95;
+
+    }
+};
+
+
+//define NODE structure which represents cluster or state in HMM model
+class StateNode
+{
+public:
+    int nodeIndex;
+    char allele;
+    float numHap;
+    std::vector<int> parentNodeIndex;
+//    std::vector<int> numHapFromParentNode;
+    std::vector<int> childNodeIndex;
+    std::vector<float> numHapToChildNode;
+
+    StateNode() {
+        nodeIndex=0;
+        allele=0;
+        numHap=0;
+    }
+
+    StateNode(int tIndex, char tAllele, double tNumHap) {
+        nodeIndex=tIndex;
+        allele=tAllele;
+        numHap=tNumHap;
+    }
+
+    void operator=(const StateNode&A) {
+        nodeIndex=A.nodeIndex;
+        allele=A.allele;
+        numHap=A.numHap;
+        parentNodeIndex=A.parentNodeIndex;
+//        numHapFromParentNode=A.numHapFromParentNode;
+        childNodeIndex=A.childNodeIndex;
+        numHapToChildNode=A.numHapToChildNode;
+    }
+
+    void operator+(const StateNode&A) {
+        numHap+=A.numHap;
+        parentNodeIndex.insert(parentNodeIndex.end(),A.parentNodeIndex.begin(),A.parentNodeIndex.end());
+//        numHapFromParentNode.insert(numHapFromParentNode.end(),A.numHapFromParentNode.begin(),A.numHapFromParentNode.end());
+        childNodeIndex.insert(childNodeIndex.end(),A.childNodeIndex.begin(),A.childNodeIndex.end());
+        numHapToChildNode.insert(numHapToChildNode.end(),A.numHapToChildNode.begin(),A.numHapToChildNode.end());
+    }
+
+    void AddParentNode(int index/*, float numHaplotype*/) {
+        parentNodeIndex.push_back(index);
+//        numHapFromParentNode.push_back(numHaplotype/numHap);
+    }
+
+    bool AddChildNode(int index, float numHaplotype) {
+        childNodeIndex.push_back(index);
+        numHapToChildNode.push_back(numHaplotype/numHap);
+    }
+
+    float GetTransitionProbToChildNode(int index) {
+        return numHapToChildNode[index];
+    }
+
+    float GetTransitionProbFromParentNode(int index) {
+        return 0;
+    }
+
+
+};
+
+
+
 typedef std::unordered_map<std::string,std::string>  ID2POP;
 typedef std::unordered_map<int,std::string>  Index2ID;
-
 typedef std::map<int,std::map<int,bool> > EDGE;
 
 class PBWTWrapper
@@ -56,12 +219,17 @@ public:
     int N,M;//numSites,numHaps
     int nSamples;
     int nMarkers;
+
+    int prefixLength;
+    double* phred2prob;
+
     PBWT* pbwtCore;
     PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<std::vector<int> > a,alpha/*reverse*/;
     //std::vector<std::unordered_map<int,int> > aMap,alphaMap;
     std::vector<std::vector<int> > aMap,alphaMap;
-    std::vector<std::vector<int> > d,delta;/*reverse*/;
+    std::vector<std::vector<int> > d,delta;
+    std::vector<std::vector<float> > bkDistance;/*reverse*/;
     std::vector<std::vector<uchar> > sortedY/*only for test*/;
     std::vector<int> c,celta;/*number of zero at each site*/
     std::vector<std::vector<int> > u,ultra;/*relative rank within zeros*/
@@ -88,6 +256,16 @@ public:
     double pval;
     bool EXACT;
     std::unordered_map<int, int> removeMembership;//rankID,state
+
+    //regressionMergeSite function variables
+    std::vector<std::vector<float> > leftCoordinate;
+    std::vector<std::vector<float> > rightCoordinate;
+    std::vector<r_stat_t>  rightCoordinateStat;
+
+
+
+    int phased;
+    int nSampledCopy;
 
 
     PBWTWrapper(){}
@@ -128,23 +306,25 @@ public:
     int CursorForwardsTo(int k, int T=5);
 
 
-    int CursorBackwardsTo(int k, int T=5);
+    int CursorBackwardsTo(int siteBackword, int T=5);
 
     int CopyHap(int k, PbwtCursor* Cursor);
 
     int LabelNoSiblingCluster(int site);
 	int UpdateTransVector(int site);
 
-    bool IsEditDistanceOK(const std::vector< std::vector<char*> >& backBone,int stateA, int stateB, int index, int thresh);
+    bool IsEditDistanceOK(int stateA, int stateB, int index, int thresh);
     void MergeSortedArrayToA(std::vector<int> &a, std::vector<int> &b);
     bool IsRecipricalLengthOK(std::vector<int> &a, std::vector<int> &b);
     int CalculateDmax(double & pval, double & Dmax, std::vector<int> & j, std::vector<int>& k);
+    int CalculateDmaxBeta(double & pval, double & Dmax, std::vector<int> & j, std::vector<int>& k);
 
     int MergeAtSite(int site);
+    int RegressionMergeAtSite(int site);
 
     int MoveSegment(const std::unordered_map<int,int>& mergedMembership,int site);
 
-    int SetHaps(char **haps,double * freq1s);
+    int SetHaps(char **haps,char **sampledHaps,double * freq, int nPhase, int nCopy);
 
     //inline functions
     inline int GetNumStates(int k)
@@ -154,6 +334,7 @@ public:
     }
     inline unsigned long GetNumHaps(int site) const { return haplotypeCluster[site].size(); }
 
+    inline float GetDlengthFromBack(int site, int backRank)const {return bkDistance[site+1][backRank];}
     inline int GetHapIDFromBack(int site, int backRank) const { return alpha[site + 1][backRank]; }
     inline int GetHapIDFromFwd(int site, int fwdRank) const { return a[site][fwdRank]; }//you should only use it after a being updated
 
@@ -234,7 +415,7 @@ public:
     {
         fprintf(stderr,"debug array %s:\n",str);
         for (int i = 0; i < a.size(); ++i) {
-            fprintf(stderr,"%d\t",(int)a[i]);
+            fprintf(stderr,"%f\t",(float)a[i]);
         }
         fprintf(stderr,"\n");
     }

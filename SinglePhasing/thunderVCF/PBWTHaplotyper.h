@@ -15,6 +15,8 @@ public:
 	PBWTHaplotyper();
 	void InitAuxillary();
     ~PBWTHaplotyper();
+
+    void RandomSetup(Random * rand);
     int LoopThroughChromosomesViaPBWT();
 	int OrderedLoopThroughChromosomesViaPBWT();
 	void Transpose(int site, float * source, float * dest);
@@ -23,9 +25,9 @@ public:
 	void OrderedScoreLeftConditional();
     virtual void ConditionOnData(float * matrix, int marker, char phred11, char phred12, char phred22);
 	void OrderedConditionOnData(float *matrix, int marker, char phred11, char phred12, char phred22);
-    virtual void ImputeAlleles(int marker, int state1, int state2, Random * rand);
-    virtual void ImputeAllele(int haplotype, int marker, int state);
-    virtual void FillPath(int haplotype, int fromMarker, int toMarker, int state);
+    virtual void ImputeAlleles(int marker, int state1, int state2, Random *rand, int currentIndividual, char** haps);
+    virtual void ImputeAllele(int haplotype, int marker, int state, char** haps);
+    virtual void FillPath(int haplotype, int fromMarker, int toMarker, int state, char** haps);
     virtual void SampleChromosomes(Random * rand);
 	void OrderedSampleChromosomes(Random * rand);
 
@@ -73,16 +75,22 @@ public:
          states=num;
     }
 
+
 protected:
 
     PBWTWrapper* Wrapper;
 
+    int indexBeingSampled;
 	//subset markers related
 	char** tmpHaps;
 	char ** tmpGeno;
     float* tmpPenetrance;
 	int tmpMarkers;
 	double max_num;
+
+	int nSampleCopy;
+	char ** sampledHaps;
+    double * phred2prob;
 
 	bool useRev;
     bool onlyGT;

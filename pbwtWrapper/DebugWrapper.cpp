@@ -5,7 +5,7 @@
 #include "DebugWrapper.h"
 #include <fstream>
 #include "ks.h"
-#define PREFIX_LENGTH 1200
+#define prefixLength 1200
 #define ROUND 10
 DebugWrapper::DebugWrapper(int a, int b):PBWTWrapper(a,b) {
     numRight=0;
@@ -225,7 +225,7 @@ int DebugWrapper::MergeCluster(int site, Index2ID& MAP1, ID2POP& MAP2) {
     int ret(0);
     int oldNumCluster = GetNumStates(site);
     int numHaps = haplotypeCluster[site].size();
-    int indexToPut=2000;
+    int indexToPut=4000;
 
     if(site%1000==0)fprintf(stderr,"processing site:%d\n",site);
     if(site%5==0&&site>=indexToPut-50&&site<indexToPut+50) {
@@ -293,7 +293,7 @@ int DebugWrapper::CursorForwards(RESULT* result) {//so far only implemented for 
 
     for (int k = 0; k != pbwtCore->N; ++k) {
         //fprintf(stderr,"at site %d\n",k);
-        CursorForwardsTo(k, PREFIX_LENGTH, result);
+        CursorForwardsTo(k, prefixLength, result);
     }
     //copy end of a to PBWT
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 1");
@@ -317,7 +317,7 @@ int DebugWrapper::CursorForwards(Index2ID& MAP1,ID2POP& MAP2) {//so far only imp
 
     for (int k = 0; k != pbwtCore->N; ++k) {
         //fprintf(stderr,"at site %d\n",k);
-        CursorForwardsTo(k,  MAP1, MAP2,PREFIX_LENGTH);
+        CursorForwardsTo(k,  MAP1, MAP2,prefixLength);
     }
     //copy end of a to PBWT
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 1");

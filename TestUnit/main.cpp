@@ -7,7 +7,7 @@
 #include "random"
 #include "gtest/gtest.h"
 
-#define GTEST
+#define DRAW_PLOT
 #ifdef GTEST
 using namespace std;
 char**  HapsInit(int M, int N)
@@ -465,8 +465,8 @@ int main(int argc, char ** argv) {
 
     cerr << "Hello, World!" << endl;
     char ** haps= nullptr;
-    //string inputVcf="/Users/fanzhang/Downloads/PlutoTest/OMNI.merged.chr20.phased_genotypes.20141111.vcf.gz";
-    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/test.OMNI.vcf.gz";
+    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/OMNI.merged.chr20.phased_genotypes.20141111.vcf.gz";
+//    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/test.OMNI.vcf.gz";
     string inputPed="/Users/fanzhang/Downloads/PlutoTest/integrated_call_samples.20130502.ALL.ped";
     int nSamples(0),nMarkers(0);
     Index2ID MAP1;
@@ -475,7 +475,7 @@ int main(int argc, char ** argv) {
     readPed(inputPed,MAP2);
     DebugWrapper  * Graph=new DebugWrapper(2*nSamples,nMarkers);
     fprintf(stderr,"finished initializing graph\n");
-    Graph->SetHaps(haps);
+    Graph->haplotype=haps;
     Graph->CursorBackwards();
     fprintf(stderr,"finished backward procedure\n");
     Graph->CursorForwards(MAP1,MAP2);

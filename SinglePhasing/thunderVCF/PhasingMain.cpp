@@ -1339,7 +1339,7 @@ int PhasingMain(int argc, char **argv) {
     }
     else {
         printf("Assigning random set of haplotypes\n\n");
-        engine.RandomSetup();
+        engine.RandomSetup(nullptr);
     }
     printf("Found initial haplotype set\n\n");
     //OutputManager::WriteHaplotypes(outfile, ped, engine.haplotypes);

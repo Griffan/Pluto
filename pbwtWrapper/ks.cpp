@@ -16,8 +16,8 @@
 #include <limits>
 #include <algorithm>
 #define NA_INTEGER INT_MIN
-double R_PosInf = INFINITY;
-double R_NegInf = -INFINITY;
+double KS_PosInf = INFINITY;
+double KS_NegInf = -INFINITY;
 
 typedef union
 {
@@ -57,7 +57,7 @@ int R_finite(double x)
 #ifdef HAVE_WORKING_ISFINITE
     return isfinite(x);
 #else
-    return (!isnan(x) & (x != R_PosInf ) & (x != R_NegInf));
+    return (!isnan(x) & (x != KS_PosInf ) & (x != KS_NegInf));
 #endif
 }
 static double R_pow_di(double x, int n)
