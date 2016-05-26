@@ -7,7 +7,7 @@
 #include "random"
 #include "gtest/gtest.h"
 
-#define DRAW_PLOT
+#define GTEST
 #ifdef GTEST
 using namespace std;
 char**  HapsInit(int M, int N)
@@ -62,12 +62,10 @@ protected:
     virtual void SetUp(){
         cerr << "Hello, World!" << endl;
         char ** haps=HapsInit(M,N);
-        Wrapper->SetHaps(haps);
+        Wrapper->SetHaps(haps,0,0,0,0);
     }
 
     virtual void TearDown(){}
-
-
 };
 
 /*
@@ -111,17 +109,17 @@ protected:
     inline void resetWrapper()
 
  * */
-TEST_F(PBWTWrapperTest, IsEditDistanceOK) {
-    std::vector< std::vector<char*> > backBone(2,std::vector<char*>(0,0));
-    backBone[0].push_back(Wrapper->haplotype[0]);
-    backBone[1].push_back(Wrapper->haplotype[21]);
-    bool result=Wrapper->IsEditDistanceOK(backBone,0,1,0,1);
-    EXPECT_EQ(true,result);
-    result=Wrapper->IsEditDistanceOK(backBone,0,1,0,0);
-    EXPECT_EQ(true,result);
-    result=Wrapper->IsEditDistanceOK(backBone,0,1,0,4);
-    EXPECT_EQ(false,result);
-}
+//TEST_F(PBWTWrapperTest, IsEditDistanceOK) {
+//    std::vector< std::vector<char*> > backBone(2,std::vector<char*>(0,0));
+//    backBone[0].push_back(Wrapper->haplotype[0]);
+//    backBone[1].push_back(Wrapper->haplotype[21]);
+//    bool result=Wrapper->IsEditDistanceOK(backBone,0,1,0,1);
+//    EXPECT_EQ(true,result);
+//    result=Wrapper->IsEditDistanceOK(backBone,0,1,0,0);
+//    EXPECT_EQ(true,result);
+//    result=Wrapper->IsEditDistanceOK(backBone,0,1,0,4);
+//    EXPECT_EQ(false,result);
+//}
 
 TEST_F(PBWTWrapperTest, IsRecipricalLengthOK)
 {
@@ -275,6 +273,28 @@ TEST_F(PBWTWrapperTest, MoveSegment)
 
 }
 
+class StateNodeTest : public ::testing::Test {
+protected:
+    PBWTWrapper* Wrapper;
+    int M,N;
+    StateNodeTest()
+    {
+        M=21+79+95+116+25+112+152;
+        N=4;
+        Wrapper = new PBWTWrapper(M,N);
+    }
+
+    virtual ~StateNodeTest(){}
+
+    virtual void SetUp(){
+        cerr << "Hello, World!" << endl;
+        char ** haps=HapsInit(M,N);
+        Wrapper->SetHaps(haps,0,0,0,0);
+    }
+
+    virtual void TearDown(){}
+};
+
 int main(int argc, char ** argv) {
 
     ::testing::InitGoogleTest(&argc, argv);
@@ -313,7 +333,7 @@ int main(int argc, char ** argv) {
 //    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 //    std::shuffle(haps,haps+M,std::default_random_engine(seed));
     PBWTWrapper * Graph=new PBWTWrapper(MS.GetNumHaps(),MS.GetHapLength());
-    Graph->SetHaps(haps);
+    Graph->SetHaps(haps,0,0,0,0);
     Graph->CursorBackwards();
     Graph->CursorForwards();
 

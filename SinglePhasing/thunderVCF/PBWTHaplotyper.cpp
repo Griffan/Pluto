@@ -808,12 +808,15 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 //                            (*probability) * GetTransitionProb(fromWhere, i, k) * GetTransitionProb(fromWhere, i, l)*2;
 //                    probability++;
 //                }
-                for (auto kvi:Wrapper->inEdges[toWhere][k]) {
-                    for(auto kvj:Wrapper->inEdges[toWhere][l]){
+//                for (auto kvi:Wrapper->inEdges[toWhere][k]) {
+//                    for(auto kvj:Wrapper->inEdges[toWhere][l]){
+                for (auto kvi:Wrapper->Graph.StateNodeMat[toWhere][k].parentNodeIndex2NumHap) {
+                    for(auto kvj:Wrapper->Graph.StateNodeMat[toWhere][l].parentNodeIndex2NumHap){
                         sum=(*GetProbability(source,kvi.first,kvj.first))
                             * GetTransitionProb(fromWhere, kvi.first, k)
                             * GetTransitionProb(fromWhere, kvj.first, l);
-                        if(kvi==kvj) sum*=2;
+
+                        if(kvi==kvj) sum*=2;//compensate for 2 combinations
 //                        if((site==8355||site==8356)&&*GetProbability(source,kvi.first,kvj.first)>0)
 //                        {
 //                            fprintf(stderr,"(%d,%d)to (%d,%d):probability:%g\tk-first:%g\tl-second:%g\tk-second:%g\tl-first:%g\t\n",k,l,kvi.first,kvj.first,*GetProbability(source,kvi.first,kvj.first),
@@ -859,19 +862,17 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 //                fprintf(stderr,"site:%d:(from state %d to state %d) %f\t\n",site,m,k,GetTransitionProb(fromWhere, m, k));
 //            }
 
-            for (auto iter=Wrapper->inEdges[toWhere][k].begin();iter!=Wrapper->inEdges[toWhere][k].end();++iter) {
-                for(auto iter2=Wrapper->inEdges[toWhere][k].begin();iter2!=iter;++iter2){
-                    sum=(*GetProbability(source,iter->first,iter2->first)) * GetTransitionProb(fromWhere, iter->first, k) * GetTransitionProb(fromWhere, iter2->first, k);
-//                    if((site==8355||site==8356)&&*GetProbability(source,iter->first,iter2->first)>0)
-//                    {
-//                        fprintf(stderr,"(%d,%d)to (%d,%d):probability:%g\tk-first:%g\tl-second:%g\tk-second:%g\tl-first:%g\t\n",k,k,iter->first,iter2->first,*GetProbability(source,iter->first,iter2->first),
-//                                GetTransitionProb(fromWhere, k, iter->first), GetTransitionProb(fromWhere, k, iter2->first),GetTransitionProb(fromWhere, k, iter2->first) , GetTransitionProb(fromWhere, k, iter->first));
-//                    }
+            for (auto iter=Wrapper->Graph.StateNodeMat[toWhere][k].parentNodeIndex2NumHap.begin();iter!=Wrapper->Graph.StateNodeMat[toWhere][k].parentNodeIndex2NumHap.end();++iter) {
+                for(auto iter2=Wrapper->Graph.StateNodeMat[toWhere][k].parentNodeIndex2NumHap.begin();iter2!=iter;++iter2){
+                    sum=(*GetProbability(source,iter->first,iter2->first))
+                        * GetTransitionProb(fromWhere, iter->first, k)
+                        * GetTransitionProb(fromWhere, iter2->first, k);
+
                     if((sum < std::numeric_limits<float>::min()) &&
                        (*GetProbability(source,iter->first,iter2->first) > 0.)) sum=std::numeric_limits<float>::min();
                     *output += sum;
                 }
-                sum=(*GetProbability(source,iter->first,iter->first)) * GetTransitionProb(fromWhere, iter->first, k) * GetTransitionProb(fromWhere, iter->first, k);
+                sum=(*GetProbability(source,iter->first,iter->first)) *  GetTransitionProb(fromWhere, iter->first, k)* GetTransitionProb(fromWhere, iter->first, k);
 //                if((site==8355||site==8356)&&*GetProbability(source,iter->first,iter->first)>0)
 //                {
 //                    fprintf(stderr,"(%d,%d)to (%d,%d):probability:%g\tk-first:%g\tl-second:%g\tk-second:%g\tl-first:%g\t\n",k,k,iter->first,iter->first,*GetProbability(source,iter->first,iter->first),
@@ -1100,7 +1101,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
         }
 
 
-//    float max_prob(0),tmp_sum(0);
+    float max_prob(0),tmp_sum(0);
         float last_sum(0);
         int j0;
         for (int j = markers - 2; j >= 0; j--) {

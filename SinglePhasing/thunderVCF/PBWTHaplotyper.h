@@ -50,10 +50,15 @@ public:
 
     //inline section
 	inline float GetTransitionProb(int site, int from, int to) {
-		if(Wrapper->transVector.size()<= site) {fprintf(stderr,"%d doesn't exist!\n",site);abort();}
-		if(Wrapper->transVector[site].size()<=from) {fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);abort();}
-		if(Wrapper->transVector[site][from].size()<=to) {fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
-		return Wrapper->transVector[site][from][to];
+//		if(Wrapper->transVector.size()<= site) {fprintf(stderr,"%d doesn't exist!\n",site);abort();}
+//		if(Wrapper->transVector[site].size()<=from) {fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);abort();}
+//		if(Wrapper->transVector[site][from].size()<=to) {fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
+//		return Wrapper->transVector[site][from][to];
+		if(Wrapper->Graph.StateNodeMat.size()<= site) {return 0;/*fprintf(stderr,"%d doesn't exist!\n",site);abort();*/}
+		if(Wrapper->Graph.StateNodeMat[site].size()<=from) {return 0;/*fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);abort();*/}
+		if(Wrapper->Graph.StateNodeMat[site][from].childNodeIndex2NumHap.find(to)==Wrapper->Graph.StateNodeMat[site][from].childNodeIndex2NumHap.end())
+		{return 0;/*fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();*/}
+		return Wrapper->Graph.StateNodeMat[site][from].childNodeIndex2NumHap[to];
 	}
 	inline uchar GetAllele(int site, int state)
 	{

@@ -72,12 +72,14 @@ bool comparator(const max_pair_t& lhs, const max_pair_t& rhs) {
     return lhs.pval<rhs.pval;
 }
 
-PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):prefixLength(1200),a(nsnps,std::vector<int>(nhaps,0)), alpha(a),alphaMap(a),aMap(a),
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps):prefixLength(1200),
+                                               a(nsnps,std::vector<int>(nhaps,0)), alpha(a),alphaMap(a),aMap(a),
                                                /*alphaMap(nsnps,std::unordered_map<int,int>()),
                                                aMap(nsnps,std::unordered_map<int,int>()),*/
                                                d(a),delta(a),bkDistance(nsnps,std::vector<float>(nhaps,(float)0.)), /*sortedY(nsnps,std::vector<uchar>(nhaps,0)),*/
                                                c(nsnps,0),celta(c),u(a),ultra(a),
                                                haplotypeCluster(a),
+                                               Graph(nsnps),
                                                clusterAllele(nsnps,std::vector<uchar>()),
                                                mergePairList(std::function<bool(const max_pair_t& , const max_pair_t&)>(comparator))
 {
@@ -137,10 +139,10 @@ int PBWTWrapper::CursorForwardsTo(int k, int T)
     int rank, i0 = 0, ia;
     int group = 0;
 
-    int hapID(0);
+    int hapID(0),prevSiteStateIndex(0);
 
     clusterMembership.clear();
-    hasSiblings.clear();
+//    hasSiblings.clear();
     dist.clear();
     rightCoordinate.clear();
     rightCoordinateStat.clear();
@@ -152,39 +154,50 @@ int PBWTWrapper::CursorForwardsTo(int k, int T)
     //cluster of the previous site k-1
     for (rank = 0; rank < forwardCursor->M; ++rank) {
         /*assign states of last column based on previous d and sortedY*/
-        if (forwardCursor->d[rank] > (k - tmpT) && k != 0) {//new cluster if current sequence and last sequence have common sequence less than T
-            //if (na && nb)        /* then there is something to report */
-            if(rank != 0) {
-                //fprintf(stderr,"d:%d\tk-tmpT:%d\n",forwardCursor->d[i],k-tmpT);
-                dist.push_back(std::vector<int>(rank-i0, 0));//state->rank_occupied
-                rightCoordinate.push_back(std::vector<float>(rank-i0, (float)0.));//state->rank_occupied
-                std::vector<int> tmpMem;
-                for (ia = i0; ia < rank; ++ia) {
-                    hapID= GetHapIDFromFwd(k-1, ia);//original ID, by treating rank as backward ranking
-                    haplotypeCluster[k - 1][hapID] = group;
-                    tmpMem.push_back(ia);
-                    dist[group][ia-i0] = GetRankFromBack(k-1,hapID);
-                    rightCoordinate[group][ia-i0] = GetDlengthFromBack(k - 1, dist[group][ia - i0]) ;
-                }
-                rightCoordinateStat.push_back(rightCoordinate[group]);
-                std::sort(dist[group].begin(),dist[group].end());
-                clusterAllele[k - 1].push_back(haplotype[GetHapIDFromFwd(k-1,i0)][k-1]);
-//                if(k==6)fprintf(stderr,"site 5, GetHapID %d or %d and allele %d\n",GetHapIDFromFwd(k-2,i0),GetHapIDFromFwd(k-1,i0),haplotype[GetHapIDFromFwd(k-1,i0)][k-1]);
-                clusterMembership.push_back(tmpMem);
-                hasSiblings.push_back(false);
-                // na = 0;
-                // nb = 0;
-                i0 = rank;
-                group++;
-            }
-        }
+            if (forwardCursor->d[rank] >
+                (k - tmpT)&&(k!=0)) {//new cluster if current sequence and last sequence have common sequence less than T
+                //if (na && nb)        /* then there is something to report */
+                if (rank != 0) {
+//                    fprintf(stderr,"d:%d\tk-tmpT:%d\n",forwardCursor->d[rank],k-tmpT);
+                    Graph.StateNodeMat[k - 1].push_back(StateNode(group, rank - i0));
+                    dist.push_back(std::vector<int>(rank - i0, 0));//state->rank_occupied
+                    rightCoordinate.push_back(std::vector<float>(rank - i0, (float) 0.));//state->rank_occupied
+                    std::vector<int> tmpMem;
+                    for (ia = i0; ia < rank; ++ia) {
+                        hapID = GetHapIDFromFwd(k - 1, ia);//original ID, by treating rank as backward ranking
+                        haplotypeCluster[k - 1][hapID] = group;
+                        tmpMem.push_back(ia);
+                        dist[group][ia - i0] = GetRankFromBack(k - 1, hapID);
+                        rightCoordinate[group][ia - i0] = GetDlengthFromBack(k - 1, dist[group][ia - i0]);
+                        if (k >= 2) {
+                            prevSiteStateIndex = GetHapState(k - 2, hapID);
+                            Graph.StateNodeMat[k - 1][group].AddParentNode(prevSiteStateIndex, 1);//site k-1
+                            Graph.StateNodeMat[k - 2][prevSiteStateIndex].AddChildNode(group, 1);
+                        }
+                    }
 
+                    if (k == 1) {
+                        prevSiteStateIndex = 0;
+                        Graph.StateNodeMat[0][group].AddParentNode(prevSiteStateIndex, rank - i0);//site 1
+                    }
+                    rightCoordinateStat.push_back(rightCoordinate[group]);
+                    std::sort(dist[group].begin(),
+                              dist[group].end());//TODO:only sort nodes need to compare, skip those otherwise
+                    clusterAllele[k - 1].push_back(haplotype[GetHapIDFromFwd(k - 1, i0)][k - 1]);
+                    clusterMembership.push_back(tmpMem);
+//                hasSiblings.push_back(false);
+
+                    i0 = rank;
+                    group++;
+                }
+            }
     }
     //finish the last segment if i0 didn't reach the end
     if( i0 < forwardCursor->M)
     {
         if (k != 0)
         {
+            Graph.StateNodeMat[k - 1].push_back(StateNode(group,forwardCursor->M-i0));
             dist.push_back(std::vector<int>(forwardCursor->M-i0, 0));//state->rank_occupied
             rightCoordinate.push_back(std::vector<float>(forwardCursor->M-i0, (float)0.));//state->rank_occupied
             std::vector<int> tmpMem;
@@ -194,20 +207,31 @@ int PBWTWrapper::CursorForwardsTo(int k, int T)
                 haplotypeCluster[k-1][hapID] = group;
                 tmpMem.push_back(ia);
                 dist[group][ia-i0] = GetRankFromBack(k-1,hapID);
-                rightCoordinate[group][ia-i0] = GetDlengthFromBack(k - 1, dist[group][ia - i0]) ;
+                rightCoordinate[group][ia-i0] = GetDlengthFromBack(k - 1, dist[group][ia - i0]);
+
+                if(k>=2) {
+                    prevSiteStateIndex=GetHapState(k - 2, hapID);
+                    Graph.StateNodeMat[k - 1][group].AddParentNode(prevSiteStateIndex,1);
+                    Graph.StateNodeMat[k - 2][prevSiteStateIndex].AddChildNode(group,1);
+                }
             }
+
+            if(k==1)
+            {
+                prevSiteStateIndex=0;
+                Graph.StateNodeMat[0][group].AddParentNode(prevSiteStateIndex,forwardCursor->M-i0);//site 1
+            }
+
             rightCoordinateStat.push_back(rightCoordinate[group]);
             std::sort(dist[group].begin(),dist[group].end());
             clusterAllele[k-1].push_back(haplotype[GetHapIDFromFwd(k-1,i0)][k-1]);
-//            if(k==6)fprintf(stderr,"site 5, GetHapID %d or %d and allele %d\n",GetHapIDFromFwd(k-2,i0),GetHapIDFromFwd(k-1,i0),haplotype[GetHapIDFromFwd(k-1,i0)][k-1]);
             clusterMembership.push_back(tmpMem);
-            hasSiblings.push_back(false);
-            //fprintf(stderr,"site:%d\tnumStates:%d\n",k-1,clusterAllele[k-1].size());
-
+//            hasSiblings.push_back(false);
         }
     }
+
     //merge cluster based on KS test
-    int test = 0;
+    int merged = 0;
 #ifdef DEBUG
     if(k!=0){
         fprintf(stderr, "at site:%d\n", k-1);
@@ -215,9 +239,11 @@ int PBWTWrapper::CursorForwardsTo(int k, int T)
         PrintVector(clusterAllele[k-1],"state allele before merge allele");
     }
 #endif
-    if(k!=0) {
-        LabelNoSiblingCluster(k - 1);
-        if (clusterAllele[k - 1].size() != 1) test = RegressionMergeAtSite(k - 1);//TODO:implement this function
+    if(k>=1) {
+
+//        LabelNoSiblingCluster(k - 1);
+        if (clusterAllele[k - 1].size() != 1) merged = RegressionMergeAtSite(k - 1);//TODO:implement this function
+        Graph.UpdateChildNodeInParentNode(k-1);
         //if(k!=0&&clusterAllele[k-1].size()!=1) test = MergeAtSiteExperiment(k-1);
 #ifdef DEBUG
         if(test) {
@@ -227,8 +253,11 @@ int PBWTWrapper::CursorForwardsTo(int k, int T)
             fprintf(stderr,"\n");
         }
 #endif
-        UpdateTransVector(k - 1);
+//        UpdateTransVector(k - 1);
+
+
     }
+
 
 
     //copy haplotypes into forwardCursor->y
@@ -293,7 +322,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T)
         group = 0;
 
         clusterMembership.clear();
-        hasSiblings.clear();
+//        hasSiblings.clear();
         dist.clear();
         for (rank = 0; rank < forwardCursor->M; ++rank) {
             /*assign states of last column based on previous d and sortedY*/
@@ -301,6 +330,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T)
                 //if (na && nb)        /* then there is something to report */
                 if(rank != 0) {
                     //fprintf(stderr,"d:%d\tk-tmpT:%d\n",forwardCursor->d[i],k-tmpT);
+                    Graph.StateNodeMat[k].push_back(StateNode(group,rank-i0));
                     dist.push_back(std::vector<int>(rank-i0, 0));//state->rank_occupied
                     std::vector<int> tmpMem;
                     for (ia = i0; ia < rank; ++ia) {
@@ -308,11 +338,17 @@ int PBWTWrapper::CursorForwardsTo(int k, int T)
                         haplotypeCluster[k][hapID] = group;
                         tmpMem.push_back(ia);
                         dist[group][ia-i0] = GetRankFromBack(k,hapID);
+                        if(k>=1) {
+                            prevSiteStateIndex=GetHapState(k - 1, hapID);
+                            Graph.StateNodeMat[k][group].AddParentNode(prevSiteStateIndex,1);
+                            Graph.StateNodeMat[k - 1][prevSiteStateIndex].AddChildNode(group,1);
+                        }
                     }
+                    Graph.StateNodeMat[k][group].AddChildNode(0,rank-i0);
                     std::sort(dist[group].begin(),dist[group].end());
                     clusterAllele[k].push_back(haplotype[GetHapIDFromFwd(k,i0)][k]);
                     clusterMembership.push_back(tmpMem);
-                    hasSiblings.push_back(false);
+//                    hasSiblings.push_back(false);
                     // na = 0;
                     // nb = 0;
                     i0 = rank;
@@ -324,27 +360,32 @@ int PBWTWrapper::CursorForwardsTo(int k, int T)
         //finish the last segment if i0 didn't reach the end
         if( i0 < forwardCursor->M)
         {
-                dist.push_back(std::vector<int>(forwardCursor->M-i0, 0));//state->rank_occupied
-                std::vector<int> tmpMem;
-                for (ia = i0; ia < forwardCursor->M; ++ia)
-                {
+            dist.push_back(std::vector<int>(forwardCursor->M-i0, 0));//state->rank_occupied
+            Graph.StateNodeMat[k].push_back(StateNode(group,forwardCursor->M-i0));
+            std::vector<int> tmpMem;
+            for (ia = i0; ia < forwardCursor->M; ++ia)
+            {
                     hapID= GetHapIDFromFwd(k, ia);//original ID, by treating rank as backward ranking
                     haplotypeCluster[k][hapID] = group;
                     tmpMem.push_back(ia);
                     dist[group][ia-i0] = GetRankFromBack(k,hapID);
-                }
+                    if(k>=1) {
+                        prevSiteStateIndex=GetHapState(k - 1, hapID);
+                        Graph.StateNodeMat[k][group].AddParentNode(prevSiteStateIndex,1);
+                        Graph.StateNodeMat[k - 1][prevSiteStateIndex].AddChildNode(group,1);
+                    }
+            }
+            Graph.StateNodeMat[k][group].AddChildNode(0,forwardCursor->M-i0);
                 std::sort(dist[group].begin(),dist[group].end());
                 clusterAllele[k].push_back(haplotype[GetHapIDFromFwd(k,i0)][k]);
                 clusterMembership.push_back(tmpMem);
-                hasSiblings.push_back(false);
-                //fprintf(stderr,"site:%d\tnumStates:%d\n",k-1,clusterAllele[k-1].size());
+//                hasSiblings.push_back(false);
         }
 
-            LabelNoSiblingCluster(k);
-            UpdateTransVector(k);//for the last second site
-
+//            LabelNoSiblingCluster(k);
+//            UpdateTransVector(k);//for the last second site
+        Graph.NormalizeCurrentSiteTransitionProb(k-1);
     }
-
     return 0;
 }
 
@@ -952,6 +993,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site)
     stateOrder.clear();//mapping oldState to newOrder
     tmpAllele.clear();
     removeMembership.clear();//rankID,state
+    Graph.tmpNodeVec.clear();
 
 
     int retainState;
@@ -960,36 +1002,45 @@ int PBWTWrapper::RegressionMergeAtSite(int site)
     double Dmax=0.;
     double Ddiff=0.;
 
-    for (int j = 0; j < dist.size(); ++j) {//enumerate through all the states
-        if (!hasSiblings[j]/* || clusterMembership[j].size() == 0*/) continue;
-        for (int k = 0; k < j; ++k) {
+    std::vector<int> stateWithSibs,stateWithoutSibs;
+    for (int i = 0; i < dist.size(); ++i) {
+        if (!HasSiblings(site, i)) stateWithoutSibs.push_back(i);
+        else stateWithSibs.push_back(i);
+    }
+    stateWithSibs.insert(stateWithSibs.end(),stateWithoutSibs.begin(),stateWithoutSibs.end());
 
-            if (hasSiblings[k]||clusterAllele[site][j] != clusterAllele[site][k] /*|| clusterMembership[k].size() == 0*/) continue;
-            if(dist[j].size()<= 1 )
+    int stateL(0),stateR(0);
+    for (int j = 0; j < stateWithSibs.size()-stateWithoutSibs.size(); ++j) {//enumerate through all the states
+        //if (!HasSiblings(site, stateL)/* || clusterMembership[j].size() == 0*/) continue;
+        for (int k = j+1; k < stateWithSibs.size(); ++k) {
+            stateL=stateWithSibs[j];
+            stateR=stateWithSibs[k];
+            if (clusterAllele[site][stateL] != clusterAllele[site][stateR] /*|| clusterMembership[k].size() == 0*/) continue;
+            if(dist[stateL].size()<= 1 )
             {
-                if(dist[k].size() <= 1) {//both rare
-                    if (!IsEditDistanceOK(j, k, site, 100))
+                if(dist[stateR].size() <= 1) {//both rare
+                    if (!IsEditDistanceOK(stateL, stateR, site, 100))
                         continue;
                 }
                 else//j rare, k not
                 {
-                    if (!IsEditDistanceOK(j, k, site, 50))
+                    if (!IsEditDistanceOK(stateL, stateR, site, 50))
                         continue;
                 }
             }
-            else if(dist[k].size() <= 1)//j not, k rare
+            else if(dist[stateR].size() <= 1)//j not, k rare
             {
-                if (!IsEditDistanceOK(j, k, site, 50))
+                if (!IsEditDistanceOK(stateL, stateR, site, 50))
                     continue;
             }
 
             {
-                if(!IsRecipricalLengthOK(dist[j], dist[k]))//||!IsEditDistanceOK(backBone,j,k,site,0.5))
+                if(!IsRecipricalLengthOK(dist[stateL], dist[stateR]))//||!IsEditDistanceOK(backBone,j,k,site,0.5))
                     continue;
             }
 
             {
-                if(rightCoordinateStat[j].Combine(rightCoordinateStat[k]).IsSignificant()) {
+                if(rightCoordinateStat[stateL].Combine(rightCoordinateStat[stateR]).IsSignificant()) {
 //                    PrintVector(dist[j],"rank j:");
 //                    PrintVector(dist[k],"rank k:");
 //                    PrintVector(rightCoordinate[j],"big beta hat right j:");
@@ -1004,7 +1055,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site)
 //                if(!IsEditDistanceOK(haplotype[clusterMembership[j].front()],haplotype[clusterMembership[k].front()],site,N)){ std::cerr<<"skip, edit distance"<<std::endl;
 //                    continue;}
 
-            if (clusterMembership[j].size() * clusterMembership[k].size() < 10000)//exact
+            if (clusterMembership[stateL].size() * clusterMembership[stateR].size() < 10000)//exact
             {
                 EXACT = true;
                 //thresh = GetExactThresh(clusterMembership[j].size(), clusterMembership[k].size());
@@ -1015,19 +1066,19 @@ int PBWTWrapper::RegressionMergeAtSite(int site)
 //                                     (clusterMembership[j].size() * clusterMembership[k].size()));
             }
 
-            if(CalculateDmax(pval,Dmax,dist[j],dist[k]))//return early
+            if(CalculateDmax(pval,Dmax,dist[stateL],dist[stateR]))//return early
             {
                 goto DIST_END;
             }
             if(EXACT)
-                pval = 1 - psmirnov2x(&Dmax, clusterMembership[j].size(), clusterMembership[k].size());
+                pval = 1 - psmirnov2x(&Dmax, clusterMembership[stateL].size(), clusterMembership[stateR].size());
             else {
-                Ddiff = sqrt(double(clusterMembership[j].size() + clusterMembership[k].size())) * Dmax;
+                Ddiff = sqrt(double(clusterMembership[stateL].size() + clusterMembership[stateR].size())) * Dmax;
                 pval = 1 - pkstwo_wrapper(1, &Ddiff, 1e-06);
             }
 
             {
-                max_pair_t mergePair={j,k,Dmax,EXACT,pval,dist[j].size(),dist[k].size()};
+                max_pair_t mergePair={stateL,stateR,Dmax,EXACT,pval,dist[stateL].size(),dist[stateR].size()};
                 mergePairList.push(mergePair);
             }
 
@@ -1133,16 +1184,16 @@ int PBWTWrapper::RegressionMergeAtSite(int site)
 //            PrintVector(dist[retainState],"retainState");
 //            PrintVector(dist[removeState],"removeState");
             ret = 1;
-//            if(!hasSiblings[clusterA])
-//            {
-//                retainState=clusterB;
-//                removeState=clusterA;
-//            }
+            if(!HasSiblings(site,clusterA))
+            {
+                retainState=clusterB;
+                removeState=clusterA;
+            }
 //            fprintf(stderr,"third:(%d,%d) Dmax:%f and Thresh:%f and Pval:%f, with sample size:%d,%d and %d,%d\n", retainState,removeState,iter_pair.Dmax,thresh,iter_pair.pval,dist[retainState].size(),dist[removeState].size(),clusterMembership[retainState].size(),clusterMembership[removeState].size());
 
             DoMerge(site, retainState, removeState, dist, removeIndicator, retainIndicator, removeMembership);
             rightCoordinateStat[retainState]=rightCoordinateStat[retainState]+rightCoordinateStat[removeState];
-
+            Graph.StateNodeMat[site][retainState]+=Graph.StateNodeMat[site][removeState];
             //finish merge, look for next candidate pair
         }
         else// if(clusterMembership[clusterA].size()<=2 && clusterMembership[clusterA].size()<=2)
@@ -1160,15 +1211,18 @@ int PBWTWrapper::RegressionMergeAtSite(int site)
         {
             if (removeIndicator[stateM]) continue;
             tmpAllele.push_back(clusterAllele[site][stateM]);
+            Graph.StateNodeMat[site][stateM].nodeIndex=tmpOrder;
+            Graph.tmpNodeVec.push_back(Graph.StateNodeMat[site][stateM]);
             stateOrder[stateM] = tmpOrder;
             tmpOrder++;
         }
 //        PrintVector(clusterAllele[site],"allele cluster states after");
         //PrintVector(haplotypeCluster[site],"haplotype cluster states after");
         for (int k = 0; k < haplotypeCluster[site].size(); ++k) {
-            haplotypeCluster[site][k] = stateOrder[haplotypeCluster[site][k]];
+            haplotypeCluster[site][k] = stateOrder[haplotypeCluster[site][k]];//TODO:don't forget index in StateNode
         }
         clusterAllele[site] = tmpAllele;//update merged cluster allele
+        Graph.StateNodeMat[site]=Graph.tmpNodeVec;
 //        PrintVector(clusterAllele[site],"allele cluster states final");
         //PrintVector(haplotypeCluster[site],"haplotype cluster states final");
         //adjust d array and a array

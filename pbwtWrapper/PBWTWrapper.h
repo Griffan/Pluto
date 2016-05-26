@@ -149,64 +149,128 @@ class StateNode
 {
 public:
     int nodeIndex;
-    char allele;
     float numHap;
-    std::vector<int> parentNodeIndex;
+//    std::vector<int> parentNodeIndex;
 //    std::vector<int> numHapFromParentNode;
-    std::vector<int> childNodeIndex;
-    std::vector<float> numHapToChildNode;
+//    std::vector<int> childNodeIndex;
+//    std::vector<float> numHapToChildNode;
+    std::map<int,float > parentNodeIndex2NumHap;
+    std::map<int,float > childNodeIndex2NumHap;
 
     StateNode() {
         nodeIndex=0;
-        allele=0;
         numHap=0;
     }
 
-    StateNode(int tIndex, char tAllele, double tNumHap) {
+    StateNode(int tIndex, float tNumHap) {
         nodeIndex=tIndex;
-        allele=tAllele;
         numHap=tNumHap;
     }
 
-    void operator=(const StateNode&A) {
+    StateNode& operator=(const StateNode& A)
+    {
         nodeIndex=A.nodeIndex;
-        allele=A.allele;
         numHap=A.numHap;
-        parentNodeIndex=A.parentNodeIndex;
-//        numHapFromParentNode=A.numHapFromParentNode;
-        childNodeIndex=A.childNodeIndex;
-        numHapToChildNode=A.numHapToChildNode;
+        parentNodeIndex2NumHap=A.parentNodeIndex2NumHap;
+        childNodeIndex2NumHap=A.childNodeIndex2NumHap;
+        return *this;
     }
 
-    void operator+(const StateNode&A) {
+//    StateNode& operator+(const StateNode&A) {
+//        numHap+=A.numHap;
+//        for (auto kv:A.parentNodeIndex2NumHap) {
+//            AddParentNode(kv.first,kv.second);
+//        }
+//        for (auto kv:A.childNodeIndex2NumHap) {
+//            AddChildNode(kv.first,kv.second);
+//        }
+//        return *this;
+//    }
+
+    StateNode& operator+=(const StateNode& A)
+    {
         numHap+=A.numHap;
-        parentNodeIndex.insert(parentNodeIndex.end(),A.parentNodeIndex.begin(),A.parentNodeIndex.end());
-//        numHapFromParentNode.insert(numHapFromParentNode.end(),A.numHapFromParentNode.begin(),A.numHapFromParentNode.end());
-        childNodeIndex.insert(childNodeIndex.end(),A.childNodeIndex.begin(),A.childNodeIndex.end());
-        numHapToChildNode.insert(numHapToChildNode.end(),A.numHapToChildNode.begin(),A.numHapToChildNode.end());
+        for (auto kv:A.parentNodeIndex2NumHap) {
+            AddParentNode(kv.first,kv.second);
+        }
+        for (auto kv:A.childNodeIndex2NumHap) {
+            AddChildNode(kv.first,kv.second);
+        }
+        return *this;
     }
 
-    void AddParentNode(int index/*, float numHaplotype*/) {
-        parentNodeIndex.push_back(index);
-//        numHapFromParentNode.push_back(numHaplotype/numHap);
+    void AddParentNode(int index, float numHaplotype) {
+        if(parentNodeIndex2NumHap.find(index)!=parentNodeIndex2NumHap.end())
+            parentNodeIndex2NumHap[index]+=numHaplotype;
+        else
+            parentNodeIndex2NumHap[index]=numHaplotype;
     }
 
     bool AddChildNode(int index, float numHaplotype) {
-        childNodeIndex.push_back(index);
-        numHapToChildNode.push_back(numHaplotype/numHap);
+        if(childNodeIndex2NumHap.find(index)!=childNodeIndex2NumHap.end())
+            childNodeIndex2NumHap[index]+=numHaplotype;
+        else
+            childNodeIndex2NumHap[index]=numHaplotype;
     }
 
     float GetTransitionProbToChildNode(int index) {
-        return numHapToChildNode[index];
+        return childNodeIndex2NumHap[index];
     }
 
     float GetTransitionProbFromParentNode(int index) {
-        return 0;
+        return parentNodeIndex2NumHap[index];
     }
-
-
 };
 
+class StateNodeContainer
+{
+public:
+    std::vector<std::vector<StateNode> > StateNodeMat;
+    std::vector<StateNode> tmpNodeVec;
+    int nsnps;
+
+    StateNodeContainer();
+    StateNodeContainer(int nmarkers):nsnps(nmarkers),StateNodeMat(nmarkers,std::vector<StateNode>(0,StateNode()))
+    {
+    }
+    void NormalizeCurrentSiteTransitionProb(int index)
+    {
+        for (int i = 0; i <StateNodeMat[index].size(); ++i) {
+            for(auto& kv:StateNodeMat[index][i].childNodeIndex2NumHap) {
+                kv.second /= StateNodeMat[index][i].numHap;
+//            fprintf(stderr,"kv.second:%f\tnumHap:%f\tratio:%f\n",kv.second,StateNodeMat[index][i].numHap);
+            }
+        }
+//        if(index>0)
+//            for (int j = 0; j <StateNodeMat[index].size() ; ++j) {
+//                for(auto& kv:StateNodeMat[index][j].parentNodeIndex2NumHap)
+//                    kv.second/=StateNodeMat[index-1][kv.first].numHap;
+//            }
+    }
+
+    void UpdateChildNodeInParentNode(int index)
+    {
+        if(index>0) {
+            //clean child node for each parent node
+            for (int i = 0; i <StateNodeMat[index-1].size(); ++i)
+                StateNodeMat[index-1][i].childNodeIndex2NumHap.clear();
+
+            //put new child node to each parent node
+            for (int j = 0; j < StateNodeMat[index].size(); ++j) {//each node in current site
+                for (auto kv:StateNodeMat[index][j].parentNodeIndex2NumHap)//each parent node for node j
+                {
+                    StateNodeMat[index - 1][kv.first].AddChildNode(j,kv.second/StateNodeMat[index - 1][kv.first].numHap);
+                    //kv.second /= StateNodeMat[index - 1][kv.first].numHap;
+                }
+            }
+//            for (int k = 0; k <StateNodeMat[index - 1].size() ; ++k) {
+//                for (auto kv:StateNodeMat[index - 1][k].childNodeIndex2NumHap) {
+//                    fprintf(stderr,"next level node %d with ratio:%f\n",k,kv.second);
+//                }
+//            }
+        }
+    }
+};
 
 
 typedef std::unordered_map<std::string,std::string>  ID2POP;
@@ -222,6 +286,8 @@ public:
 
     int prefixLength;
     double* phred2prob;
+
+    StateNodeContainer Graph;
 
     PBWT* pbwtCore;
     PbwtCursor* forwardCursor,*reverseCursor;
@@ -309,6 +375,15 @@ public:
     int CursorBackwardsTo(int siteBackword, int T=5);
 
     int CopyHap(int k, PbwtCursor* Cursor);
+
+    bool HasSiblings(int site, int state) {
+        if(site ==0) return true;
+        for(auto kv:Graph.StateNodeMat[site][state].parentNodeIndex2NumHap)
+        {
+            if(Graph.StateNodeMat[site-1][kv.first].childNodeIndex2NumHap.size()>1) return true;
+        }
+        return false;
+    }
 
     int LabelNoSiblingCluster(int site);
 	int UpdateTransVector(int site);
