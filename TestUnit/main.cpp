@@ -7,7 +7,7 @@
 #include "random"
 #include "gtest/gtest.h"
 
-#define GTEST
+#define DRAW_PLOT
 #ifdef GTEST
 using namespace std;
 char**  HapsInit(int M, int N)
@@ -485,23 +485,58 @@ int main(int argc, char ** argv) {
 
     cerr << "Hello, World!" << endl;
     char ** haps= nullptr;
-    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/OMNI.merged.chr20.phased_genotypes.20141111.vcf.gz";
+    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/omni/OMNI.merged.chr20.phased_genotypes.20141111.vcf.gz";
 //    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/test.OMNI.vcf.gz";
     string inputPed="/Users/fanzhang/Downloads/PlutoTest/integrated_call_samples.20130502.ALL.ped";
+    string outputMatrix="/Users/fanzhang/Downloads/PlutoTest/omni/hyun.rank.d.matrix.with.allele.debug.rear";
+    string outputIndividual="/Users/fanzhang/Downloads/PlutoTest/omni/hyun.rank.d.individual";
+    string outputMarker="/Users/fanzhang/Downloads/PlutoTest/omni/hyun.rank.d.marker";
     int nSamples(0),nMarkers(0);
     Index2ID MAP1;
     haps=readVCF(inputVcf,nSamples,nMarkers, MAP1);
     ID2POP MAP2;
     readPed(inputPed,MAP2);
-    DebugWrapper  * Graph=new DebugWrapper(2*nSamples,nMarkers);
+    DebugWrapper  * Wrapper=new DebugWrapper(2*nSamples,nMarkers);
     fprintf(stderr,"finished initializing graph\n");
-    Graph->haplotype=haps;
-    Graph->CursorBackwards();
+    Wrapper->haplotype=haps;
+    Wrapper->CursorBackwards();
     fprintf(stderr,"finished backward procedure\n");
-    Graph->CursorForwards(MAP1,MAP2);
+    Wrapper->CursorForwards(MAP1,MAP2);
 
+    ofstream fout(outputMatrix);
+    if(!fout.is_open())
+    {
+        fprintf(stderr,"open file %s failed!",outputMatrix.c_str());
+        exit(EXIT_FAILURE);
+    }
+//    for (int hapID = 0; hapID <Wrapper->M; ++hapID) {
+//        for (int marker = 1; marker <Wrapper->N-1; ++marker) {
+//            int hapRank=Wrapper->GetRankFromFwd(marker-1,hapID);
+//            int backHapRank=Wrapper->GetRankFromBack(marker+1,hapID);
+//            int left=(marker-1-Wrapper->d[marker-1][hapRank]);
+//            int right =(Wrapper->N-Wrapper->delta[marker+1][backHapRank]-1)-(marker+1);
+//            fout<<hapRank<<","<<backHapRank<<","<<(left>0?left:0)<<","<<(right>0?right:0)<<":"<<(int)Wrapper->haplotype[hapID][marker]<<"\t";
+//        }
+//        fout<<"\n";
+//    }
+    for (int hapID = 0; hapID <Wrapper->M; ++hapID) {
+        for (int marker = Wrapper->N-10; marker <Wrapper->N; ++marker) {
+            int hapRank=Wrapper->GetRankFromFwd(marker,hapID);
+            int backHapRank=Wrapper->GetRankFromBack(marker,hapID);
+            int left=(marker-Wrapper->d[marker][hapRank]);
+            int right =(Wrapper->N-Wrapper->delta[marker][backHapRank]-1)-(marker);
+            fout<<hapRank<<","<<backHapRank<<","<<Wrapper->d[marker][hapRank]<<","<<Wrapper->delta[marker][backHapRank]<<":"<<(int)Wrapper->haplotype[hapID][marker]<<"\t";
+        }
+        fout<<"\n";
+    }
+    fout.close();
 
-//TODO:deal with missing data
+    fout.open(outputIndividual);
+    for (int i = 0; i <Wrapper->M; ++i) {
+        fout<<MAP1[i/2]<<endl;
+    }
+    fout.close();
+
     return 0;
 }
 #endif

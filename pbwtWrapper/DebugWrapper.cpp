@@ -592,8 +592,8 @@ int DebugWrapper::CursorForwardsTo(int k, Index2ID &MAP1, ID2POP& MAP2, int T) {
         PrintVector(clusterAllele[k-1],"state allele before merge allele");
     }
 #endif
-    if(k!=0&&clusterAllele[k-1].size()==0) {fprintf(stderr,"0 states, abort!");abort();}
-    if(k!=0&&clusterAllele[k-1].size()!=1) test=MergeCluster(k-1, MAP1, MAP2);//TODO:implement this function
+//    if(k!=0&&clusterAllele[k-1].size()==0) {fprintf(stderr,"0 states, abort!");abort();}
+//    if(k!=0&&clusterAllele[k-1].size()!=1) test=MergeCluster(k-1, MAP1, MAP2);//TODO:implement this function
 #ifdef DEBUG
     if(k!=0&&test) {
         fprintf(stderr, "at site:%d\n", k-1);

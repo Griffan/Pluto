@@ -176,17 +176,6 @@ public:
         return *this;
     }
 
-//    StateNode& operator+(const StateNode&A) {
-//        numHap+=A.numHap;
-//        for (auto kv:A.parentNodeIndex2NumHap) {
-//            AddParentNode(kv.first,kv.second);
-//        }
-//        for (auto kv:A.childNodeIndex2NumHap) {
-//            AddChildNode(kv.first,kv.second);
-//        }
-//        return *this;
-//    }
-
     StateNode& operator+=(const StateNode& A)
     {
         numHap+=A.numHap;
@@ -238,14 +227,8 @@ public:
         for (int i = 0; i <StateNodeMat[index].size(); ++i) {
             for(auto& kv:StateNodeMat[index][i].childNodeIndex2NumHap) {
                 kv.second /= StateNodeMat[index][i].numHap;
-//            fprintf(stderr,"kv.second:%f\tnumHap:%f\tratio:%f\n",kv.second,StateNodeMat[index][i].numHap);
             }
         }
-//        if(index>0)
-//            for (int j = 0; j <StateNodeMat[index].size() ; ++j) {
-//                for(auto& kv:StateNodeMat[index][j].parentNodeIndex2NumHap)
-//                    kv.second/=StateNodeMat[index-1][kv.first].numHap;
-//            }
     }
 
     void UpdateChildNodeInParentNode(int index)
@@ -260,14 +243,9 @@ public:
                 for (auto kv:StateNodeMat[index][j].parentNodeIndex2NumHap)//each parent node for node j
                 {
                     StateNodeMat[index - 1][kv.first].AddChildNode(j,kv.second/StateNodeMat[index - 1][kv.first].numHap);
-                    //kv.second /= StateNodeMat[index - 1][kv.first].numHap;
                 }
             }
-//            for (int k = 0; k <StateNodeMat[index - 1].size() ; ++k) {
-//                for (auto kv:StateNodeMat[index - 1][k].childNodeIndex2NumHap) {
-//                    fprintf(stderr,"next level node %d with ratio:%f\n",k,kv.second);
-//                }
-//            }
+
         }
     }
 };
@@ -295,7 +273,7 @@ public:
     //std::vector<std::unordered_map<int,int> > aMap,alphaMap;
     std::vector<std::vector<int> > aMap,alphaMap;
     std::vector<std::vector<int> > d,delta;
-    std::vector<std::vector<float> > bkDistance;/*reverse*/;
+    std::vector<std::vector<float> > fwdDistance,bkDistance;/*reverse*/;
     std::vector<std::vector<uchar> > sortedY/*only for test*/;
     std::vector<int> c,celta;/*number of zero at each site*/
     std::vector<std::vector<int> > u,ultra;/*relative rank within zeros*/
@@ -409,7 +387,9 @@ public:
     }
     inline unsigned long GetNumHaps(int site) const { return haplotypeCluster[site].size(); }
 
-    inline float GetDlengthFromBack(int site, int backRank)const {return bkDistance[site+1][backRank];}
+    inline float GetDistanceFromBack(int site, int backRank)const {return bkDistance[site][backRank];}
+    inline float GetDistanceFromFwd(int site, int fwdRank)const {return fwdDistance[site][fwdRank];}
+
     inline int GetHapIDFromBack(int site, int backRank) const { return alpha[site + 1][backRank]; }
     inline int GetHapIDFromFwd(int site, int fwdRank) const { return a[site][fwdRank]; }//you should only use it after a being updated
 
