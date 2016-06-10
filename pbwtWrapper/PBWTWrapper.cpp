@@ -1167,7 +1167,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site)
 //        fprintf(stderr,"second:(%d,%d) Dmax:%f and Pval:%f, with sample size:%d,%d \n", clusterA,clusterB,iter_pair.Dmax,iter_pair.pval,dist[clusterA].size(),dist[clusterB].size());
 
 
-        if (iter_pair.pval > 0.1)
+        if (iter_pair.pval > 0.01)
         {
 
             retainState=clusterA;

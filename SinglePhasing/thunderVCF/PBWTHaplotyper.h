@@ -18,18 +18,18 @@ public:
 
     void RandomSetup(Random * rand);
     int LoopThroughChromosomesViaPBWT();
-	int OrderedLoopThroughChromosomesViaPBWT();
+
 	void Transpose(int site, float * source, float * dest);
-	void OrderedTranspose(int site, float *source, float *dest);
+
     virtual void ScoreLeftConditional();
-	void OrderedScoreLeftConditional();
+
     virtual void ConditionOnData(float * matrix, int marker, char phred11, char phred12, char phred22);
-	void OrderedConditionOnData(float *matrix, int marker, char phred11, char phred12, char phred22);
+
     virtual void ImputeAlleles(int marker, int state1, int state2, Random *rand, int currentIndividual, char** haps);
     virtual void ImputeAllele(int haplotype, int marker, int state, char** haps);
     virtual void FillPath(int haplotype, int fromMarker, int toMarker, int state, char** haps);
     virtual void SampleChromosomes(Random * rand);
-	void OrderedSampleChromosomes(Random * rand);
+
 
     void SetUseRev(bool useOrNot){useRev=useOrNot;}
 	bool ReverseInput();
@@ -43,7 +43,7 @@ public:
     //virtual bool AllocateMemory(int nIndividuals, int maxHaplos, int nMarkers, float defaultTheta);
     //virtual void EstimateMemoryInfo(int Individuals, int Markers, int States, bool Compact, bool Phased);
     virtual void RetrieveMemoryBlock(int marker);
-	void OrderedRetrieveMemoryBlock(int marker);
+
 
 
     virtual bool ForceMemoryAllocation();

@@ -172,32 +172,6 @@ void PBWTHaplotyper::RetrieveMemoryBlock(int marker) {
     }
 }
 
-void PBWTHaplotyper::OrderedRetrieveMemoryBlock(int marker) {
-    if (stack[stackPtr] <= marker) {
-//        fprintf(stderr, "%d out from RetrieveMemory\n",marker);
-        return;
-    }
-    else {
-        ResetReuseablePool();
-
-        float *from = leftMatrices[stack[--stackPtr]];
-
-        for (int i = stack[stackPtr] + 1; i <= marker; i++) {
-            int markerindex = i * 3;
-            {
-                leftMatrices[i] = GetReuseableBlock();
-
-                OrderedTranspose(i, from, leftMatrices[i]);
-                OrderedConditionOnData(leftMatrices[i], i, genotypes[states / 2][markerindex],
-                                genotypes[states / 2][markerindex + 1], genotypes[states / 2][markerindex + 2]);
-
-                from = leftMatrices[i];
-            }
-        }
-    }
-}
-
-
 bool PBWTHaplotyper::ForceMemoryAllocation() {
     // Cycle through individuals, with the exact same steps as the actual
     // haplotyper and request memory ... by requesting all memory upfront,
@@ -406,51 +380,6 @@ void PBWTHaplotyper::ConditionOnData(float *matrix, int marker, char phred11, ch
     }
 }
 
-void PBWTHaplotyper::OrderedConditionOnData(float *matrix, int marker, char phred11, char phred12, char phred22) {
-    // We treat missing genotypes as uninformative about the mosaic's
-    // underlying state. If we were to allow for deletions and the like,
-    // that may no longer be true.
-
-    //if (genotype == GENOTYPE_MISSING)
-    //return;
-    float* source=matrix;
-    double sum=0.;
-    double conditional_probs[3];
-    uchar ph11 = (unsigned char) phred11;
-    uchar ph12 = (unsigned char) phred12;
-    uchar ph22 = (unsigned char) phred22;
-//    uchar ph11 = 0;
-//    uchar ph12 = 0;
-//    uchar ph22 = 0;
-
-    CalculatePhred2Prob();
-    //if(marker==106) fprintf(stderr,"(ph11,ph12,ph22)=(%d,%d,%d)\n",ph11,ph12,ph22);
-    for (int i = 0; i < 3; i++)
-        conditional_probs[i] = Penetrance(marker, i, 0) * phred2prob[ph11] +
-                               Penetrance(marker, i, 1) * phred2prob[ph12] +
-                               Penetrance(marker, i, 2) * phred2prob[ph22];
-
-    for (int i = 0; i < states; i++) {
-        double factors[2];
-
-//        factors[0] = conditional_probs[haplotypes[i][marker]];
-//        factors[1] = conditional_probs[haplotypes[i][marker] + 1];
-        factors[0] = conditional_probs[Wrapper->clusterAllele[marker][i]];
-        factors[1] = conditional_probs[Wrapper->clusterAllele[marker][i] + 1];
-
-        for (int j = 0; j < states; j++, matrix++) {
-            *matrix *= factors[Wrapper->clusterAllele[marker][j]];
-            sum+=*matrix;
-        }
-    }
-    matrix=source;
-    for (int i = 0; i < states; i++) {
-        for (int j = 0; j <states; j++, matrix++) {
-            *matrix /=sum;
-        }
-    }
-}
-
 void PBWTHaplotyper::ScoreLeftConditional() {
 
 
@@ -500,68 +429,6 @@ void PBWTHaplotyper::ScoreLeftConditional() {
 
     MarkMemoryPool();
 }
-
-void PBWTHaplotyper::OrderedScoreLeftConditional() {
-
-
-    ResetMemoryPool();
-    UpdateStateNum(GetStateNumFrom(0));
-    GetMemoryBlock(0);
-
-    float prior = 1.0 / (states * states);
-    float * matrix=leftMatrices[0];
-        for (int i = 0; i < states; i++)
-        {
-            for (int j = 0; j < states; j++)
-            {
-                *matrix =  prior;
-                matrix++;
-            }
-        }
-
-
-    OrderedConditionOnData(leftMatrices[0], 0, genotypes[individuals - 1][0], genotypes[individuals - 1][1],
-                    genotypes[individuals - 1][2]);
-
-    float *from = leftMatrices[0];
-
-    for (int i = 1; i < markers; i++) {
-        int markerindex = i * 3;
-        //fprintf(stderr, "processing marker %d...\n", i);
-        // Cumulative recombination fraction allows us to skip uninformative positions
-        // theta = theta + thetas[i - 1] - theta * thetas[i - 1];
-
-        // Skip over uninformative positions to save time
-        // maybe check for the difference between min(phred11, phred12, phred22) and the next smallest
-
-        //if (genotypes[states / 2][i] != GENOTYPE_MISSING || i == markers - 1)
-        {
-            UpdateStateNum(GetStateNumFrom(i));
-
-            GetMemoryBlock(i);
-
-            OrderedTranspose(i, from, leftMatrices[i]);
-//
-//            fprintf(stderr,"marker:%d\tout of (%d) states\n",i,GetStateNumFrom(i));
-//            printLeftMatrix(leftMatrices[i],GetStateNumFrom(i));
-
-            OrderedConditionOnData(leftMatrices[i], i, genotypes[individuals - 1][markerindex],genotypes[individuals - 1][markerindex + 1], genotypes[individuals - 1][markerindex + 2]);//based on genotype of individual need to be phased
-//            fprintf(stderr,"marker:%d\tout of (%d) states, after condional on data (0,0):%d\t(0,1):%d\t(1,1):%d\n",i,GetStateNumFrom(i),genotypes[individuals - 1][markerindex],genotypes[individuals - 1][markerindex + 1], genotypes[individuals - 1][markerindex + 2]);
-////            Wrapper->PrintVector(Wrapper->clusterAllele[i-1],"state allele");
-////            Wrapper->PrintVector(Wrapper->haplotypeCluster[i-1],"state");
-//            Wrapper->PrintVector(Wrapper->haplotypeCluster[i],"state");
-//            Wrapper->PrintVector(Wrapper->clusterAllele[i],"state allele");
-//            printLeftMatrix(leftMatrices[i],GetStateNumFrom(i));
-
-            from = leftMatrices[i];
-
-        }
-
-    }
-
-    MarkMemoryPool();
-}
-
 
 int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
 
@@ -636,78 +503,6 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
     return 0;
 }
 
-int PBWTHaplotyper::OrderedLoopThroughChromosomesViaPBWT() {
-
-    ResetCrossovers();
-
-    //char* tmphap1 = new char[markers];
-    //char* tmphap2 = new char[markers];
-
-    for (int i = individuals - 1; i >= 0; i--) {
-
-        if (i < individuals - phased) {
-            SwapIndividuals(i, individuals - 1);
-            if(useRev) ReverseInput();
-            clock_t t=clock();
-            ExtractHeterSites(individuals-1);
-            Wrapper->SetHaps(haplotypes,sampledHaps,freq1s,phased,nSampleCopy);
-            Wrapper->CursorBackwards();//calculate backwards order of suffix
-            Wrapper->CursorForwards();
-
-#ifdef DEBUG
-            {
-                Wrapper->PrintHap(tmpHaps, Wrapper->a[0]);
-
-                // Wrapper->PrintHap(tmpHaps,Wrapper->a[6]);
-                Wrapper->PrintHap(tmpHaps, Wrapper->a[Wrapper->N - 1]);
-                // Wrapper->PrintMatrix(Wrapper->a,"a array matrix");
-                Wrapper->PrintMatrix(Wrapper->d, "d array");
-                //Wrapper->PrintVector(Wrapper->a[Wrapper->N-7],"last a array");
-            }
-#endif
-            printf("%d markers used for individual %d\n",markers,i);
-            clock_t t1=clock();
-            printf("build model time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
-            //exit(EXIT_SUCCESS);
-//            if (weights != NULL)
-//                ScaleWeights();
-//
-//            if (updateDiseaseScores)
-//                ScoreNPL();
-
-            //if (i < individuals - phased) {
-            fprintf(stderr, "phasing individual %d...\n", i);
-            OrderedScoreLeftConditional();
-            t=clock();
-            printf("forward algorithm time:%.2f sec\n", (float) (t-t1) / CLOCKS_PER_SEC);
-
-            OrderedSampleChromosomes(&globalRandom);
-
-            t1=clock();
-            printf("sampling time:%.2f sec\n", (float) (t1-t) / CLOCKS_PER_SEC);
-            //exit(EXIT_SUCCESS);
-
-//            if (updateDiseaseScores && diseaseCount)
-//                IntegrateNPL();
-
-#ifdef _DEBUG
-            if (!SanityCheck())
-               {
-               printf("\nProblems above occurred haplotyping individual %d\n\n", i);
-               Print();
-               }
-#endif
-            FillHeterSitesBack(individuals - 1);
-            SwapIndividuals(i, individuals - 1);
-            //Wrapper->resetWrapper();
-            if(useRev) ReverseInput();
-        }
-
-    }
-
-    return 0;
-}
-
 static float * GetProbability(float* source, int stateA, int stateB)
 {
     //00,10,11,20,21,22,30,31,32,33...
@@ -715,13 +510,7 @@ static float * GetProbability(float* source, int stateA, int stateB)
     return &source[stateA*(stateA+1)/2+stateB];
 }
 
-static float * OrderedGetProbability(float* source, int stateA, int stateB, int numState)
-{
-    return &source[stateA*numState+stateB];
-}
-
-
-static float * GetOutPut(float* dest, int stateA, int stateB)
+static float * GetOutput(float *dest, int stateA, int stateB)
 {
     //00,10,11,20,21,22,30,31,32,33...
     if(stateB>stateA) std::swap(stateA,stateB);
@@ -889,56 +678,6 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
             output++;
 
         }
-}
-
-void PBWTHaplotyper::OrderedTranspose(int site, float *source, float *dest)//site indicate dest marker index
-{
-
-    float sum = 0.0;
-    float factor=1.0;
-    float *probability = source;
-    float *output = dest;
-    *output=0.0;
-    int fromWhere = site - 1;//used by transvector, because vector start from 0
-    int toWhere = site;
-    int numFromStates = GetStateNumFrom(fromWhere);
-    int numToStates = GetStateNumFrom(toWhere);//number of cluster
-
-    if(max_num < 1e-2) {
-        factor = 10e6;
-    }
-    max_num=0;
-//    if (weights == NULL)
-
-    for (int k = 0; k < numToStates; ++k) {
-
-        for (int l = 0; l < numToStates; ++l) {
-            *output = 0.0;
-#ifdef HMM_PRUNE2
-            if ( genotypes[individuals - 1][toWhere * 3 + GetAllele(toWhere, k) + GetAllele(toWhere, l)] > 10) {
-                output++;
-                continue;
-            }
-#endif
-
-            for (auto kvi:Wrapper->inEdges[toWhere][k]) {
-                for(auto kvj:Wrapper->inEdges[toWhere][l]){
-                    sum=(*OrderedGetProbability(source,kvi.first,kvj.first,numFromStates))
-                        * GetTransitionProb(fromWhere, kvi.first, k)
-                        * GetTransitionProb(fromWhere, kvj.first, l);
-                    if(sum < std::numeric_limits<float>::min()) sum=0;
-                    *output += sum;
-                }
-            }
-
-            *output *=factor;
-            if(*output>max_num) {
-                max_num=*output;
-            }
-            output++;
-
-        }
-    }
 }
 
 void  PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *rand, int currentIndividual, char** haps) {
@@ -1257,148 +996,6 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
 
 
 }
-
-void PBWTHaplotyper::OrderedSampleChromosomes(Random *rand) {
-    int fromWhere = markers-1;
-    int currentHap1 = 2 * (individuals - 1);
-    int currentHap2 = currentHap1 + 1;
-    //Print(markers - 1);
-    RewindMemoryPool();
-    UpdateStateNum(GetStateNumFrom(fromWhere));
-    OrderedRetrieveMemoryBlock(fromWhere);
-
-    float *probability = leftMatrices[fromWhere];
-    float sum = 0.0;
-    float sumPhase = 0.0;//initial phase could be either side
-
-
-
-    // Calculate sum over all states
-    for (int i = 0; i < states; i++) {
-        for (int j = 0; j < states; j++) {
-#ifdef HMM_PRUNE//this is for sync problem
-            if (genotypes[individuals - 1][fromWhere * 3 + GetAllele(fromWhere, i) + GetAllele(fromWhere, j)] > 10) {
-                probability++;
-//                fprintf(stderr, "(%d,%d):geno:%d\t", i, j, GetAllele(fromWhere, i) + GetAllele(fromWhere, j));
-                continue;
-            }
-#endif
-            sum += *probability;
-            fprintf(stderr, "(%d,%d):%f\t", i, j, *probability);
-            probability++;
-        }
-        fprintf(stderr,"\n");
-    }
-    float max_prob(0),tmp_sum(0),last_sum(0);
-    last_sum=sum;
-    // Sample number and select state
-    float choice = rand->Uniform(0, sum);
-    sum = 0.0;
-
-    int first = 0, second = 0;
-    for (probability = leftMatrices[fromWhere]; first < states; first++) {
-        for (second = 0; second <states; second++) {
-#ifdef HMM_PRUNE
-            if (genotypes[individuals - 1][fromWhere * 3 + GetAllele(fromWhere, first) + GetAllele(fromWhere, second)] > 10) {
-                probability++;
-                continue;
-            }
-#endif
-            sum += *probability;
-            probability++;
-
-            //if (sum >= choice) break;
-            if(sum>= choice)
-                goto END_FOR;
-        }
-        //if (second <= first) break;
-    }
-    END_FOR:
-    // printf("Cumulative probability: %g\n", sum);
-    // printf("           Random draw: %g\n", choice);
-    // printf("        Selected state: %g\n", *(probability - 1));
-
-    int tmpK,tmpL;
-    for (int j = markers - 2; j >= 0; j--) {
-
-        fprintf(stderr,"marker:%d\tTotalSum:%g\tSum: %9.9g, choice:%9.9g,Chose (%d,%d) out of (%d) states and geno:%d and GL:%d,%d,%d\n",j+1,last_sum,sum, choice,first, second,GetStateNumFrom(j+1),GetAllele(fromWhere, first) + GetAllele(fromWhere, second),genotypes[individuals - 1][fromWhere * 3],genotypes[individuals - 1][fromWhere * 3+1],genotypes[individuals - 1][fromWhere * 3+2]);
-        max_prob=0;
-        last_sum=0.;
-        //Wrapper->PrintVector(Wrapper->haplotypeCluster[j],"states");
-//        if(j==255||j==255+1)
-//        printLeftMatrix(leftMatrices[j+1],GetStateNumFrom(j+1));
-        //ImputeAlleles(j + 1, first, second, rand);//TODO:modify needed, like the part before fillpath
-        int j0 = j;
-        fromWhere=j;//TODO: remain question
-        sum=0.0;
-        UpdateStateNum(GetStateNumFrom(fromWhere));
-        OrderedRetrieveMemoryBlock(fromWhere);
-        probability = leftMatrices[fromWhere];
-
-
-        for (int k = 0; k < states; k++) {
-            for (int l = 0; l < states; l++, probability++) {
-
-#ifdef HMM_PRUNE
-                if (genotypes[individuals - 1][fromWhere * 3 + GetAllele(fromWhere, k) + GetAllele(fromWhere, l)] > 10) {
-//                            fprintf(stderr,"(%d,%d):geno:%d\t",k,l,GetAllele(fromWhere, k) + GetAllele(fromWhere, l));
-                    continue;
-                }
-#endif
-
-                tmp_sum=sum;
-                sum += *probability *
-                       GetTransitionProb(fromWhere, k, first) *
-                       GetTransitionProb(fromWhere, l, second);
-
-//                if(*probability>0)fprintf(stderr,"(%d,%d)to (%d,%d):probability:%g\tk-first:%g\tl-second:%g\tk-second:%g\tl-first:%g\t\n",k,l,first,second,*probability,GetTransitionProb(fromWhere, k, first), GetTransitionProb(fromWhere, l, second),GetTransitionProb(fromWhere, k, second) , GetTransitionProb(fromWhere, l, first));
-
-            }
-        }
-        last_sum=sum;
-        choice = rand->Uniform(0, sum);
-        // But perhaps the first or second haplotype recombined
-        probability = leftMatrices[j];
-
-        // Try to select any other state
-        sum = 0.0;
-        int first0 = first;
-        int second0 = second;
-
-        for (first = 0; first < states; first++) {
-            for (second = 0; second < states; second++, probability++) {
-#ifdef HMM_PRUNE
-                if (genotypes[individuals - 1][fromWhere * 3 + GetAllele(fromWhere, first) + GetAllele(fromWhere, second)] > 10) {
-                    continue;
-                }
-#endif
-                sum += *probability *
-                       GetTransitionProb(fromWhere, first, first0) *
-                        GetTransitionProb(fromWhere, second, second0);
-
-                if (sum >= choice) {
-                    goto SAMPLE_END;
-                }
-            }
-        }
-        SAMPLE_END:
-        if(first >=states or second >= states)
-        {
-            std::cerr<<"Sampled states out of state space!Abort"<<std::endl;
-            exit(EXIT_FAILURE);
-        }
-        // Record outcomes for intermediate, uninformative, positions
-//        FillPath(currentHap1, j, j0 + 1, first);
-//        FillPath(currentHap2, j, j0 + 1, second);
-
-    }
-    fprintf(stderr,"marker:%d\tTotalSum:%g\tSum: %9.9g, choice:%9.9g,Chose (%d,%d) out of (%d) states and geno:%d and GL:%d,%d,%d\n",0,last_sum,sum, choice,first, second,GetStateNumFrom(0),GetAllele(0, first) + GetAllele(0, second),genotypes[individuals - 1][0 * 3],genotypes[individuals - 1][0 * 3+1],genotypes[individuals - 1][0 * 3+2]);
-
-
-//    ImputeAlleles(0, first, second, rand);
-
-}
-
 
 int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after swap individualToProcess to the back
 
