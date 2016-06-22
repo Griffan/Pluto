@@ -106,7 +106,7 @@ protected:
     inline int GetRankFromFwd(int site, int hapID) {return aMap[site][hapID];}
 
     inline int GetHapState(int site, int hapID) { return haplotypeCluster[site][hapID]; }
-    inline void resetWrapper()
+    inline void ResetWrapper()
 
  * */
 //TEST_F(PBWTWrapperTest, IsEditDistanceOK) {

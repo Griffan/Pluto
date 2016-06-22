@@ -18,10 +18,10 @@
 #include <unordered_map>
 #include <iostream>
 #include <algorithm>
-//#include "../TestUnit/MergingEventSimulator.h"
 #include <queue>
 #include <map>
 #include <numeric>
+#include <fstream>
 #include "Rmath.h"
 
 
@@ -56,6 +56,18 @@ struct square
         return (Left + Right*Right);
     }
 };
+
+extern const float T_CRITICAL_VALUE[];
+
+inline float GetTCritical(uint32_t df)
+{
+    if(df<=30) return T_CRITICAL_VALUE[df-1];
+    else if(df<=100) return T_CRITICAL_VALUE[29+(df-30)/5];
+    else if(df<=200) return T_CRITICAL_VALUE[44];
+    else if(df<=500) return T_CRITICAL_VALUE[45];
+    else return T_CRITICAL_VALUE[46];
+}
+
 struct r_stat_t
 {
     float S0x,S1x;
@@ -131,14 +143,12 @@ struct r_stat_t
         double r=(size*S0xy-S0x*Sy)/(sqrt(size*S0xx-S0x*S0x)*sqrt(size*Syy-Sy*Sy));
 //        double r2=(size*S1xy-S1x*Sy)/(sqrt(size*S1xx-S1x*S1x)*sqrt(size*Syy-Sy*Sy));
         double t=r*sqrt(size-2)/sqrt(1-r*r);
+        return fabs(t)>GetTCritical(size-2);
 //        double t2=r2*sqrt(size-2)/sqrt(1-r2*r2);
-        double p=pt(t,size-2,1,0);
+//        double p=pt(t,size-2,1,0);
 
-//        double SSEfull=(Syy-(S0xy)*S0xy)/S0xx;
-//        double SSEreduced=Syy-Sy*Sy/size;
-//        double p=pf(((SSEreduced-SSEfull)*(size-2)/SSEfull),1.,(double)size-2,1,0);
 //if(p<0.25||p>0.75)        fprintf(stderr,"r:%f,\tbeta hat:%f,\tp value:%f,\t df:%d\n",r,S0xy/S0xx,p,size-2);
-        return p<0.05||p>0.95;
+//        return p<0.25||p>0.75;
 
     }
 };
@@ -147,6 +157,9 @@ struct r_stat_t
 //define NODE structure which represents cluster or state in HMM model
 class StateNode
 {
+private:
+    StateNode(const StateNode&);
+    StateNode & operator=(const StateNode&);
 public:
     int nodeIndex;
     float numHap;
@@ -154,98 +167,111 @@ public:
 //    std::vector<int> numHapFromParentNode;
 //    std::vector<int> childNodeIndex;
 //    std::vector<float> numHapToChildNode;
-    std::map<int,float > parentNodeIndex2NumHap;
-    std::map<int,float > childNodeIndex2NumHap;
+    std::unordered_map<int,StateNode* > parentNodeIndex2NumHap;
+//    std::unordered_map<int,float > childNodeIndex2NumHap;
+    int* childNodeIndex[2];
+    float numHapChild[2];
 
     StateNode() {
         nodeIndex=0;
         numHap=0;
+        childNodeIndex[0]= nullptr;
+        childNodeIndex[1]= nullptr;
+        numHapChild[0]=0;
+        numHapChild[1]=0;
     }
 
     StateNode(int tIndex, float tNumHap) {
         nodeIndex=tIndex;
         numHap=tNumHap;
+        childNodeIndex[0]= nullptr;
+        childNodeIndex[1]= nullptr;
+        numHapChild[0]=0;
+        numHapChild[1]=0;
     }
 
-    StateNode& operator=(const StateNode& A)
-    {
-        nodeIndex=A.nodeIndex;
-        numHap=A.numHap;
-        parentNodeIndex2NumHap=A.parentNodeIndex2NumHap;
-        childNodeIndex2NumHap=A.childNodeIndex2NumHap;
-        return *this;
-    }
+//    StateNode& operator=(const StateNode& A)
+//    {
+//        fprintf(stderr,"ever called\n");
+//        nodeIndex=A.nodeIndex;
+//        numHap=A.numHap;
+//        parentNodeIndex2NumHap=A.parentNodeIndex2NumHap;
+////        childNodeIndex2NumHap=A.childNodeIndex2NumHap;
+//        childNodeIndex[0]=A.childNodeIndex[0];
+//        childNodeIndex[1]=A.childNodeIndex[1];
+//        numHapChild[0]=A.numHapChild[0];
+//        numHapChild[1]=A.numHapChild[1];
+//        return *this;
+//    }
 
     StateNode& operator+=(const StateNode& A)
     {
         numHap+=A.numHap;
         for (auto kv:A.parentNodeIndex2NumHap) {
             AddParentNode(kv.first,kv.second);
+            if(kv.second->childNodeIndex[0]==&(A.nodeIndex))//A has 0 allele
+            {
+                kv.second->childNodeIndex[0]=&(this->nodeIndex);
+            }
+            else if (kv.second->childNodeIndex[1]==&(A.nodeIndex))//A has 1 allele
+            {
+                kv.second->childNodeIndex[1]=&(this->nodeIndex);
+            }
+            else{
+                fprintf(stderr,"roar from StateNode operator+=!!!!\n%x and %x: %x\n",kv.second->childNodeIndex[0],kv.second->childNodeIndex[1],&(A.nodeIndex));
+                exit(EXIT_FAILURE);
+            }
         }
-        for (auto kv:A.childNodeIndex2NumHap) {
-            AddChildNode(kv.first,kv.second);
-        }
+//        for (auto kv:A.childNodeIndex2NumHap) {
+//            AddChildNode(kv.first,kv.second);
+//        }
         return *this;
     }
 
-    void AddParentNode(int index, float numHaplotype) {
-        if(parentNodeIndex2NumHap.find(index)!=parentNodeIndex2NumHap.end())
-            parentNodeIndex2NumHap[index]+=numHaplotype;
-        else
-            parentNodeIndex2NumHap[index]=numHaplotype;
+    void AddParentNode(int index, StateNode* parentAddress) {
+            parentNodeIndex2NumHap[index]=parentAddress;
     }
 
-    bool AddChildNode(int index, float numHaplotype) {
-        if(childNodeIndex2NumHap.find(index)!=childNodeIndex2NumHap.end())
-            childNodeIndex2NumHap[index]+=numHaplotype;
-        else
-            childNodeIndex2NumHap[index]=numHaplotype;
+    bool AddChildNode(char allele,int* index, float numHaplotype) {//should only be called once
+//        if(index != nullptr) fprintf(stderr,"add %d to allele %d with numHaplotype:%f\n",*index,allele,numHaplotype);
+//        else fprintf(stderr,"add nullptr to allele %d with numHaplotype:%f\n",allele,numHaplotype);
+        if(childNodeIndex[allele]!=index && childNodeIndex[allele]!= nullptr)
+        {
+            fprintf(stderr,"roar from StateNode AddChildNode!!!!\n");
+            exit(EXIT_FAILURE);
+        }
+        childNodeIndex[allele]=index;
+        numHapChild[allele]+=numHaplotype;
     }
 
-    float GetTransitionProbToChildNode(int index) {
-        return childNodeIndex2NumHap[index];
+    float GetTransitionProbToChildNode(char allele) {
+        return numHapChild[allele];
     }
 
-    float GetTransitionProbFromParentNode(int index) {
-        return parentNodeIndex2NumHap[index];
-    }
+//    float GetTransitionProbFromParentNode(int index) {
+//        return parentNodeIndex2NumHap[index];
+//    }
 };
 
 class StateNodeContainer
 {
 public:
-    std::vector<std::vector<StateNode> > StateNodeMat;
-    std::vector<StateNode> tmpNodeVec;
+    std::vector<std::vector<StateNode*> > StateNodeMat;
+    std::vector<StateNode*> tmpNodeVec;
     int nsnps;
 
     StateNodeContainer();
-    StateNodeContainer(int nmarkers):nsnps(nmarkers),StateNodeMat(nmarkers,std::vector<StateNode>(0,StateNode()))
+    StateNodeContainer(int nmarkers):nsnps(nmarkers),StateNodeMat(nmarkers,std::vector<StateNode*>(0,new StateNode()))
     {
     }
     void NormalizeCurrentSiteTransitionProb(int index)
     {
+        if(index>=0)
         for (int i = 0; i <StateNodeMat[index].size(); ++i) {
-            for(auto& kv:StateNodeMat[index][i].childNodeIndex2NumHap) {
-                kv.second /= StateNodeMat[index][i].numHap;
-            }
-        }
-    }
 
-    void UpdateChildNodeInParentNode(int index)
-    {
-        if(index>0) {
-            //clean child node for each parent node
-            for (int i = 0; i <StateNodeMat[index-1].size(); ++i)
-                StateNodeMat[index-1][i].childNodeIndex2NumHap.clear();
-
-            //put new child node to each parent node
-            for (int j = 0; j < StateNodeMat[index].size(); ++j) {//each node in current site
-                for (auto kv:StateNodeMat[index][j].parentNodeIndex2NumHap)//each parent node for node j
-                {
-                    StateNodeMat[index - 1][kv.first].AddChildNode(j,kv.second/StateNodeMat[index - 1][kv.first].numHap);
-                }
-            }
-
+            StateNodeMat[index][i]->numHapChild[0]/= StateNodeMat[index][i]->numHap;
+            StateNodeMat[index][i]->numHapChild[1]/= StateNodeMat[index][i]->numHap;
+//            fprintf(stderr,"marker:%d\t0:%f\t1:%f\t%f\n",index,StateNodeMat[index][i]->numHapChild[0],StateNodeMat[index][i]->numHapChild[1],StateNodeMat[index][i]->numHap);
         }
     }
 };
@@ -263,7 +289,6 @@ public:
     int nMarkers;
 
     int prefixLength;
-    double* phred2prob;
 
     StateNodeContainer Graph;
 
@@ -293,7 +318,7 @@ public:
     //mergeSite function variables
     std::vector<std::vector<int> > dist;
     std::priority_queue<max_pair_t,std::vector<max_pair_t>, std::function<bool(const max_pair_t&,const max_pair_t&)> >mergePairList;
-    double tmpABS;
+
     std::unordered_map<int, int> stateOrder;//mapping oldState to newOrder
     int tmpOrder;
     std::vector<uchar> tmpAllele;
@@ -338,6 +363,55 @@ public:
 //            }
 //            delete [] haplotype;
 //        }
+        for (int i = 0; i < Graph.StateNodeMat.size(); ++i) {
+            for (int j = 0; j <Graph.StateNodeMat[i].size() ; ++j) {
+                delete Graph.StateNodeMat[i][j];
+            }
+            Graph.StateNodeMat[i].clear();
+        }
+
+        //KS table
+        for (int i = 1; i <=100; ++i) {
+            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
+                delete [] PvalueMatrix[i][j];
+            }
+            delete [] PvalueMatrix[i];
+        }
+        delete [] PvalueMatrix;
+
+    }
+
+    void ResetWrapper()
+    {
+
+        if(pbwtCore)
+        {
+            pbwtDestroy(pbwtCore);
+            pbwtCore = pbwtCreate(M, N);
+
+        }
+        if(forwardCursor)
+        {
+            //delete forwardCursor;
+            pbwtCursorDestroy(forwardCursor);
+            forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
+        }
+        if(reverseCursor)
+        {
+            pbwtCursorDestroy(reverseCursor);
+            reverseCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
+        }
+        //TODO:REVERSE
+
+        for (int i = 0; i < Graph.StateNodeMat.size(); ++i) {
+            for (int j = 0; j <Graph.StateNodeMat[i].size() ; ++j) {
+                delete Graph.StateNodeMat[i][j];
+            }
+            Graph.StateNodeMat[i].clear();
+        }
+        alphaMap=aMap=a=alpha=d=u=ultra=haplotypeCluster=std::vector<std::vector<int> >(N,std::vector<int>(M,0));
+        c=celta=std::vector<int>(N,0);
+        clusterAllele=std::vector<std::vector<uchar> >(N,std::vector<uchar>());
     }
 
     PBWTWrapper(const char ** haps, int nhaps, int nsnps);
@@ -356,9 +430,10 @@ public:
 
     bool HasSiblings(int site, int state) {
         if(site ==0) return true;
-        for(auto kv:Graph.StateNodeMat[site][state].parentNodeIndex2NumHap)
+        for(auto kv:Graph.StateNodeMat[site][state]->parentNodeIndex2NumHap)
         {
-            if(Graph.StateNodeMat[site-1][kv.first].childNodeIndex2NumHap.size()>1) return true;
+//            if(Graph.StateNodeMat[site-1][kv.first].childNodeIndex2NumHap.size()>1) return true;
+            if(Graph.StateNodeMat[site-1][kv.first]->childNodeIndex[0]!= nullptr&&Graph.StateNodeMat[site-1][kv.first]->childNodeIndex[1]!= nullptr) return true;
         }
         return false;
     }
@@ -377,7 +452,7 @@ public:
 
     int MoveSegment(const std::unordered_map<int,int>& mergedMembership,int site);
 
-    int SetHaps(char **haps,char **sampledHaps,double * freq, int nPhase, int nCopy);
+    int SetHaps(char **haps,char **sampledHaps, int nPhase, int nCopy);
 
     //inline functions
     inline int GetNumStates(int k)
@@ -399,59 +474,79 @@ public:
     inline int GetHapState(int site, int hapID) { return haplotypeCluster[site][hapID]; }
 
 //    //KS D value related
-//    std::vector<std::vector<double> > DvalueMatrix;//10k X 10k
-//    float exact_ks_test_p_val;
-//    inline int CalculateDvalueMatrix()
-//    {
-//        DvalueMatrix=std::vector<std::vector<double> >(10000,std::vector<double>(10000,-1.0));
-//        for (int i = 1; i <10000 ; ++i) {
-//            for (int j = i; j <floor(10000/i+0.5); ++j) {
-//
-//                double D=1;
-//                for(;D>0;D-=0.01)
-//                {
-//                    if((1 - psmirnov2x(&D, i, j)) > exact_ks_test_p_val) break;
-//                }
-//                DvalueMatrix[i][j]=D;
-//                DvalueMatrix[j][i]=D;
-//            }
-//        }
-//    }
-//    inline int GetExactThresh(int n1, int n2)
-//    {
-//        return DvalueMatrix[n1][n2];
-//    }
-
-
-    inline void resetWrapper()
+    float *** PvalueMatrix;//10k X 10k
+    inline int CalculatePvalueMatrix()
     {
+        std::cerr<<"Enter CalculatePvalueMatrix() "<<std::endl;
+        PvalueMatrix=new float ** [101];
+        for (int i = 1; i <=100; ++i) {
+            PvalueMatrix[i]=new float* [(int)floor(10000.0/i)+1];
+            std::cerr<<"Calculating "<<i<<" thousand"<<std::endl;
+            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
+                PvalueMatrix[i][j]=new float [1000];
 
-        if(pbwtCore)
-        {
-            pbwtDestroy(pbwtCore);
-            pbwtCore = pbwtCreate(M, N);
-
+                for(int D=1000;D>0;D--)
+                {
+                    PvalueMatrix[i][j][D-1]=1.-psmirnov2x(double(D)/1000.0, i, j);
+//                    std::cerr<<i<<"\t"<<j<<"\t"<<D<<"\t"<<PvalueMatrix[i][j][size_t(D*1000)-1]<<std::endl;
+                }
+            }
         }
-        if(forwardCursor)
-        {
-            //delete forwardCursor;
-            pbwtCursorDestroy(forwardCursor);
-            forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
-        }
-        if(reverseCursor)
-        {
-            pbwtCursorDestroy(reverseCursor);
-            reverseCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
-        }
-        //TODO:REVERSE
-        alphaMap=aMap=a=alpha=d=u=ultra=haplotypeCluster=std::vector<std::vector<int> >(N,std::vector<int>(M,0));
-        c=celta=std::vector<int>(N,0);
-        clusterAllele=std::vector<std::vector<uchar> >(N,std::vector<uchar>());
-        transVector.clear();
-        //aMap=alphaMap=std::vector<std::unordered_map<int,int> >(N,std::unordered_map<int,int>());
-        inEdges.clear();
-        outEdges.clear();
+        std::cerr<<"Exit CalculatePvalueMatrix() "<<std::endl;
     }
+
+    inline int WritePvalueMatrix()
+    {
+        std::fstream fout("/Users/fanzhang/Downloads/PlutoTest/PvalueMatrix",std::ios_base::binary|std::ios_base::out);
+        if(!fout.is_open())
+        {
+            std::cerr<<"open file /Users/fanzhang/Downloads/PlutoTest/PvalueMatrix failed!"<<std::endl;
+            exit(EXIT_FAILURE);
+        }
+        for (int i = 1; i <=100 ; ++i) {
+            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
+
+                for(int D=1000;D>0;D--)
+                {
+                    fout.write((char*)&(PvalueMatrix[i][j][D-1]),sizeof(float));
+//                    std::cerr<<"write:"<<i<<"\t"<<j<<"\t"<<D<<"\t"<<PvalueMatrix[i][j][size_t(D*1000)-1]<<std::endl;
+
+                }
+            }
+        }
+        fout.close();
+    }
+
+    inline int ReadPvalueMatrix()
+    {
+        std::fstream fin("/Users/fanzhang/Downloads/PlutoTest/PvalueMatrix",std::ios_base::binary|std::ios_base::in);
+        if(!fin.is_open())
+        {
+            std::cerr<<"open file /Users/fanzhang/Downloads/PlutoTest/PvalueMatrix failed!"<<std::endl;
+            exit(EXIT_FAILURE);
+        }
+        PvalueMatrix=new float ** [101];
+        for (int i = 1; i <=100 ; ++i) {
+            PvalueMatrix[i]=new float* [(int)floor(10000.0/i)+1];
+            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
+                PvalueMatrix[i][j]=new float [1000];
+                for(int D=1000;D>0;D--)
+                {
+                    fin.read((char*)&(PvalueMatrix[i][j][D-1]),sizeof(float));
+//                    std::cerr<<"read:"<<i<<"\t"<<j<<"\t"<<D<<"\t"<<PvalueMatrix[i][j][size_t(D*1000)-1]<<std::endl;
+
+                }
+            }
+        }
+        fin.close();
+    }
+    inline float GetPValue(int n1, int n2, double D)
+    {
+        if(n1>n2) std::swap(n1,n2);
+        return PvalueMatrix[n1][n2][size_t(D*1000)-1];
+    }
+
+
 
     //fast update pbwt
     int RemoveIndividualFromPBWT(int individualToProcess);

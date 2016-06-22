@@ -139,7 +139,9 @@ pkstwo(int n, double *x, double tol)
 }
 
 /* Two-sided two-sample */
-double psmirnov2x(double *x, int m, int n) {
+double psmirnov2x(double x, int m, int n) {
+    //std::vector<double> u(n + 1, 0.0);
+    //double md, nd, q, w;
     double md, nd, q, *u, w;
     int i, j;
 
@@ -155,9 +157,8 @@ double psmirnov2x(double *x, int m, int n) {
        turn an equality into an inequality, eg abs(1/2-4/5)>3/10 
 
     */
-    q = (0.5 + floor(*x * md * nd - 1e-7)) / (md * nd);
-    u = (double *) calloc(n + 1, sizeof(double));
-
+    q = (0.5 + floor(x * md * nd - 1e-7)) / (md * nd);
+    u = new double [n+1];//(double *) calloc(n + 1, sizeof(double))
     for (j = 0; j <= n; j++) {
         u[j] = ((j / nd) > q) ? 0 : 1;
     }
@@ -174,7 +175,9 @@ double psmirnov2x(double *x, int m, int n) {
                 u[j] = w * u[j] + u[j - 1];
         }
     }
-    return u[n];
+    double tmp=u[n];
+    delete [] u;
+    return tmp;
 }
 
 double
@@ -496,7 +499,7 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
         /*correction for switch numbers*/
         //STATISTIC*=10./(num_switch+1e-6);
         if(EXACT && !TIES)
-            PVAL = 1 - psmirnov2x(&STATISTIC,nx,ny);
+            PVAL = 1 - psmirnov2x(STATISTIC,nx,ny);
     }
 
 //    names(STATISTIC) < -

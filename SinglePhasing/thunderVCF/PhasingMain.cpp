@@ -1107,7 +1107,7 @@ int PhasingMain(int argc, char **argv) {
     bool mle = false, mledetails = false, uncompressed = false;
     bool inputPhased = false;
     bool phaseByRef = false;
-    bool randomPhase = true;
+    bool randomPhase = false;
     bool fixTrans = false;
 
     bool onlyHeterSite = false;
@@ -1332,14 +1332,17 @@ int PhasingMain(int argc, char **argv) {
     if (inputPhased) {
         printf("Loading phased information from the input VCF file\n\n");
         engine.LoadHaplotypesFromVCF(unphasedfile);
+        engine.InitialSampleCopy(NULL);
     }
     else if (phaseByRef) {
         printf("Assigning haplotypes based on reference genome\n\n");
         engine.PhaseByReferenceSetup();
+        engine.InitialSampleCopy(NULL);
     }
     else {
         printf("Assigning random set of haplotypes\n\n");
-        engine.RandomSetup(nullptr);
+        engine.RandomSetup(NULL);
+        engine.InitialSampleCopy(NULL);
     }
     printf("Found initial haplotype set\n\n");
     //OutputManager::WriteHaplotypes(outfile, ped, engine.haplotypes);

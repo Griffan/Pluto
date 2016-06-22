@@ -174,7 +174,7 @@ int DebugWrapper::MergeCluster(int site, RESULT* result) {
                 {
                     Dmax[j][k] /= total;
 
-                    pval = 1-psmirnov2x(&Dmax[j][k], tmpMembershipSize, clusterMembership[k].size());
+                    pval = 1-psmirnov2x(Dmax[j][k], tmpMembershipSize, clusterMembership[k].size());
 
                     fprintf(stderr,"state %d and %d: Pvalue:%f,Dmax:%f,sizeA:%d, sizeB:%d\n",j,k,pval,Dmax[j][k],clusterMembership[j].size(),clusterMembership[k].size());
                 }
@@ -937,7 +937,7 @@ char **DebugWrapper::ExtractSubset(int individual) {
 //        swap(haplotypeX[0][i],haplotypeX[1][i]);
 //    }
     M-=2;
-    resetWrapper();
+    ResetWrapper();
     return haplotypeX;
 }
 

@@ -6,8 +6,12 @@
 #define PLUTO_PBWTHAPLOTYPER_H
 
 
+
+
+#include <unordered_set>
 #include "ShotgunHaplotyper.h"
 #include "../../pbwtWrapper/PBWTWrapper.h"
+
 class PBWTHaplotyper : public ShotgunHaplotyper{
 public:
 	bool onlyHeterSite;
@@ -16,7 +20,8 @@ public:
 	void InitAuxillary();
     ~PBWTHaplotyper();
 
-    void RandomSetup(Random * rand);
+	void InitialSampleCopy(Random * rand);
+//    void RandomSetup(Random * rand);
     int LoopThroughChromosomesViaPBWT();
 
 	void Transpose(int site, float * source, float * dest);
@@ -56,9 +61,9 @@ public:
 //		return Wrapper->transVector[site][from][to];
 		if(Wrapper->Graph.StateNodeMat.size()<= site) {return 0;/*fprintf(stderr,"%d doesn't exist!\n",site);abort();*/}
 		if(Wrapper->Graph.StateNodeMat[site].size()<=from) {return 0;/*fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);abort();*/}
-		if(Wrapper->Graph.StateNodeMat[site][from].childNodeIndex2NumHap.find(to)==Wrapper->Graph.StateNodeMat[site][from].childNodeIndex2NumHap.end())
-		{return 0;/*fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();*/}
-		return Wrapper->Graph.StateNodeMat[site][from].childNodeIndex2NumHap[to];
+        if(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[GetAllele(site+1,to)]== nullptr||*(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[GetAllele(site+1,to)])!=to)
+		{return 0;fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
+		return Wrapper->Graph.StateNodeMat[site][from]->numHapChild[GetAllele(site+1,to)];
 	}
 	inline uchar GetAllele(int site, int state)
 	{
@@ -80,7 +85,70 @@ public:
          states=num;
     }
 
+    //HMM version two
+    struct origin
+    {
+        int firstState;
+        int secondState;
+        float fwdValue;
+        origin(int a,int b, float c)
+        {
+            firstState=a;
+            secondState=b;
+            fwdValue=c;
+        }
+    };
+//    typedef std::vector<origin> originVec;
 
+
+    float* fwdValueSum;
+    int InitialFwdValues();
+    float GetGL(int individual, int marker, char allele1, char allele2);
+    int GetChildNode(int site, int stateIndex, char allele)
+    {
+        if(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[allele]== nullptr)
+            return -1;
+        else return *(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[allele]);
+    }
+//    int SwitchFwdValuePtr()
+//    {
+//        std::unordered_map<int,std::unordered_map<int,originVec> >* tmp;
+//        currentFwdValuePtr->clear();
+//        tmp=currentFwdValuePtr;
+//        currentFwdValuePtr=nextFwdValuePtr;
+//        nextFwdValuePtr=tmp;
+//    }
+    int ForwardAlgorithm();
+    int BackwardSampling(Random *rand, int SampleIndex, char** sampledHaps);
+//    std::unordered_map<int,std::unordered_map<int,originVec> > currentFwdValue,nextFwdValue;
+//    std::unordered_map<int,std::unordered_map<int,originVec> >* currentFwdValuePtr,*nextFwdValuePtr;
+
+    struct pairhash {
+    public:
+        template <typename T, typename U>
+        std::size_t operator()(const std::pair<T, U> &x) const
+        {
+            uint a=std::hash<T>()(x.first);
+            uint b=std::hash<U>()(x.second);
+            uint A = (uint)(a >= 0 ? 2 * a : -2 * a - 1);
+            uint B = (uint)(b >= 0 ? 2 * b : -2 * b - 1);
+            uint C = (int)((A >= B ? A * A + A + B : A + B * B) / 2);
+            return a < 0 && b < 0 || a >= 0 && b >= 0 ? C : -C - 1;
+        }
+    };
+
+    typedef std::unordered_map<std::pair<int32_t,int32_t>,float,pairhash> Source;
+	typedef std::unordered_map<int,std::unordered_map<int,Source> > ChildToSource;
+    std::vector<ChildToSource> genuienParents;
+
+    float SumFwdValueFromOriginVec(const Source& a)
+    {
+        float sum(0.);
+        for (auto kv:a) {
+            sum+=kv.second;
+        }
+        return sum;
+    }
 protected:
 
     PBWTWrapper* Wrapper;
@@ -95,7 +163,7 @@ protected:
 
 	int nSampleCopy;
 	char ** sampledHaps;
-    double * phred2prob;
+//    double * phred2prob;
 
 	bool useRev;
     bool onlyGT;

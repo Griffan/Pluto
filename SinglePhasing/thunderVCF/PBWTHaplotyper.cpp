@@ -6,6 +6,7 @@
 #include "PBWTHaplotyper.h"
 #include "MemoryAllocators.h"
 //debug related
+static const float UNDERFLOW_MIN = std::numeric_limits<float>::min()*100;
 static void printLeftMatrix(float * probability, int numStates)
 {
 	for (int i = 0; i <numStates; ++i) {
@@ -23,10 +24,10 @@ PBWTHaplotyper::PBWTHaplotyper(int nhaps, int nsnps) {
 
 }
 
-PBWTHaplotyper::PBWTHaplotyper() {
+PBWTHaplotyper::PBWTHaplotyper():genuienParents(10000,ChildToSource()) {//TODO:change the number
     onlyHeterSite=false;
     max_num=1;
-    nSampleCopy=2;
+    nSampleCopy=0;//additional, the original haps not included
 }
 
 void PBWTHaplotyper::InitAuxillary() {
@@ -212,17 +213,12 @@ bool PBWTHaplotyper::ForceMemoryAllocation() {
     return true;
 }
 //random setup
-void PBWTHaplotyper::RandomSetup(Random * rand)
+void PBWTHaplotyper::InitialSampleCopy(Random * rand)
 {
+
     if (rand == NULL)
         rand = &globalRandom;
-
-    phred2prob = new double [500];
-    for (int i = 0; i < 500; i++)
-    {
-        phred2prob[i] = pow(10.0, (-0.1 * i));
-    }
-
+    CalculatePhred2Prob();
 
     sampledHaps = new char* [nSampleCopy*(individuals-phased)*2];
     for (int l = 0; l < nSampleCopy*(individuals-phased)*2; ++l) {
@@ -276,25 +272,6 @@ void PBWTHaplotyper::RandomSetup(Random * rand)
             posterior_11 /= sum;
             posterior_12 /= sum;
 
-            double r = rand->Next();
-            if (r < posterior_11)
-            {
-                haplotypes[i * 2][j] = 0;
-                haplotypes[i * 2 + 1][j] = 0;
-            }
-            else if (r < posterior_11 + posterior_12)
-            {
-                bool bit = rand->Binary();
-
-                haplotypes[i * 2][j] = bit;
-                haplotypes[i * 2 + 1][j] = bit ^ 1;
-            }
-            else
-            {
-                haplotypes[i * 2][j] = 1;
-                haplotypes[i * 2 + 1][j] = 1;
-            }
-
             for (int k = 0; k <nSampleCopy; ++k) {
                 double r = rand->Next();
                 int index=i*nSampleCopy+k;
@@ -315,10 +292,7 @@ void PBWTHaplotyper::RandomSetup(Random * rand)
                     sampledHaps[index * 2][j] = 1;
                     sampledHaps[index * 2 + 1][j] = 1;
                 }
-
             }
-
-
         }
     }
 }
@@ -434,9 +408,6 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
 
     ResetCrossovers();
 
-	//char* tmphap1 = new char[markers];
-	//char* tmphap2 = new char[markers];
-
     for (int i = individuals - 1; i >= 0; i--) {
 
         if (i < individuals - phased) {
@@ -445,7 +416,7 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
             if(useRev) ReverseInput();
             clock_t t=clock();
             ExtractHeterSites(individuals-1);
-            Wrapper->SetHaps(haplotypes,sampledHaps,freq1s,phased,nSampleCopy);
+            Wrapper->SetHaps(haplotypes,sampledHaps,phased,nSampleCopy);
             Wrapper->CursorBackwards();//calculate backwards order of suffix
             Wrapper->CursorForwards();
 
@@ -472,12 +443,17 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
 
             //if (i < individuals - phased) {
             fprintf(stderr, "phasing individual %d...\n", i);
-            ScoreLeftConditional();
+//            ScoreLeftConditional();
+            ForwardAlgorithm();
             t=clock();
             printf("forward algorithm time:%.2f sec\n", (float) (t-t1) / CLOCKS_PER_SEC);
 
-            SampleChromosomes(&globalRandom);
+//            SampleChromosomes(&globalRandom);
+            BackwardSampling(&globalRandom,individuals-1,haplotypes);
 
+            for (int j = 0; j <nSampleCopy; ++j) {//n copy per individual
+                BackwardSampling(&globalRandom,j+i*nSampleCopy,sampledHaps);
+            }
             t1=clock();
             printf("sampling time:%.2f sec\n", (float) (t1-t) / CLOCKS_PER_SEC);
             //exit(EXIT_SUCCESS);
@@ -494,14 +470,17 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
 #endif
             FillHeterSitesBack(individuals - 1);
             SwapIndividuals(i, individuals - 1);
-            //Wrapper->resetWrapper();
+            //Wrapper->ResetWrapper();
             if(useRev) ReverseInput();
         }
+
 
     }
 
     return 0;
 }
+
+
 
 static float * GetProbability(float* source, int stateA, int stateB)
 {
@@ -599,8 +578,8 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 //                }
 //                for (auto kvi:Wrapper->inEdges[toWhere][k]) {
 //                    for(auto kvj:Wrapper->inEdges[toWhere][l]){
-                for (auto kvi:Wrapper->Graph.StateNodeMat[toWhere][k].parentNodeIndex2NumHap) {
-                    for(auto kvj:Wrapper->Graph.StateNodeMat[toWhere][l].parentNodeIndex2NumHap){
+                for (auto kvi:Wrapper->Graph.StateNodeMat[toWhere][k]->parentNodeIndex2NumHap) {
+                    for(auto kvj:Wrapper->Graph.StateNodeMat[toWhere][l]->parentNodeIndex2NumHap){
                         sum=(*GetProbability(source,kvi.first,kvj.first))
                             * GetTransitionProb(fromWhere, kvi.first, k)
                             * GetTransitionProb(fromWhere, kvj.first, l);
@@ -651,8 +630,8 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 //                fprintf(stderr,"site:%d:(from state %d to state %d) %f\t\n",site,m,k,GetTransitionProb(fromWhere, m, k));
 //            }
 
-            for (auto iter=Wrapper->Graph.StateNodeMat[toWhere][k].parentNodeIndex2NumHap.begin();iter!=Wrapper->Graph.StateNodeMat[toWhere][k].parentNodeIndex2NumHap.end();++iter) {
-                for(auto iter2=Wrapper->Graph.StateNodeMat[toWhere][k].parentNodeIndex2NumHap.begin();iter2!=iter;++iter2){
+            for (auto iter=Wrapper->Graph.StateNodeMat[toWhere][k]->parentNodeIndex2NumHap.begin();iter!=Wrapper->Graph.StateNodeMat[toWhere][k]->parentNodeIndex2NumHap.end();++iter) {
+                for(auto iter2=Wrapper->Graph.StateNodeMat[toWhere][k]->parentNodeIndex2NumHap.begin();iter2!=iter;++iter2){
                     sum=(*GetProbability(source,iter->first,iter2->first))
                         * GetTransitionProb(fromWhere, iter->first, k)
                         * GetTransitionProb(fromWhere, iter2->first, k);
@@ -841,13 +820,13 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
 
 
     float max_prob(0),tmp_sum(0);
-        float last_sum(0);
+        float last_sum(sum);
         int j0;
         for (int j = markers - 2; j >= 0; j--) {
 
 //            fprintf(stderr,
-//                    "marker:%d\tTotalSum:%g\tSum: %9.9g, choice:%9.9g,Chose (%d,%d) out of (%d) states and geno:%d and GL:%d,%d,%d\n",
-//                    j + 1, last_sum, sum, choice, first, second, GetStateNumFrom(j + 1),
+//                    "marker:%d\tTotalSum:%g\tsampleSum: %9.9g, choice:%9.9g,Chose (%d,%d) out of (%d) states and geno:%d and GL:%d,%d,%d\n",
+//                    j + 1, last_sum, sampleSum, choice, first, second, GetStateNumFrom(j + 1),
 //                    GetAllele(fromWhere, first) + GetAllele(fromWhere, second),
 //                    genotypes[individuals - 1][fromWhere * 3], genotypes[individuals - 1][fromWhere * 3 + 1],
 //                    genotypes[individuals - 1][fromWhere * 3 + 2]);
@@ -886,7 +865,6 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
                             GetTransitionProb(fromWhere, l, second)
                             + GetTransitionProb(fromWhere, k, second) *
                               GetTransitionProb(fromWhere, l, first));
-                    last_sum = sum;
 //                    if(sum-tmp_sum>0)fprintf(stderr,"(%d,%d)to (%d,%d):probability:%g\tk-first:%g\tl-second:%g\tk-second:%g\tl-first:%g\t\n",k,l,first,second,*probability,GetTransitionProb(fromWhere, k, first), GetTransitionProb(fromWhere, l, second),GetTransitionProb(fromWhere, k, second) , GetTransitionProb(fromWhere, l, first));
 
                 }
@@ -903,11 +881,11 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
                 sum += *probability *
                        GetTransitionProb(fromWhere, k, first) *
                        GetTransitionProb(fromWhere, k, second);
-                last_sum = sum;
+
 //                if(sum-tmp_sum>0) fprintf(stderr,"(%d,%d) to (%d,%d):probability:%g\tmid:%g\n",k,k,first,second,*probability ,GetTransitionProb(fromWhere, k, first)*GetTransitionProb(fromWhere, k, second));
                 probability++;
             }
-
+            last_sum = sum;
             // Sample number and decide how many state changes occurred between the
             // two positions
             choice = rand->Uniform(0, sum);
@@ -997,6 +975,213 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
 
 }
 
+//HMM version two
+int PBWTHaplotyper::InitialFwdValues()
+{
+    fwdValueSum=new float [markers];
+    int SampleIndex=individuals-1;
+//    currentFwdValuePtr=&currentFwdValue;
+//    nextFwdValuePtr=&nextFwdValue;
+    float prior=1./(states*states);
+    float tmpFwdValue(0.),gl(0.);
+
+    for (int i = 0; i < states; ++i) {
+        for (int j = 0; j <states ; ++j) {
+            int allele1=GetAllele(0,i);
+            int allele2=GetAllele(0,j);
+            gl=GetGL(SampleIndex,0,allele1,allele2);
+            if(gl>1e-1) {
+                tmpFwdValue = prior * gl;
+                if (tmpFwdValue < std::numeric_limits<float>::min()) {
+                    tmpFwdValue = std::numeric_limits<float>::min();
+                }
+//                (*currentFwdValuePtr)[i][j].push_back(origin(0, 0, tmpFwdValue));
+                fwdValueSum[0] += tmpFwdValue;
+                genuienParents[0][i][j][std::make_pair(0,0)]=tmpFwdValue;
+            }
+        }
+    }
+
+    for(auto iter= genuienParents[0].begin();iter!=genuienParents[0].end();++iter)
+        for(auto iter2=iter->second.begin();iter2!=iter->second.end();++iter2)
+            for (auto iter3 = iter2->second.begin(); iter3 != iter2->second.end(); ++iter3) {
+                iter3->second/=fwdValueSum[0];
+            }
+}
+
+float PBWTHaplotyper::GetGL(int individual, int marker, char allele1, char allele2)
+{
+    return phred2prob[genotypes[individual][3*marker+allele1+allele2]];
+}
+
+int PBWTHaplotyper::ForwardAlgorithm()
+{
+    int SampleIndex=individuals-1;
+    UpdateStateNum(GetStateNumFrom(0));
+    InitialFwdValues();
+    float prevFwdValue(0.),tmpFwdValue(0.);
+    float gl(0.);
+
+
+
+    char allele1,allele2;
+    int childNode1,childNode2;
+    for (int i = 1; i < markers; i++) {
+        fwdValueSum[i]=0;
+
+        for(auto iter=genuienParents[i-1].begin();iter!=genuienParents[i-1].end();++iter)//i-1 states
+            for (auto iter2 = iter->second.begin(); iter2 !=iter->second.end(); ++iter2) {
+                prevFwdValue=SumFwdValueFromOriginVec(iter2->second);
+                for ( allele1 = 0; allele1 <2 ; ++allele1) {
+                    childNode1=GetChildNode(i-1,iter->first,allele1);//i states
+                    if(childNode1==-1) continue;
+                    for ( allele2 = 0; allele2 <2 ; ++allele2) {
+                        childNode2=GetChildNode(i-1,iter2->first,allele2);
+                        if(childNode2==-1) continue;
+                        gl = GetGL(SampleIndex, i, allele1, allele2);//i gl
+                        if (gl > 1e-1) {
+                            tmpFwdValue=prevFwdValue*
+                                        GetTransitionProb(i-1,iter->first,childNode1)*
+                                        GetTransitionProb(i-1,iter2->first,childNode2)*
+                                        gl;//i fwdValue
+                            if(tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0)
+                            {
+                                tmpFwdValue= UNDERFLOW_MIN;
+                            }
+//                            fprintf(stderr,"site:%d,prev(%d,%d) to current(%d,%d) : %g and prevFwd:%g\ttp1:%g\ttp2:%g\tgl:%g\tfirstNum:%g\tsecondNum:%g\n",
+//                                    i,iter->first,iter2->first,childNode1,childNode2,tmpFwdValue,prevFwdValue,
+//                                    GetTransitionProb(i-1,iter->first,childNode1),
+//                                    GetTransitionProb(i-1,iter2->first,childNode2),gl,Wrapper->Graph.StateNodeMat[i-1][iter->first]->numHap,Wrapper->Graph.StateNodeMat[i-1][iter2->first]->numHap);
+//                            (*nextFwdValuePtr)[childNode1][childNode2].push_back(origin(iter->first,iter2->first,tmpFwdValue));
+                            fwdValueSum[i]+=tmpFwdValue;
+                            genuienParents[i][childNode1][childNode2][std::make_pair(iter->first,iter2->first)]=tmpFwdValue;
+                        }
+//                        else
+//                            fprintf(stderr,"site:%d,prev(%d,%d) to current(%d,%d) pass: 0 and prevFwd:%g\tgl:%g\n",
+//                                    i,iter->first,iter2->first,childNode1,childNode2,prevFwdValue,gl);
+                    }
+                }
+            }
+//        fprintf(stderr,"site:%d report overall fwd:%g\n",i,fwdValueSum[i]);
+        for(auto iter=genuienParents[i].begin();iter!=genuienParents[i].end();++iter)
+            for(auto iter2=iter->second.begin();iter2!=iter->second.end();++iter2)
+                for (auto iter3 = iter2->second.begin(); iter3 != iter2->second.end(); ++iter3) {
+                    iter3->second/=fwdValueSum[i];
+                }
+
+//        SwitchFwdValuePtr();
+
+//        if(fwdValueSum[i] > 0) continue;
+//        else
+//        {
+//            fprintf(stderr,"at marker %d, not viable path!!!!\n",i);
+//            exit(EXIT_FAILURE);
+//        }
+    }
+}
+int PBWTHaplotyper::BackwardSampling(Random *rand, int SampleIndex, char** sampledHaps)
+{
+    float choice(0.),sum(0.),sumFwdValue(0.),gl(0.),gl0(0.);
+    float transProb0(0.),transProb1(0.);
+    float prevFwdValue(0.),tmpFwdValue(0.);
+    int sampledFirst(0),sampledSecond(0),first0(0),second0(0);
+    origin chosenOrigin{0,0,0};
+//    originVec tmpOriginVec;
+
+    int i0;
+
+    choice=rand->Uniform(0,1);
+//    for(auto iter=genuienParents[markers-1].begin();iter!=genuienParents[markers-1].end();++iter)
+//        for(auto iter2=iter->second.begin();iter2!=iter->second.end();++iter2)
+//        {
+//            prevFwdValue = SumFwdValueFromOriginVec(iter2->second);
+//            fprintf(stderr,"(%d,%d)\tvalue:%g\n",iter->first,iter2->first,prevFwdValue);
+//
+//        }
+    for(auto iter=genuienParents[markers-1].begin();iter!=genuienParents[markers-1].end();++iter)
+        for(auto iter2=iter->second.begin();iter2!=iter->second.end();++iter2)
+        {
+                prevFwdValue = SumFwdValueFromOriginVec(iter2->second);
+                sum += prevFwdValue;
+                if (sum > choice) {
+                    sampledFirst = iter->first;
+                    sampledSecond = iter2->first;
+                    goto SAMPLE_BREAK;
+                }
+        }
+    SAMPLE_BREAK:
+    ImputeAlleles(markers-1, sampledFirst, sampledSecond, rand, SampleIndex, sampledHaps);
+//    fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\toverallFwd:%g\n",markers-1,sum,choice,sampledFirst,sampledSecond,prevFwdValue,fwdValueSum[markers-1]);
+    sum=0;
+    {
+        choice=rand->Uniform(0,prevFwdValue);
+        for (auto kv: genuienParents[markers-1][sampledFirst][sampledSecond])
+        {
+//            transProb0 = GetTransitionProb(markers - 2, kv.first.first, sampledFirst);
+//            transProb1 = GetTransitionProb(markers - 2, kv.first.second, sampledSecond);
+//            prevFwdValue = kv.second * fwdValueSum[markers - 1] / (transProb0 * transProb1 * gl0);
+            sum += kv.second;
+            if(sum>choice)
+            {
+                chosenOrigin.firstState=kv.first.first;
+                chosenOrigin.secondState=kv.first.second;
+                gl0 = GetGL(individuals-1, markers-1, GetAllele(markers-1, sampledFirst), GetAllele(markers-1, sampledSecond));
+                transProb0 = GetTransitionProb(markers - 2, chosenOrigin.firstState, sampledFirst);
+                transProb1 = GetTransitionProb(markers - 2, chosenOrigin.secondState, sampledSecond);
+                chosenOrigin.fwdValue=kv.second*fwdValueSum[markers-1]/(transProb0 * transProb1 * gl0);
+                break;
+            }
+        }
+    }
+
+
+    for (int i = markers-2; i >0; --i) {
+        i0=i;
+//        fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\n",i,sum,choice,chosenOrigin.firstState,chosenOrigin.secondState,chosenOrigin.fwdValue);
+
+        sum=0;
+        first0=chosenOrigin.firstState;
+        second0=chosenOrigin.secondState;
+
+        ImputeAlleles(i, first0, second0, rand, SampleIndex, sampledHaps);
+
+        if(fabsf(chosenOrigin.fwdValue-UNDERFLOW_MIN)<std::numeric_limits<float>::epsilon())
+            chosenOrigin.fwdValue=SumFwdValueFromOriginVec(genuienParents[i][first0][second0]);
+        choice=rand->Uniform(0,chosenOrigin.fwdValue);
+//        fprintf(stderr,"fwd:%g and summation:%g\n",chosenOrigin.fwdValue,SumFwdValueFromOriginVec(genuienParents[i][first0][second0]));
+        for(auto kv:genuienParents[i][first0][second0])
+        {
+            sum+=kv.second;//kv.second is normalized
+            if(sum>choice) {
+
+                chosenOrigin.firstState=kv.first.first;
+                chosenOrigin.secondState=kv.first.second;
+
+                gl0 = GetGL(individuals-1, i, GetAllele(i, first0), GetAllele(i, second0));
+
+                transProb0 = GetTransitionProb(i - 1, chosenOrigin.firstState, first0);
+                transProb1 = GetTransitionProb(i - 1, chosenOrigin.secondState, second0);
+                chosenOrigin.fwdValue = kv.second * fwdValueSum[i] / (transProb0 * transProb1 * gl0);
+//                fprintf(stderr, "try parents:(%d,%d) at marker %d with fwdvalue:%g\tgl:%g\ttp1:%g\ttp2:%g\ttotalFwd:%g\n",
+//                        kv.first.first,kv.first.second,
+//                        i, kv.second, gl0, transProb0, transProb1,fwdValueSum[i]);
+
+                break;
+            }
+//            else
+//            {
+//                fprintf(stderr, "try parents:(%d,%d) failed at marker %d with fwdvalue:%g\tgl:%g\ttp1:%g\ttp2:%g\n",
+//                        kv.first.first,kv.first.second, i, kv.second, gl0,
+//                        transProb0, transProb1);
+//            }
+        }
+//        FillPath(SampleIndex * 2, i, i0 + 1, chosenOrigin.firstState,haplotypes);
+//        FillPath(SampleIndex * 2 + 1, i, i0 + 1, chosenOrigin.secondState,haplotypes);
+    }
+
+    ImputeAlleles(0, chosenOrigin.firstState, chosenOrigin.secondState, rand, SampleIndex, sampledHaps);
+}
+
 int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after swap individualToProcess to the back
 
     if(Wrapper!= nullptr) {
@@ -1072,6 +1257,9 @@ int PBWTHaplotyper::FillHeterSitesBack(int individualToProcess) {
             haplotypes[2 * individualToProcess][markerAbsoluteNow] = tmpHaps[2 * individualToProcess][i];
             haplotypes[2 * individualToProcess + 1][markerAbsoluteNow] = tmpHaps[2 * individualToProcess+1][i];
         }
+    }
+    for (int j = 0; j < genuienParents.size(); ++j) {
+        genuienParents[j].clear();
     }
     return 0;
 }
