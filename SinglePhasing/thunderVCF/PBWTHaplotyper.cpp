@@ -27,7 +27,7 @@ PBWTHaplotyper::PBWTHaplotyper(int nhaps, int nsnps) {
 PBWTHaplotyper::PBWTHaplotyper():genuienParents(10000,ChildToSource()) {//TODO:change the number
     onlyHeterSite=false;
     max_num=1;
-    nSampleCopy=0;//additional, the original haps not included
+    nSampleCopy=4;//additional, the original haps not included
 }
 
 void PBWTHaplotyper::InitAuxillary() {
@@ -38,24 +38,24 @@ void PBWTHaplotyper::InitAuxillary() {
 
     tmpPenetrance = new float [markers * 9];
 
-    Wrapper=NULL;
+    Wrapper=nullptr;
 }
 
 PBWTHaplotyper::~PBWTHaplotyper() {
 
-    if(tmpHaps != NULL) {
+    if(tmpHaps != nullptr) {
         for (int i = 0; i < 2 * individuals+(individuals-phased)*nSampleCopy*2; ++i) {
             delete[] tmpHaps[i];
         }
         delete [] tmpHaps;
     }
-    if(tmpGeno != NULL) {
+    if(tmpGeno != nullptr) {
         for (int i = 0; i < individuals; ++i) {
             delete[] tmpGeno[i];
         }
         delete [] tmpGeno;
     }
-    if(tmpPenetrance != NULL)
+    if(tmpPenetrance != nullptr)
         delete [] tmpPenetrance;
 
 
@@ -64,8 +64,11 @@ PBWTHaplotyper::~PBWTHaplotyper() {
     }
     delete [] sampledHaps;
 
-    if(Wrapper != NULL)
+    if(Wrapper != nullptr)
         delete Wrapper;
+
+    if(fwdWrapper != nullptr)
+        delete fwdWrapper;
 	ReleaseMemoryBlock();
 }
 
@@ -76,7 +79,7 @@ void PBWTHaplotyper::ReleaseMemoryBlock()
 	{
 		for (size_t i = 0; i < iter->second.size(); i++)
 		{
-			if (iter->second[i] != NULL) delete[] iter->second[i];
+			if (iter->second[i] != nullptr) delete[] iter->second[i];
 		}
 	}
 }
@@ -98,7 +101,7 @@ float* PBWTHaplotyper::GetLargeBlock()
 	if (numInUse.find(blockSize) == numInUse.end())
 	{
 		numInUse[blockSize] = 0;
-		memoryBlockList[blockSize] = std::vector<float*>(0, NULL);
+		memoryBlockList[blockSize] = std::vector<float*>(0, nullptr);
 	}
 	if (numInUse[blockSize] < memoryBlockList[blockSize].size())
 	{
@@ -118,7 +121,7 @@ float* PBWTHaplotyper::GetReuseableBlock()
 	if (numInUse.find(blockSize) == numInUse.end())
 	{
 		numInUse[blockSize] = 0;
-		memoryBlockList[blockSize] = std::vector<float*>(0, NULL);
+		memoryBlockList[blockSize] = std::vector<float*>(0, nullptr);
 	}
 	if (numInUse[blockSize] < memoryBlockList[blockSize].size())
 	{
@@ -181,7 +184,7 @@ bool PBWTHaplotyper::ForceMemoryAllocation() {
         ResetMemoryPool();
         GetMemoryBlock(0);
 
-        if (leftMatrices[0] == NULL)
+        if (leftMatrices[0] == nullptr)
             return false;
 
         int skipped = 0;
@@ -190,7 +193,7 @@ bool PBWTHaplotyper::ForceMemoryAllocation() {
         {
             GetMemoryBlock(j);
 
-            if (leftMatrices[j] == NULL)
+            if (leftMatrices[j] == nullptr)
                 return false;
         }
         //else
@@ -206,7 +209,7 @@ bool PBWTHaplotyper::ForceMemoryAllocation() {
     for (int j = 0; j < markers; j++) {
         GetSmallMemoryBlock(j);
 
-        if (leftMatrices[j] == NULL)
+        if (leftMatrices[j] == nullptr)
             return false;
     }
 
@@ -216,7 +219,7 @@ bool PBWTHaplotyper::ForceMemoryAllocation() {
 void PBWTHaplotyper::InitialSampleCopy(Random * rand)
 {
 
-    if (rand == NULL)
+    if (rand == nullptr)
         rand = &globalRandom;
     CalculatePhred2Prob();
 
@@ -327,11 +330,11 @@ void PBWTHaplotyper::ConditionOnData(float *matrix, int marker, char phred11, ch
 
 //        factors[0] = conditional_probs[haplotypes[i][marker]];
 //        factors[1] = conditional_probs[haplotypes[i][marker] + 1];
-        factors[0] = conditional_probs[Wrapper->clusterAllele[marker][i]];
-        factors[1] = conditional_probs[Wrapper->clusterAllele[marker][i] + 1];
+        factors[0] = conditional_probs[GetAllele(marker,i)];//Wrapper->clusterAllele[marker][i]];
+        factors[1] = conditional_probs[GetAllele(marker,i)+1];//Wrapper->clusterAllele[marker][i] + 1];
 
         for (int j = 0; j <= i; j++, matrix++) {
-            *matrix *= factors[Wrapper->clusterAllele[marker][j]];
+            *matrix *= factors[GetAllele(marker,j)];//Wrapper->clusterAllele[marker][j]];
             sum+=*matrix;
 //            if(*matrix >0)
 //            {
@@ -404,7 +407,275 @@ void PBWTHaplotyper::ScoreLeftConditional() {
     MarkMemoryPool();
 }
 
-int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
+void PBWTHaplotyper::SwapIndividuals(int a, int b)
+{
+    // if (b < 0 || b >= individuals)
+    //   printf("Bad Swap!");
+
+    Swap(genotypes[a], genotypes[b]);
+    Swap(haplotypes[a * 2], haplotypes[b * 2]);
+    Swap(haplotypes[a * 2 + 1], haplotypes[b * 2 + 1]);
+
+    if(nSampleCopy>0) {
+        Swap(sampledHaps[a * 2], sampledHaps[(individuals - phased - 1) * 2]);
+        Swap(sampledHaps[a * 2 + 1], sampledHaps[(individuals - phased - 1) * 2 + 1]);
+    }
+    if (diseaseCount)
+    {
+        Swap(diseaseStatus[a], diseaseStatus[b]);
+        Swap(diseaseScores[a], diseaseScores[b]);
+    }
+
+    if (weights != nullptr)
+    {
+        float temp = weights[a];
+        weights[a] = weights[b];
+        weights[b] = temp;
+    }
+}
+
+void PBWTHaplotyper::PrepareRefSetPBWTWrapper()
+{
+    if(Wrapper!= nullptr) {
+        delete Wrapper;
+        Wrapper = nullptr;
+    }
+    Wrapper = new PBWTWrapper(2*phased, markers);
+    Wrapper->SetHaps(haplotypes,2*(individuals-phased),2*individuals, nullptr,0,0);
+    Wrapper->CursorBackwards();//calculate backwards order of suffix
+    Wrapper->CursorForwards();
+}
+void PBWTHaplotyper::PrepareRefSetPBWTWrapperLeaveOneOut()
+{
+    if(fwdWrapper!= nullptr) {
+        delete fwdWrapper;
+        fwdWrapper = nullptr;
+    }
+    fwdWrapper = new PBWTWrapper(2*individuals, markers);
+    fwdWrapper->SetHaps(haplotypes,0,2*individuals, nullptr,0,0);
+    fwdWrapper->CursorBackwards();//calculate backwards order of suffix
+    fwdWrapper->CursorForwards();
+    ReverseInput();
+    if(backWrapper!= nullptr) {
+        delete backWrapper;
+        backWrapper = nullptr;
+    }
+    backWrapper = new PBWTWrapper(2*individuals, markers);
+    backWrapper->SetHaps(haplotypes,0,2*individuals, nullptr,0,0);
+    backWrapper->CursorBackwards();//calculate backwards order of suffix
+    backWrapper->CursorForwards();
+    ReverseInput();
+}
+int PBWTHaplotyper::LoopThroughChromosomesHighPrecision() {
+
+    ResetCrossovers();
+
+    if(useRev) ReverseInput();
+    clock_t t=clock();
+    if(Wrapper!= nullptr) {
+        delete Wrapper;
+        Wrapper = nullptr;
+    }
+    Wrapper = new PBWTWrapper(2*individuals+(individuals-phased)*nSampleCopy*2, markers);
+    Wrapper->SetHaps(haplotypes,0,2*individuals,sampledHaps,0,(individuals-phased)*nSampleCopy*2);
+    Wrapper->CursorBackwards();//calculate backwards order of suffix
+    Wrapper->CursorForwards();
+    clock_t t1=clock();
+    printf("build model time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
+    for (int i = individuals - 1; i >= 0; i--) {
+
+        if (i < individuals - phased) {
+            indexBeingSampled=i;
+            SwapIndividuals(i, individuals - 1);
+
+
+#ifdef DEBUG
+             {
+                Wrapper->PrintHap(tmpHaps, Wrapper->a[0]);
+
+                // Wrapper->PrintHap(tmpHaps,Wrapper->a[6]);
+                Wrapper->PrintHap(tmpHaps, Wrapper->a[Wrapper->N - 1]);
+                // Wrapper->PrintMatrix(Wrapper->a,"a array matrix");
+                Wrapper->PrintMatrix(Wrapper->d, "d array");
+                //Wrapper->PrintVector(Wrapper->a[Wrapper->N-7],"last a array");
+            }
+#endif
+
+            fprintf(stderr, "phasing individual %d...\n", i);
+//            ScoreLeftConditional();
+            ForwardAlgorithm();
+//            t=clock();
+//            printf("forward algorithm time:%.2f sec\n", (float) (t-t1) / CLOCKS_PER_SEC);
+
+//            SampleChromosomes(&globalRandom);
+            BackwardSampling(&globalRandom,individuals-1,haplotypes);
+
+            for (int j = 0; j <nSampleCopy; ++j) {//n copy per individual
+                BackwardSampling(&globalRandom,j+i*nSampleCopy,sampledHaps);
+            }
+//            t1=clock();
+//            printf("sampling time:%.2f sec\n", (float) (t1-t) / CLOCKS_PER_SEC);
+
+#ifdef _DEBUG
+            if (!SanityCheck())
+               {
+               printf("\nProblems above occurred haplotyping individual %d\n\n", i);
+               Print();
+               }
+#endif
+            SwapIndividuals(i, individuals - 1);
+            ResetFwdValues();
+        }
+    }
+    t=clock();
+    printf("forward algorithm and sampling time:%.2f sec\n", (float) (t-t1) / CLOCKS_PER_SEC);
+    if(useRev) ReverseInput();
+    return 0;
+}
+
+int PBWTHaplotyper::LoopThroughChromosomesSingleRound() {
+
+    ResetCrossovers();
+
+    if(useRev) ReverseInput();
+    clock_t t=clock();
+    if(Wrapper!= nullptr) {
+        delete Wrapper;
+        Wrapper = nullptr;
+    }
+    Wrapper = new PBWTWrapper(2*phased, markers);
+    Wrapper->SetHaps(haplotypes,2*(individuals-phased),2*individuals,nullptr,0,0);
+    Wrapper->CursorBackwards();//calculate backwards order of suffix
+    Wrapper->CursorForwards();
+    clock_t t1=clock();
+    printf("build model time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
+    for (int i = individuals - 1; i >= 0; i--) {
+
+        if (i < individuals - phased) {
+            indexBeingSampled=i;
+            SwapIndividuals(i, individuals - 1);
+
+
+#ifdef DEBUG
+            {
+                Wrapper->PrintHap(tmpHaps, Wrapper->a[0]);
+
+                // Wrapper->PrintHap(tmpHaps,Wrapper->a[6]);
+                Wrapper->PrintHap(tmpHaps, Wrapper->a[Wrapper->N - 1]);
+                // Wrapper->PrintMatrix(Wrapper->a,"a array matrix");
+                Wrapper->PrintMatrix(Wrapper->d, "d array");
+                //Wrapper->PrintVector(Wrapper->a[Wrapper->N-7],"last a array");
+            }
+#endif
+
+            fprintf(stderr, "phasing individual %d...\n", i);
+//            ScoreLeftConditional();
+            ForwardAlgorithm();
+//            t=clock();
+//            printf("forward algorithm time:%.2f sec\n", (float) (t-t1) / CLOCKS_PER_SEC);
+
+//            SampleChromosomes(&globalRandom);
+            BackwardSampling(&globalRandom,individuals-1,haplotypes);
+
+            for (int j = 0; j <nSampleCopy; ++j) {//n copy per individual
+                BackwardSampling(&globalRandom,j+i*nSampleCopy,sampledHaps);
+            }
+//            t1=clock();
+//            printf("sampling time:%.2f sec\n", (float) (t1-t) / CLOCKS_PER_SEC);
+
+#ifdef _DEBUG
+            if (!SanityCheck())
+               {
+               printf("\nProblems above occurred haplotyping individual %d\n\n", i);
+               Print();
+               }
+#endif
+            SwapIndividuals(i, individuals - 1);
+            ResetFwdValues();
+        }
+    }
+    t=clock();
+    printf("forward algorithm and sampling time:%.2f sec\n", (float) (t-t1) / CLOCKS_PER_SEC);
+    if(useRev) ReverseInput();
+    return 0;
+}
+
+int PBWTHaplotyper::LoopThroughChromosomesLeaveOneOut() {
+
+    ResetCrossovers();
+
+    if(useRev)
+    {
+        ReverseInput();
+        baseWrapper=backWrapper;
+    }
+    else
+    {
+        baseWrapper=fwdWrapper;
+    }
+
+    for (int i = individuals - 1; i >= 0; i--) {
+
+        if (i < individuals - phased) {
+            indexBeingSampled=i;
+            SwapIndividuals(i, individuals - 1);
+            clock_t t=clock();
+
+            Wrapper = new PBWTWrapper(2*(individuals-1+nSampleCopy*(individuals-phased-1)), markers);
+            Wrapper->SetHaps(haplotypes,0,2*(individuals-1),sampledHaps,0,2*nSampleCopy*(individuals-phased-1));
+//            PBWTWrapper* tmpWrapper = new PBWTWrapper(2*individuals, markers);
+//            tmpWrapper->SetHaps(haplotypes,0,2*individuals, nullptr,0,0);
+            Wrapper->CursorBackwards();//calculate backwards order of suffix
+            Wrapper->FastCursorForwards(*baseWrapper);
+            clock_t t1=clock();
+            printf("build model time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
+
+#ifdef DEBUG
+            {
+                Wrapper->PrintHap(tmpHaps, Wrapper->a[0]);
+
+                // Wrapper->PrintHap(tmpHaps,Wrapper->a[6]);
+                Wrapper->PrintHap(tmpHaps, Wrapper->a[Wrapper->N - 1]);
+                // Wrapper->PrintMatrix(Wrapper->a,"a array matrix");
+                Wrapper->PrintMatrix(Wrapper->d, "d array");
+                //Wrapper->PrintVector(Wrapper->a[Wrapper->N-7],"last a array");
+            }
+#endif
+
+            fprintf(stderr, "phasing individual %d...\n", i);
+//            ScoreLeftConditional();
+            ForwardAlgorithm();
+            t=clock();
+            printf("forward algorithm time:%.2f sec\n", (float) (t-t1) / CLOCKS_PER_SEC);
+
+//            SampleChromosomes(&globalRandom);
+            BackwardSampling(&globalRandom,individuals-1,haplotypes);
+
+            for (int j = 0; j <nSampleCopy; ++j) {//n copy per individual
+                BackwardSampling(&globalRandom,j+(individuals-phased-1)*nSampleCopy,sampledHaps);
+            }
+            t1=clock();
+            printf("sampling time:%.2f sec\n", (float) (t1-t) / CLOCKS_PER_SEC);
+
+#ifdef _DEBUG
+            if (!SanityCheck())
+               {
+               printf("\nProblems above occurred haplotyping individual %d\n\n", i);
+               Print();
+               }
+#endif
+            SwapIndividuals(i, individuals - 1);
+            ResetFwdValues();
+            delete Wrapper;
+            Wrapper = nullptr;
+        }
+    }
+    if(useRev) ReverseInput();
+    return 0;
+}
+
+
+int PBWTHaplotyper::LoopThroughChromosomesViaPBWTWithHeterOnly() {
 
     ResetCrossovers();
 
@@ -416,12 +687,12 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWT() {
             if(useRev) ReverseInput();
             clock_t t=clock();
             ExtractHeterSites(individuals-1);
-            Wrapper->SetHaps(haplotypes,sampledHaps,phased,nSampleCopy);
+            Wrapper->SetHaps(haplotypes,0,2*individuals,sampledHaps,0,(individuals-phased)*nSampleCopy*2);
             Wrapper->CursorBackwards();//calculate backwards order of suffix
             Wrapper->CursorForwards();
 
 #ifdef DEBUG
-             {
+            {
                 Wrapper->PrintHap(tmpHaps, Wrapper->a[0]);
 
                 // Wrapper->PrintHap(tmpHaps,Wrapper->a[6]);
@@ -665,8 +936,8 @@ void  PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *
     int currentHap1 = 2 * currentIndividual;
     int currentHap2 = currentHap1 + 1;
 
-    int copied1 = Wrapper->clusterAllele[marker][state1];//haplotypes[state1][marker];
-    int copied2 = Wrapper->clusterAllele[marker][state2];//haplotypes[state2][marker];
+    int copied1 =GetAllele(marker,state1);//Wrapper->clusterAllele[marker][state1];//haplotypes[state1][marker];
+    int copied2 =GetAllele(marker,state2); //Wrapper->clusterAllele[marker][state2];//haplotypes[state2][marker];
 //    fprintf(stdout,"marker %d copied genotype: %d|%d\n",marker,copied1,copied2);
 
     int markerindex = marker * 3;
@@ -1007,6 +1278,15 @@ int PBWTHaplotyper::InitialFwdValues()
             for (auto iter3 = iter2->second.begin(); iter3 != iter2->second.end(); ++iter3) {
                 iter3->second/=fwdValueSum[0];
             }
+}
+
+int PBWTHaplotyper::ResetFwdValues()
+{
+    delete [] fwdValueSum;
+
+    for (int k = 0; k <markers; ++k) {
+        genuienParents[k].clear();
+    }
 }
 
 float PBWTHaplotyper::GetGL(int individual, int marker, char allele1, char allele2)

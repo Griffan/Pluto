@@ -22,7 +22,14 @@ public:
 
 	void InitialSampleCopy(Random * rand);
 //    void RandomSetup(Random * rand);
-    int LoopThroughChromosomesViaPBWT();
+    void SwapIndividuals(int a, int b);
+    void PrepareRefSetPBWTWrapper();
+    void PrepareRefSetPBWTWrapperLeaveOneOut();
+    int LoopThroughChromosomesHighPrecision();
+    int LoopThroughChromosomesSingleRound();
+    int LoopThroughChromosomesLeaveOneOut();
+
+	int LoopThroughChromosomesViaPBWTWithHeterOnly();
 
 	void Transpose(int site, float * source, float * dest);
 
@@ -67,11 +74,11 @@ public:
 	}
 	inline uchar GetAllele(int site, int state)
 	{
-		return Wrapper->clusterAllele[site][state];
+		return Wrapper->GetAllele(site,state);
 	}
 	inline int GetStateNumFrom(int site)
 	{
-		return Wrapper->clusterAllele[site].size();
+		return Wrapper->GetNumStates(site);
 	}
 	inline int GetCurrentIndividualState(int site, int chrom)
 	{
@@ -103,6 +110,7 @@ public:
 
     float* fwdValueSum;
     int InitialFwdValues();
+    int ResetFwdValues();
     float GetGL(int individual, int marker, char allele1, char allele2);
     int GetChildNode(int site, int stateIndex, char allele)
     {
@@ -151,7 +159,7 @@ public:
     }
 protected:
 
-    PBWTWrapper* Wrapper;
+    PBWTWrapper* Wrapper,*fwdWrapper,*backWrapper,*baseWrapper;
 
     int indexBeingSampled;
 	//subset markers related

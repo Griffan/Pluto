@@ -973,7 +973,8 @@ void LoadGenotypeFromPhasedVCF(Pedigree &ped, const String &filename, int maxPhr
                 int ANidx = pMarker->asInfoKeys.Find("AN");
                 int ACidx = pMarker->asInfoKeys.Find("AC");
                 if ((ANidx < 0) || (ACidx < 0)) {
-                    throw VcfFileException("Cannot recognize AF key in FORMAT field");
+                    //throw VcfFileException("Cannot recognize AF key in FORMAT field");
+                    engine.freq1s[markerindex]=1e-6;
                 }
                 else {
                     engine.freq1s[markerindex] = 1. - (pMarker->asInfoValues[ACidx].AsDouble() + .5) /
@@ -1101,7 +1102,7 @@ int PhasingMain(int argc, char **argv) {
     double errorRate = 0.01;
     double transRate = 0.01;
     int seed = 123456, warmup = 0, states = 0, weightedStates = 0;
-    int burnin = 0, rounds = 0, polling = 0, samples = 0, SamplingRounds = 0;
+    int burnin = 5, rounds = 10, polling = 0, samples = 0, SamplingRounds = 0;
     int maxPhred = 255;
     bool compact = false;
     bool mle = false, mledetails = false, uncompressed = false;
@@ -1185,6 +1186,7 @@ int PhasingMain(int argc, char **argv) {
 
     SetCrashExplanation("loading information on polymorphic sites");
 
+    if(rounds<burnin) burnin=0;
 
     PBWTHaplotyper engine;//declaration of engine, also will call default constructor
 
@@ -1353,10 +1355,14 @@ int PhasingMain(int argc, char **argv) {
 
     SetCrashExplanation("interating through markov chain haplotyping procedure");
 
+//    engine.PrepareRefSetPBWTWrapper();
+//    engine.PrepareRefSetPBWTWrapperLeaveOneOut();
     for (int i = 0; i < rounds; i++) {
         engine.SetUseRev(i%2);
 //        engine.orderedGenotypes=true;
-        engine.LoopThroughChromosomesViaPBWT();
+//        engine.LoopThroughChromosomesHighPrecision();
+        engine.LoopThroughChromosomesSingleRound();
+//        engine.LoopThroughChromosomesLeaveOneOut();
         if (!fixTrans) engine.UpdateThetas();
         errorRate = engine.UpdateErrorRate();
 

@@ -300,10 +300,10 @@ int DebugWrapper::CursorForwards(RESULT* result) {//so far only implemented for 
 
     pbwtCursorToAFend(forwardCursor, pbwtCore);
 
-    for (int i=0;i != pbwtCore->N; i++) {
-
-        UpdateTransVector(i);
-    }
+//    for (int i=0;i != pbwtCore->N; i++) {
+//
+//        UpdateTransVector(i);
+//    }
     PrintSummary();
     //update crossover rate?
     return 0;

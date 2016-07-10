@@ -105,7 +105,7 @@ protected:
     inline int GetRankFromBack(int site, int hapID) {return alphaMap[site][hapID];}
     inline int GetRankFromFwd(int site, int hapID) {return aMap[site][hapID];}
 
-    inline int GetHapState(int site, int hapID) { return haplotypeCluster[site][hapID]; }
+    inline int GetHapStateFromFwd(int site, int hapID) { return haplotypeCluster[site][hapID]; }
     inline void ResetWrapper()
 
  * */

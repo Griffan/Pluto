@@ -37,7 +37,7 @@ public:
         a=alpha=d=u=ultra=haplotypeCluster=std::vector<std::vector<int> >(N,std::vector<int>(M,0));
         c=celta=std::vector<int>(N,0);
         clusterAllele=std::vector<std::vector<uchar> >(N,std::vector<uchar>());
-        transVector.clear();
+//        transVector.clear();
     }
 };
 
