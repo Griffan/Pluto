@@ -24,7 +24,7 @@ const float T_CRITICAL_VALUE[] =
          1.97,/*200*/ 1.97,/*500*/ 1.96/*infinity*/
         };
 
-const float P_thresh = 0.5;
+float P_thresh=0.5;
 
 bool comparator(const max_pair_t &lhs, const max_pair_t &rhs) {
 
@@ -122,14 +122,14 @@ PBWTWrapper::PBWTWrapper(int nhaps, int nsnps) : prefixLength(1200),
 }
 
 
-int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
+int PBWTWrapper::CursorForwards(bool isSingleRound) {//so far only implemented for test purpose
 
 
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 0");
 
     for (int k = 0; k != pbwtCore->N; ++k) {
         //fprintf(stderr,"at site %d\n",k);
-        CursorForwardsTo(k, prefixLength);
+        CursorForwardsTo(k, prefixLength, isSingleRound);
     }
     //copy end of a to PBWT
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 1");
@@ -145,7 +145,7 @@ int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
     return 0;
 }
 
-int PBWTWrapper::CursorForwardsTo(int k, int T) {
+int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
 /*T is the length that how far you look back
  *This function must be called along the sites, no skip permitted;
  *Mask the site you want to skip at the begining if you have to.
@@ -266,7 +266,8 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
             clusterMembership.push_back(tmpMem);
         }
     }
-
+//    std::cerr<<"site:"<<k-2<<"Before merge:";
+//    HowManyChildlessState(Graph.StateNodeMat[k - 2]);
     //merge cluster based on KS test
     int merged = 0;
 #ifdef DEBUG
@@ -279,7 +280,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
     if (k >= 1) {
 
 //        LabelNoSiblingCluster(k - 1);
-        if (GetNumStates(k-1) != 1) merged = RegressionMergeAtSite(k - 1, true);//TODO:implement this function
+        if (GetNumStates(k-1) != 1 && !isSingleRound) merged = RegressionMergeAtSite(k - 1, true);//TODO:implement this function
 //        Graph.UpdateChildNodeInParentNode(k-1);
         Graph.NormalizeCurrentSiteTransitionProb(k - 2);
 
@@ -296,7 +297,9 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
 
 
     }
-
+//    std::cerr<<"site:"<<k-2<<"After merge:";
+//    int tmpNum=HowManyChildlessState(Graph.StateNodeMat[k - 2]);
+//    if(tmpNum>0) abort();
 
 
     //copy haplotypes into forwardCursor->y
@@ -1477,11 +1480,12 @@ int PBWTWrapper::MergeAtSite(int site) {
 }
 */
 int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
-//    if(dist.size()<400) return 1;
-//    if(freq1s[site]<0.1 or freq1s[site]>0.9) return 1;
+
+
+    if(recomRate[site-1]>1e-4) return 1;
     int ret(0);
     int currentNumCluster = GetNumStates(site);
-//    std::cerr<<"Enter Site:"<<site<<" has "<< currentNumCluster<<" state and List size:"<<mergePairList.size()<<std::endl;
+//    std::cerr<<"Enter Site:"<<site<<" has "<< currentNumCluster<<" state and recomRate:"<<P_thresh<<std::endl;
 
 //    unsigned long numHaps = haplotypeCluster[site].size();
 
@@ -1531,14 +1535,14 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
 
             if (GetAllele(site,stateL)!=GetAllele(site,stateR))
                 continue;
-            totalPair++;
-            if ((Graph.StateNodeMat[site][stateR]->needMergeUpdate==false and Graph.StateNodeMat[site][stateL]->needMergeUpdate==false) and !isBaseWrapper)
-            {
-//                std::cerr<<"skipped "<<site<<"\t"<<stateR<<"\t"<<stateL<<std::endl;
-                skippedPair++;
-                continue;
-            }
-
+//            totalPair++;
+//            if ((Graph.StateNodeMat[site][stateR]->needMergeUpdate==false and Graph.StateNodeMat[site][stateL]->needMergeUpdate==false) and !isBaseWrapper)
+//            {
+////                std::cerr<<"skipped "<<site<<"\t"<<stateR<<"\t"<<stateL<<std::endl;
+//                skippedPair++;
+//                continue;
+//            }
+//
             if (dist[stateL].size() <= 4) {
                 if (dist[stateR].size() <= 4) {//both rare
 //                    if (!IsEditDistanceOK(stateL, stateR, site, 100))
@@ -1635,6 +1639,8 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
         sizeR = clusterMembership[clusterB].size();
 //        fprintf(stderr,"second:(%d,%d) Dmax:%f and Thresh:%f and Pval:%f, with sample size:%d,%d \n", clusterA,clusterB,iter_pair.Dmax,thresh,iter_pair.pval,dist[clusterA].size(),dist[clusterB].size());
 //        continue;
+        if (GetAllele(site,stateL)!=GetAllele(site,stateR))
+            continue;
         if (removeIndicator[clusterA] || removeIndicator[clusterB]) continue;
         if (retainIndicator[clusterA] || retainIndicator[clusterB]) {
             if (rightCoordinateStat[clusterA].Combine(rightCoordinateStat[clusterB]).IsSignificant()) {
@@ -1803,9 +1809,10 @@ void PBWTWrapper::DoMerge(int site, int retainState, int removeState, std::vecto
 }
 
 
-int PBWTWrapper::SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampledHaps, int CopyStart2, int CopyEnd2) {
+int PBWTWrapper::SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampledHaps, int CopyStart2, int CopyEnd2, float* rate) {
 //    phased = nPhase;
 //    nSampledCopy = nCopy;
+    recomRate.assign(rate,rate+nMarkers-1);
     haplotype = new char *[M];
 //    int unphased = (nSamples - phased) / (nSampledCopy + 1);
 //    int nonCoppiedIndividuals = unphased + phased;//nSampledCopy additional copies, the original one not included

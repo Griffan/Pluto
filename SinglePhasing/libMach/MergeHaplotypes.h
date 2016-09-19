@@ -36,6 +36,7 @@ class ConsensusBuilder
       ~ConsensusBuilder();
 
       void Store(char ** newHaplotypes);
+    void StoreForSingleRound(char ** newHaplotypes, int nCopy);
 	  void Store(char ** newHaplotypes, int i);
       void Merge();
 	  void Swap(char * & array1, char * & array2);

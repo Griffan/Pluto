@@ -159,6 +159,17 @@ class StateNode
 {
 private:
     StateNode(const StateNode&);
+    StateNode() {
+        nodeIndex=0;
+        numHap=0;
+        childNodeIndex[0]= nullptr;
+        childNodeIndex[1]= nullptr;
+        numHapChild[0]=0;
+        numHapChild[1]=0;
+        allele=0;
+        ID=0;
+        needMergeUpdate=false;
+    }
 
 public:
     bool needMergeUpdate;
@@ -175,17 +186,7 @@ public:
     int* childNodeIndex[2];
     float numHapChild[2];
 
-    StateNode() {
-        nodeIndex=0;
-        numHap=0;
-        childNodeIndex[0]= nullptr;
-        childNodeIndex[1]= nullptr;
-        numHapChild[0]=0;
-        numHapChild[1]=0;
-        allele=0;
-        ID=0;
-        needMergeUpdate=false;
-    }
+
 
     StateNode(int tIndex, float tNumHap, char tAllele) {
         nodeIndex=tIndex;
@@ -222,6 +223,7 @@ public:
         numHap+=A.numHap;
         for (auto kv:A.parentNodeIndex2NumHap) {
             AddParentNode(kv.first,kv.second);
+//            fprintf(stderr,"allele 0:%x, allele 1:%x, address:%x\n",kv.second->childNodeIndex[0],kv.second->childNodeIndex[1],&(A.nodeIndex));
             if(kv.second->childNodeIndex[0]==&(A.nodeIndex))//A has 0 allele
             {
                 kv.second->childNodeIndex[0]=&(this->nodeIndex);
@@ -291,13 +293,22 @@ public:
     int nsnps;
 
     StateNodeContainer();
+    ~StateNodeContainer()
+    {
+        for (int i = 0; i <StateNodeMat.size() ; ++i) {
+            for (int j = 0; j <StateNodeMat[i].size() ; ++j) {
+                delete StateNodeMat[i][j];
+            }
+            StateNodeMat[i].clear();
+        }
+    }
     StateNodeContainer(StateNodeContainer& A)
     {
         nsnps=A.nsnps;
         StateNodeMat=A.StateNodeMat;
         tmpNodeVec=A.tmpNodeVec;
     }
-    StateNodeContainer(int nmarkers):nsnps(nmarkers),StateNodeMat(nmarkers,std::vector<StateNode*>(0,new StateNode())),StateNodeID2IndexPtr(nmarkers,std::unordered_multimap<int64_t, int*>())
+    StateNodeContainer(int nmarkers):nsnps(nmarkers),StateNodeMat(nmarkers,std::vector<StateNode*>(0,new StateNode(0,0,0))),StateNodeID2IndexPtr(nmarkers,std::unordered_multimap<int64_t, int*>())
     {
     }
     void NormalizeCurrentSiteTransitionProb(int index)
@@ -357,6 +368,7 @@ public:
 //    std::vector<bool> hasSiblings;
 
     //mergeSite function variables
+    std::vector<float> recomRate;
     std::vector<std::vector<int> > dist;
     std::priority_queue<max_pair_t,std::vector<max_pair_t>, std::function<bool(const max_pair_t&,const max_pair_t&)> >mergePairList;
 
@@ -397,13 +409,13 @@ public:
         }
         //TODO:REVERSE
         //Cannot delete haplotype because haplotype is obtained via SetHap()
-//        if(haplotype)
-//        {
+        if(haplotype)
+        {
 //            for (int i = 0; i <nSamples ; ++i) {
 //                delete [] haplotype[i];
 //            }
-//            delete [] haplotype;
-//        }
+            delete [] haplotype;
+        }
         for (int i = 0; i < Graph.StateNodeMat.size(); ++i) {
             for (int j = 0; j <Graph.StateNodeMat[i].size() ; ++j) {
                 delete Graph.StateNodeMat[i][j];
@@ -459,10 +471,10 @@ public:
     PBWTWrapper(int nhaps,int nsnps);
 
 
-    int CursorForwards();
+    int CursorForwards(bool isSingleRound);
     int CursorBackwards();
 
-    int CursorForwardsTo(int k, int T=5);
+    int CursorForwardsTo(int k, int T, bool isSingleRound);
 
 
     int CursorBackwardsTo(int siteBackword, int T=5);
@@ -495,8 +507,7 @@ public:
 
     int MoveSegment(const std::unordered_map<int,int>& mergedMembership,int site);
 
-//    int SetHaps(char **haps,char **sampledHaps, int nPhase, int nCopy);
-    int SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampledHaps, int CopyStart2, int CopyEnd2);
+    int SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampledHaps, int CopyStart2, int CopyEnd2, float* rate);
     //inline functions
     inline int GetNumStates(int k) const
     {
@@ -594,7 +605,8 @@ public:
     inline float GetPValue(int n1, int n2, double D)
     {
         if(n1>n2) std::swap(n1,n2);
-        return PvalueMatrix[n1][n2][size_t(D*1000)-1];
+        int a=(int)floor(D*1000+0.5);
+        return PvalueMatrix[n1][n2][(a<1?1:a)-1];
     }
 
 
@@ -648,9 +660,20 @@ public:
     void DoMerge(int site, int retainState, int removeState, std::vector<std::vector<int>> &dist,
                  std::vector<bool, std::allocator<bool>> &removeIndicator,
                  std::vector<bool, std::allocator<bool>> &retainIndicator, std::unordered_map<int, int> &removeMembership);
+    int HowManyChildlessState(std::vector<StateNode*> & a)
+    {
+        int sum=0;
+        for (int i = 0; i <a.size(); ++i) {
+            if(a[i]->childNodeIndex[0]== nullptr || a[i]->childNodeIndex[1]== nullptr)
+                sum++;
+        }
+        std::cerr<<sum<<" childless state out of "<<a.size()<<" total states"<<std::endl;
+        return sum;
+    }
 private:
     PBWTWrapper(const PBWTWrapper&);
     PBWTWrapper & operator=(const PBWTWrapper&);
+
 };
 
 #endif //PLUTO_PBWTWRAPPER_H

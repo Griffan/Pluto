@@ -90,6 +90,29 @@ void ConsensusBuilder::Store(char ** newHaplotypes)
 
    stored++;
    }
+void ConsensusBuilder::StoreForSingleRound(char ** newHaplotypes, int nCopy)
+{
+   if (sampledHaplotypes == 0) return;
+   int index=0;
+   for (int k = 0; k <nCopy ; ++k) {
+
+      for (int i = 0; i < haplotypes; i++) {
+         index=i*nCopy+k;
+         int byte = 0, mask = 1;
+
+         for (int j = 0; j < markers; j++) {
+            if (newHaplotypes[index][j])
+               sampledHaplotypes[k][i][byte] |= mask;
+            else
+               sampledHaplotypes[k][i][byte] &= ~mask;
+
+            mask = (mask == (1 << SEVEN)) ? (byte++, 1) : mask * 2;
+         }
+      }
+   }
+   stored=nCopy;
+
+}
 
 void ConsensusBuilder::Store(char ** newHaplotypes, int idummy)
 {

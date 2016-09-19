@@ -927,6 +927,8 @@ void LoadGenotypeFromPhasedVCF(Pedigree &ped, const String &filename, int maxPhr
         int markerindex = 0;
         VcfMarker *pMarker = new VcfMarker;
         String markerName;
+        float prevGeneticDistance=0.f;
+        float currentGeneticDistance=0.f;
         while (pVcf->iterateMarker()) {//for each marker
 
             pMarker = pVcf->getLastMarker();
@@ -941,19 +943,29 @@ void LoadGenotypeFromPhasedVCF(Pedigree &ped, const String &filename, int maxPhr
             }
             int PLidx = pMarker->asFormatKeys.Find("PL");
             /*setting error rate*/
-            int ERidx = pMarker->asInfoKeys.Find("ERATE");
-            int THidx = pMarker->asInfoKeys.Find("THETA");
-            if (ERidx != -1 && THidx != -1)// ERATE, THETA exist
-            {
-                //error_rates[markerindex] = pMarker->asInfoValues[THidx].AsDouble();
-                engine.SetErrorRate(markerindex, pMarker->asInfoValues[THidx].AsDouble());
-                if (markerindex != engine.markers - 1)
-                    engine.thetas[markerindex] = pMarker->asInfoValues[THidx].AsDouble();
+//            int ERidx = pMarker->asInfoKeys.Find("ERATE");
+//            int THidx = pMarker->asInfoKeys.Find("THETA");
+//            if (ERidx != -1 && THidx != -1)// ERATE, THETA exist
+//            {
+//                //error_rates[markerindex] = pMarker->asInfoValues[THidx].AsDouble();
+//                engine.SetErrorRate(markerindex, pMarker->asInfoValues[ERidx].AsDouble());
+//                if (markerindex != engine.markers - 1)
+//                    engine.thetas[markerindex] = pMarker->asInfoValues[THidx].AsDouble();
+//            }
+//            else
+            if(engine.geneticMapAvailable) {
+                engine.SetErrorRate(markerindex, defaultErrorRate);
+                currentGeneticDistance=engine.GDMap.InferGeneticDistance(pMarker->sChrom.c_str(), pMarker->nPos);
+                if (markerindex != 0) {//start from 2nd marker
+                    engine.thetas[markerindex-1] = engine.GDMap.CalculateRecombinationRate(prevGeneticDistance,currentGeneticDistance);
+                }
+                prevGeneticDistance=currentGeneticDistance;
             }
             else {
                 //fprintf(stderr,"No ERATE or THETA tag found in input vcf, now using command line(--errorRate and --transRate)settings:\n Error Rate:%f\tTrans Rate(Theta):%f\n",defaultErrorRate, defaultTransRate);
                 engine.SetErrorRate(markerindex, defaultErrorRate);
-                engine.thetas[markerindex] = defaultTransRate;
+                if (markerindex != engine.markers - 1)
+                    engine.thetas[markerindex] = defaultTransRate;
             }
 
             int PLGLGTflag = 0;//0 for PL, 1 for GL, 2 for GT
@@ -1097,12 +1109,13 @@ int PhasingMain(int argc, char **argv) {
     String unphasedfile, mapfile, outfile("mach1.out"), phasedfile, pidIncludeFromUnphased(""), pidIncludeFromPhased(
             ""), pidExcludeFromUnphased(""), pidExcludeFromPhased("");
     String crossFile, errorFile;
+    String GDFile;
     clock_t t;
     t = clock();
     double errorRate = 0.01;
     double transRate = 0.01;
     int seed = 123456, warmup = 0, states = 0, weightedStates = 0;
-    int burnin = 5, rounds = 10, polling = 0, samples = 0, SamplingRounds = 0;
+    int burnin = 5, rounds = 10, polling = 0, samples = 0, samplingRounds = 0;
     int maxPhred = 255;
     bool compact = false;
     bool mle = false, mledetails = false, uncompressed = false;
@@ -1111,6 +1124,7 @@ int PhasingMain(int argc, char **argv) {
     bool randomPhase = false;
     bool fixTrans = false;
 
+    bool isSingleRound = false;
     bool onlyHeterSite = false;
 
     SetupCrashHandlers();
@@ -1133,12 +1147,13 @@ int PhasingMain(int argc, char **argv) {
                     LONG_STRINGPARAMETER("excludePhasedIDs", &pidExcludeFromPhased)
                     LONG_STRINGPARAMETER("crossoverMap", &crossFile)
                     LONG_STRINGPARAMETER("errorMap", &errorFile)
+                    LONG_STRINGPARAMETER("geneticDistance", &GDFile)
                     LONG_STRINGPARAMETER("physicalMap", &mapfile)
                     LONG_PARAMETER_GROUP("Markov Sampler")
                     LONG_INTPARAMETER("seed", &seed)
                     LONG_INTPARAMETER("burnin", &burnin)
                     LONG_INTPARAMETER("rounds", &rounds)
-                    //LONG_INTPARAMETER("SamplingRounds", &SamplingRounds)
+                    LONG_INTPARAMETER("samplingRounds", &samplingRounds)
                     LONG_PARAMETER_GROUP("Haplotyper")
                     LONG_INTPARAMETER("states", &states)
                     LONG_DOUBLEPARAMETER("errorRate", &errorRate)
@@ -1177,9 +1192,9 @@ int PhasingMain(int argc, char **argv) {
     pl.Read(argc, argv);
     pl.Status();
 
-    if (OutputManager::outputDosage == false) { // hmkang
-        error("--dosage flag must be set in this implementation");
-    }
+//    if (OutputManager::outputDosage == false) { // hmkang
+//        error("--dosage flag must be set in this implementation");
+//    }
 
     // Setup random seed ...
     globalRandom.Reset(seed);
@@ -1189,7 +1204,7 @@ int PhasingMain(int argc, char **argv) {
     if(rounds<burnin) burnin=0;
 
     PBWTHaplotyper engine;//declaration of engine, also will call default constructor
-
+    engine.nSampleCopy=samplingRounds;
     engine.onlyHeterSite=onlyHeterSite;
 
     // Setup and load a list of polymorphic sites, each with two allele labels ...
@@ -1213,6 +1228,12 @@ int PhasingMain(int argc, char **argv) {
 
     /*Notice that now we adding markers as subset of phased markers*/
     // here only extracted site information only, used for site check
+    if(!GDFile.IsEmpty())
+    {
+        engine.GDMap.InputGeneticDistanceMap(std::string(GDFile.c_str()));
+        engine.geneticMapAvailable=true;
+    }
+
     LoadPolymorphicSites(phasedfile);
     LoadUnphasedPolymorphicSites(unphasedfile);
 
@@ -1295,8 +1316,15 @@ int PhasingMain(int argc, char **argv) {
             return MemoryAllocationFailure();
     }
 
-    ConsensusBuilder::EstimateMemoryInfo(rounds - burnin, ped.count * 2, ped.markerCount);
-    ConsensusBuilder consensus(rounds - burnin, ped.count * 2, ped.markerCount);
+    int ConsensusBuilderRounds=0;
+    if(rounds-burnin==1)
+    {
+        isSingleRound=true;
+        ConsensusBuilderRounds=samplingRounds;
+    }
+    else ConsensusBuilderRounds=rounds-burnin;
+    ConsensusBuilder::EstimateMemoryInfo(ConsensusBuilderRounds, (ped.count-engine.phased) * 2, ped.markerCount);
+    ConsensusBuilder consensus(ConsensusBuilderRounds, (ped.count-engine.phased) * 2, ped.markerCount);
 
     if (consensus.readyForUse == false)
         return MemoryAllocationFailure();
@@ -1360,8 +1388,11 @@ int PhasingMain(int argc, char **argv) {
     for (int i = 0; i < rounds; i++) {
         engine.SetUseRev(i%2);
 //        engine.orderedGenotypes=true;
-//        engine.LoopThroughChromosomesHighPrecision();
-        engine.LoopThroughChromosomesSingleRound();
+        if(isSingleRound)
+            engine.LoopThroughChromosomesSingleRound();
+        else
+            engine.LoopThroughChromosomesHighPrecision();
+
 //        engine.LoopThroughChromosomesLeaveOneOut();
         if (!fixTrans) engine.UpdateThetas();
         errorRate = engine.UpdateErrorRate();
@@ -1372,8 +1403,13 @@ int PhasingMain(int argc, char **argv) {
         if (i < burnin)
             continue;
 
-        if (OutputManager::outputHaplotypes)
-            consensus.Store(engine.haplotypes);
+        if (OutputManager::outputHaplotypes) {
+            if(isSingleRound)
+                consensus.StoreForSingleRound(engine.sampledHaps,engine.nSampleCopy);
+            else
+                consensus.Store(engine.haplotypes);
+        }
+
 
 	if (doses.storeDosage || doses.storeDistribution)
 		doses.Update(engine.haplotypes);

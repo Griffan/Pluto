@@ -11,10 +11,15 @@
 #include <unordered_set>
 #include "ShotgunHaplotyper.h"
 #include "../../pbwtWrapper/PBWTWrapper.h"
+#include "GeneticDistanceMap.h"
 
 class PBWTHaplotyper : public ShotgunHaplotyper{
 public:
 	bool onlyHeterSite;
+    bool geneticMapAvailable;
+
+    GeneticDistanceMap GDMap;
+
     PBWTHaplotyper(int nhaps, int nsnps);
 	PBWTHaplotyper();
 	void InitAuxillary();
@@ -38,6 +43,7 @@ public:
     virtual void ConditionOnData(float * matrix, int marker, char phred11, char phred12, char phred22);
 
     virtual void ImputeAlleles(int marker, int state1, int state2, Random *rand, int currentIndividual, char** haps);
+	virtual void ImputeAllelesRaw(int marker, int state1, int state2, Random *rand, int currentIndividual, char** haps);
     virtual void ImputeAllele(int haplotype, int marker, int state, char** haps);
     virtual void FillPath(int haplotype, int fromMarker, int toMarker, int state, char** haps);
     virtual void SampleChromosomes(Random * rand);
@@ -66,10 +72,10 @@ public:
 //		if(Wrapper->transVector[site].size()<=from) {fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);abort();}
 //		if(Wrapper->transVector[site][from].size()<=to) {fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
 //		return Wrapper->transVector[site][from][to];
-		if(Wrapper->Graph.StateNodeMat.size()<= site) {return 0;/*fprintf(stderr,"%d doesn't exist!\n",site);abort();*/}
-		if(Wrapper->Graph.StateNodeMat[site].size()<=from) {return 0;/*fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);abort();*/}
+		if(Wrapper->Graph.StateNodeMat.size()<= site) {fprintf(stderr,"site %d doesn't exist!\n",site);abort();}
+		if(Wrapper->Graph.StateNodeMat[site].size()<=from) {fprintf(stderr,"site:%d, from:%d states too large!\n",site,from);abort();}
         if(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[GetAllele(site+1,to)]== nullptr||*(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[GetAllele(site+1,to)])!=to)
-		{return 0;fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
+		{fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
 		return Wrapper->Graph.StateNodeMat[site][from]->numHapChild[GetAllele(site+1,to)];
 	}
 	inline uchar GetAllele(int site, int state)
@@ -97,7 +103,7 @@ public:
     {
         int firstState;
         int secondState;
-        float fwdValue;
+		float fwdValue;
         origin(int a,int b, float c)
         {
             firstState=a;
@@ -127,6 +133,7 @@ public:
 //        nextFwdValuePtr=tmp;
 //    }
     int ForwardAlgorithm();
+    std::vector<bool> brokenList;
     int BackwardSampling(Random *rand, int SampleIndex, char** sampledHaps);
 //    std::unordered_map<int,std::unordered_map<int,originVec> > currentFwdValue,nextFwdValue;
 //    std::unordered_map<int,std::unordered_map<int,originVec> >* currentFwdValuePtr,*nextFwdValuePtr;
@@ -151,12 +158,14 @@ public:
 
     float SumFwdValueFromOriginVec(const Source& a)
     {
-        float sum(0.);
+        float sum(0.f);
         for (auto kv:a) {
             sum+=kv.second;
         }
         return sum;
     }
+	char ** sampledHaps;
+	int nSampleCopy;
 protected:
 
     PBWTWrapper* Wrapper,*fwdWrapper,*backWrapper,*baseWrapper;
@@ -169,8 +178,8 @@ protected:
 	int tmpMarkers;
 	double max_num;
 
-	int nSampleCopy;
-	char ** sampledHaps;
+
+
 //    double * phred2prob;
 
 	bool useRev;
