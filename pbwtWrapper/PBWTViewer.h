@@ -9,19 +9,20 @@
 #include "PBWTWrapper.h"
 #include "../TestUnit/MergingEventSimulator.h"
 
-class DebugWrapper: public PBWTWrapper
+class PBWTViewer: public PBWTWrapper
 {
 
 public:
 
     int numRight;
     int numAltRight;
-    DebugWrapper(int a, int b);
-    int CursorForwards(RESULT* result);
-    int CursorForwards(Index2ID& a,ID2POP&b);
-    int CursorForwardsTo(int k, int T = 5, RESULT *result = 0);//for debugging
-    int CursorForwardsTo(int k, Index2ID &a, ID2POP &b,int T=5);
-    int MergeCluster(int site, RESULT* result);
+    std::vector<std::vector<uchar> > clusterAllele;
+    PBWTViewer(int a, int b);
+//    int CursorForwards(RESULT* result);
+//    int CursorForwards(Index2ID& a,ID2POP&b);
+//    int CursorForwardsTo(int k, int T = 5, RESULT *result = 0);//for debugging
+//    int CursorForwardsTo(int k, Index2ID &a, ID2POP &b,int T=5);
+//    int MergeCluster(int site, RESULT* result);
     int MergeCluster(int site, Index2ID &a, ID2POP &b);
     /*The below are implementations for finding maximal length of shared prefix and suffix*/
     int ConfidentOrNot(char** individual, int siteA, int siteB);

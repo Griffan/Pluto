@@ -167,6 +167,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
 
     int tmpT = k > T ? T : k;
 
+
     /*reprot haolotype cluster based on prefix, so current site not included*/
     //cluster of the previous site k-1
     for (rank = 0; rank < forwardCursor->M; ++rank) {
@@ -178,6 +179,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
             if (rank != 0) {
 //                    fprintf(stderr,"d:%d\tk-tmpT:%d\n",forwardCursor->d[rank],k-tmpT);
                 tmpNumHap = rank - i0;
+
                 allele = haplotype[GetHapIDFromFwd(k - 1, i0)][k - 1];
 
                 Graph.StateNodeMat[k - 1].push_back(new StateNode(group, tmpNumHap, allele));
@@ -223,6 +225,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
     if (i0 < forwardCursor->M) {
         if (k != 0) {
             tmpNumHap = forwardCursor->M - i0;
+
             allele = haplotype[GetHapIDFromFwd(k - 1, i0)][k - 1];
 //            if (allele != 0 and allele != 1) {
 //                fprintf(stderr, "last state marker:%d\ti0:%d\tgroup:%d\tID:%d\n", k - 1, i0, group,
@@ -245,9 +248,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
                     prevSiteStateIndex = GetHapStateFromFwd(k - 2, hapID);
                     Graph.StateNodeMat[k - 1][group]->AddParentNode(prevSiteStateIndex,
                                                                     Graph.StateNodeMat[k - 2][prevSiteStateIndex]);
-                    Graph.StateNodeMat[k - 2][prevSiteStateIndex]->AddChildNode(allele, &(Graph.StateNodeMat[k -
-                                                                                                             1][group]->nodeIndex),
-                                                                                1);
+                    Graph.StateNodeMat[k - 2][prevSiteStateIndex]->AddChildNode(allele, &(Graph.StateNodeMat[k - 1][group]->nodeIndex), 1);
                 }
             }
 
@@ -266,8 +267,9 @@ int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
             clusterMembership.push_back(tmpMem);
         }
     }
-//    std::cerr<<"site:"<<k-2<<"Before merge:";
+//    std::cerr<<"site:"<<k-2<<":\t ";
 //    HowManyChildlessState(Graph.StateNodeMat[k - 2]);
+//    HowManyChildHapCount(Graph.StateNodeMat[k - 2],k-1);
     //merge cluster based on KS test
     int merged = 0;
 #ifdef DEBUG
@@ -279,9 +281,9 @@ int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
 #endif
     if (k >= 1) {
 
-//        LabelNoSiblingCluster(k - 1);
+
         if (GetNumStates(k-1) != 1 && !isSingleRound) merged = RegressionMergeAtSite(k - 1, true);//TODO:implement this function
-//        Graph.UpdateChildNodeInParentNode(k-1);
+//        if (merged) std::cerr<<"merged at site:"<<k-1<<std::endl;
         Graph.NormalizeCurrentSiteTransitionProb(k - 2);
 
         //if(k!=0&&clusterAllele[k-1].size()!=1) test = MergeAtSiteExperiment(k-1);
@@ -373,7 +375,6 @@ int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
 //                    fprintf(stderr,"d:%d\tk-tmpT:%d\n",forwardCursor->d[rank],k-tmpT);
                     tmpNumHap = rank - i0;
                     allele = haplotype[GetHapIDFromFwd(k, i0)][k];
-
                     Graph.StateNodeMat[k].push_back(new StateNode(group, tmpNumHap, allele));
                     Graph.StateNodeMat[k][group]->nodeIndex = group;
                     dist.push_back(std::vector<int>(tmpNumHap, 0));//state->rank_occupied
@@ -1482,7 +1483,7 @@ int PBWTWrapper::MergeAtSite(int site) {
 int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
 
 
-    if(recomRate[site-1]>1e-4) return 1;
+//    if(recomRate[site-1]>1e-4) return 1;
     int ret(0);
     int currentNumCluster = GetNumStates(site);
 //    std::cerr<<"Enter Site:"<<site<<" has "<< currentNumCluster<<" state and recomRate:"<<P_thresh<<std::endl;
@@ -1577,37 +1578,26 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
             sizeL = clusterMembership[stateL].size();
             sizeR = clusterMembership[stateR].size();
 
-//            if (clusterAllele[site][j] != clusterAllele[site][k] || clusterMembership[k].size() == 0) { std::cerr<<"skip, diff allele"<<std::endl;continue;}
-//               if( !IsRecipricalLengthOK(dist[j],dist[k])){ std::cerr<<"skip, not reciprical 80%"<<std::endl; continue;}
-//                if(!IsEditDistanceOK(haplotype[clusterMembership[j].front()],haplotype[clusterMembership[k].front()],site,N)){ std::cerr<<"skip, edit distance"<<std::endl;
-//                    continue;}
-
             if (sizeL * sizeR < 10000)//exact
             {
                 EXACT = true;
-                //thresh = GetExactThresh(clusterMembership[j].size(), clusterMembership[k].size());
             }
-            else {
+            else
+            {
                 EXACT = false;
-//                thresh = 1.22 * sqrt((clusterMembership[j].size() + clusterMembership[k].size()) /
-//                                     (clusterMembership[j].size() * clusterMembership[k].size()));
             }
 
             if (CalculateDmax(pval, Dmax, dist[stateL], dist[stateR]))//return early
             {
                 goto DIST_END;
             }
-            if (EXACT) {
-//                if(sizeL <1000 && sizeR<1000)
-//                {
+
+            if (EXACT)
+            {
                 pval = GetPValue(sizeL, sizeR, Dmax);
-//                std::cerr<<"sizeL,sizeR,Dmax:"<<sizeL<<","<<sizeR<<","<<Dmax<<"\tread pval:"<<pval;
-//                }
-//                else
-//                    pval = 1. - psmirnov2x(Dmax, sizeL, sizeR);
-//                std::cerr<<"\tcal pval:"<<pval<<std::endl;
             }
-            else {
+            else
+            {
                 Ddiff = sqrt(double(sizeL + sizeR)) * Dmax;
                 pval = 1. - pkstwo_wrapper(1, &Ddiff, 1e-06);
             }
@@ -1818,6 +1808,7 @@ int PBWTWrapper::SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampled
 //    int nonCoppiedIndividuals = unphased + phased;//nSampledCopy additional copies, the original one not included
     int i=0;
     for (int j = CopyStart; i<M && j < CopyEnd; ++i,++j) {
+        //TODO:implement '0' checking
         haplotype[i] = haps[j];
     }
 

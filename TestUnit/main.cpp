@@ -346,7 +346,7 @@ int main(int argc, char ** argv) {
 
 #include <fstream>
 #include "../SinglePhasing/libVcf/libVcfVcfFile.h"
-#include "DebugWrapper.h"
+#include "PBWTViewer.h"
 using namespace libVcf;
 typedef std::unordered_map<string,string>  ID2POP;
 typedef std::unordered_map<int,string>  Index2ID;
@@ -456,9 +456,6 @@ char** readVCF(string & fileName, int & nSamples, int& nMarkers, Index2ID& mappe
     return haplotypes;
 
 }
-
-
-
 int readPed(string & fileName,ID2POP& mapper)
 {
     ifstream fin(fileName);
@@ -480,28 +477,93 @@ int readPed(string & fileName,ID2POP& mapper)
     }
     return 0;
 }
+
+/*!
+ *
+ * @param fileName
+ * @param ptr
+ * @return
+ */
+char** readMACS(const string & fileName, int& nSamples, int& nMarkers)
+{
+    ifstream fin(fileName);
+    if(!fin.is_open())
+    {
+        std::cerr<<"Cannot open file "<<fileName<<std::endl;
+    }
+    string line,tmp;
+    float coord(0.);
+    int index(0);
+    getline(fin,line);//read cmdline
+    stringstream ss(line);
+    ss>>tmp>>nSamples;
+    getline(fin,line);//read random seed
+    getline(fin,line);//read empty line
+
+    getline(fin,line);//read "//"
+
+    while(line.find("segsites",0)==std::string::npos)
+        getline(fin,line);//read tree
+    //now line contains segsites:totalpos
+    ss.clear();
+    ss.str(line);
+
+    ss>>tmp>>nMarkers;
+    ss.clear();
+    float * positions = new float[nMarkers];
+    getline(fin,line);//read positions
+    ss.str(line);
+    ss>>tmp;
+    while(ss>>coord) positions[index++] = coord;
+
+    char** hap = new char* [nSamples];
+    index = 0;
+    while(getline(fin,line))
+    {
+        hap[index] = new char [nMarkers];
+        for (int i = 0; i < nMarkers; ++i) {
+            hap[index][i] = line[i]-'0';
+        }
+        index++;
+    }
+    nSamples/=2;
+    return hap;
+}
+
+//#define READVCF 0
 int main(int argc, char ** argv) {
 
 
     cerr << "Hello, World!" << endl;
     char ** haps= nullptr;
+#ifdef READVCF
     string inputVcf="/Users/fanzhang/Downloads/PlutoTest/omni/OMNI.merged.chr20.phased_genotypes.20141111.vcf.gz";
 //    string inputVcf="/Users/fanzhang/Downloads/PlutoTest/test.OMNI.vcf.gz";
     string inputPed="/Users/fanzhang/Downloads/PlutoTest/integrated_call_samples.20130502.ALL.ped";
+#else
+    string inputMACShap="/Users/fanzhang/Downloads/macs/haplotypes.txt";
+#endif
+
     string outputMatrix="/Users/fanzhang/Downloads/PlutoTest/omni/hyun.rank.d.matrix.with.allele.debug.rear";
     string outputIndividual="/Users/fanzhang/Downloads/PlutoTest/omni/hyun.rank.d.individual";
     string outputMarker="/Users/fanzhang/Downloads/PlutoTest/omni/hyun.rank.d.marker";
+
     int nSamples(0),nMarkers(0);
+#ifdef READVCF
     Index2ID MAP1;
-    haps=readVCF(inputVcf,nSamples,nMarkers, MAP1);
+    haps=readVCF(inputVcf, nSamples, nMarkers, MAP1);
     ID2POP MAP2;
     readPed(inputPed,MAP2);
-    DebugWrapper  * Wrapper=new DebugWrapper(2*nSamples,nMarkers);
+#else
+    haps=readMACS(inputMACShap, nSamples, nMarkers);
+#endif
+
+    PBWTViewer  * Wrapper=new PBWTViewer(2*nSamples,nMarkers);
     fprintf(stderr,"finished initializing graph\n");
     Wrapper->haplotype=haps;
     Wrapper->CursorBackwards();
     fprintf(stderr,"finished backward procedure\n");
-    Wrapper->CursorForwards(MAP1,MAP2);
+    Wrapper->CursorForwards(true);
 
     ofstream fout(outputMatrix);
     if(!fout.is_open())
@@ -531,11 +593,13 @@ int main(int argc, char ** argv) {
     }
     fout.close();
 
+#ifdef  READVCF
     fout.open(outputIndividual);
     for (int i = 0; i <Wrapper->M; ++i) {
         fout<<MAP1[i/2]<<endl;
     }
     fout.close();
+#endif
 
     return 0;
 }

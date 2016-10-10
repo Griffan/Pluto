@@ -785,7 +785,7 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
 
             pMarker = pVcf->getLastMarker();
             markerName.printf("%s:%d", pMarker->sChrom.c_str(), pMarker->nPos);
-            //printf("now for marker %s:%d\t", pMarker->sChrom.c_str(), pMarker->nPos);
+//            printf("now for marker %s:%d\t", pMarker->sChrom.c_str(), pMarker->nPos);
             if (unphaseMarkerFlag.find(std::string(markerName.c_str())) != unphaseMarkerFlag.end() &&
                 unphaseMarkerFlag[std::string(markerName.c_str())] == true)
                 markerindex = unphaseMarkerUIdx[std::string(markerName.c_str())];
@@ -864,13 +864,13 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
                     if (phred11 > maxPhred) phred11 = maxPhred;
                     if (phred12 > maxPhred) phred12 = maxPhred;
                     if (phred22 > maxPhred) phred22 = maxPhred;
-
-                   // printf("phred scores are %f, %f, %f;\tphred11/12/22 %d, %d, %d\n", phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble(),phred11,phred12,phred22);
+//
+//                    printf("phred scores are %f, %f, %f;\tphred11/12/22 %d, %d, %d\n", phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble(),phred11,phred12,phred22);
 
                     engine.genotypes[personIndices[i]][genoindex] = phred11;
                     engine.genotypes[personIndices[i]][genoindex + 1] = phred12;
                     engine.genotypes[personIndices[i]][genoindex + 2] = phred22;
-                    //fprintf(stderr,"marker:%d\t%d\t%d\t%d\n",markerindex,genotypes[personIndices[i]][genoindex],genotypes[personIndices[i]][genoindex + 1],genotypes[personIndices[i]][genoindex + 2] );
+//                    fprintf(stderr,"marker:%d\t%d\t%d\t%d\n",markerindex,engine.genotypes[personIndices[i]][genoindex],engine.genotypes[personIndices[i]][genoindex + 1],engine.genotypes[personIndices[i]][genoindex + 2] );
                 }
             }
         }
@@ -1106,7 +1106,8 @@ void LoadGenotypeFromPhasedVCF(Pedigree &ped, const String &filename, int maxPhr
 }
 
 int PhasingMain(int argc, char **argv) {
-    String unphasedfile, mapfile, outfile("mach1.out"), phasedfile, pidIncludeFromUnphased(""), pidIncludeFromPhased(
+    String unphasedfile, mapfile, outfile("mach1.out"), phasedfile("Empty"), pidIncludeFromUnphased(
+            ""), pidIncludeFromPhased(
             ""), pidExcludeFromUnphased(""), pidExcludeFromPhased("");
     String crossFile, errorFile;
     String GDFile;
@@ -1115,7 +1116,7 @@ int PhasingMain(int argc, char **argv) {
     double errorRate = 0.01;
     double transRate = 0.01;
     int seed = 123456, warmup = 0, states = 0, weightedStates = 0;
-    int burnin = 5, rounds = 10, polling = 0, samples = 0, samplingRounds = 0;
+    int burnin = 5, rounds = 10, polling = 0, samples = 0, samplingRounds = 1;
     int maxPhred = 255;
     bool compact = false;
     bool mle = false, mledetails = false, uncompressed = false;
@@ -1161,7 +1162,7 @@ int PhasingMain(int argc, char **argv) {
                     LONG_INTPARAMETER("weightedStates", &weightedStates)
                     LONG_PARAMETER("compact", &compact)
                     LONG_PARAMETER("fixTrans", &fixTrans)
-                    LONG_PARAMETER("onlyHeterSite",&onlyHeterSite)
+                    LONG_PARAMETER("onlyHeterSite", &onlyHeterSite)
                     LONG_PARAMETER_GROUP("Phasing")
                     EXCLUSIVE_PARAMETER("randomPhase", &randomPhase)
                     EXCLUSIVE_PARAMETER("inputPhased", &inputPhased)
@@ -1201,11 +1202,12 @@ int PhasingMain(int argc, char **argv) {
 
     SetCrashExplanation("loading information on polymorphic sites");
 
-    if(rounds<burnin) burnin=0;
+    if (rounds < burnin) burnin = 0;
 
     PBWTHaplotyper engine;//declaration of engine, also will call default constructor
-    engine.nSampleCopy=samplingRounds;
-    engine.onlyHeterSite=onlyHeterSite;
+    engine.nSampleCopy = samplingRounds;
+    engine.onlyHeterSite = onlyHeterSite;
+    engine.geneticMapAvailable = false;
 
     // Setup and load a list of polymorphic sites, each with two allele labels ...
     Pedigree ped;
@@ -1223,19 +1225,27 @@ int PhasingMain(int argc, char **argv) {
     }
     /*now loading phased individuals*/
     // here unphasedfile is the vcf file, here vcf is used for filling up the first five column of PED file(check the PED format).
-    LoadSamples(ped, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf, engine.phased);
+    if (phasedfile != "Empty")
+        LoadSamples(ped, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf, engine.phased);
     std::cerr << "Load phased individuals:" << engine.phased << std::endl;
 
     /*Notice that now we adding markers as subset of phased markers*/
     // here only extracted site information only, used for site check
-    if(!GDFile.IsEmpty())
-    {
-        engine.GDMap.InputGeneticDistanceMap(std::string(GDFile.c_str()));
-        engine.geneticMapAvailable=true;
-    }
+//    if (!GDFile.IsEmpty()) {
+//        engine.GDMap.InputGeneticDistanceMap(std::string(GDFile.c_str()));
+//        engine.geneticMapAvailable = true;
+//    }
 
+    if (phasedfile != "Empty")
+    {
     LoadPolymorphicSites(phasedfile);
     LoadUnphasedPolymorphicSites(unphasedfile);
+    }
+    else
+    {
+        LoadPolymorphicSites(unphasedfile);
+        LoadUnphasedPolymorphicSites(unphasedfile);
+    }
 
     SetCrashExplanation("loading map information for polymorphic sites");
 
@@ -1291,7 +1301,7 @@ int PhasingMain(int argc, char **argv) {
     // Copy phased haplotypes into haplotyping engine, but we put phased haps in the end
 
     printf("Copy phased genotypes into haplotyping engine\n");
-    if (engine.readyForUse)
+    if (phasedfile!="Empty")
         LoadGenotypeFromPhasedVCF(ped, phasedfile, maxPhred, engine.phased, engine, errorRate, transRate);//this is where we copy GL into genotype arrays
 
 
@@ -1374,10 +1384,12 @@ int PhasingMain(int argc, char **argv) {
         engine.RandomSetup(NULL);
         engine.InitialSampleCopy(NULL);
     }
+//    UnphasedSamplesOutputVCF(unphasedfile, ped, doses, outfile + ".checkpoint1.vcf.gz", thetas, error_rates, engine);
     printf("Found initial haplotype set\n\n");
     //OutputManager::WriteHaplotypes(outfile, ped, engine.haplotypes);
     //return 0;
-    engine.LoadHaplotypesFromPhasedVCF(ped, phasedfile);// , pidIncludedInPhasedVcf);
+    if(phasedfile!="Empty")
+    engine.LoadHaplotypesFromPhasedVCF(ped, phasedfile);// override randomsetup for phased samples
 
     SetCrashExplanation("revving up haplotyping engine");
 
@@ -1392,7 +1404,6 @@ int PhasingMain(int argc, char **argv) {
             engine.LoopThroughChromosomesSingleRound();
         else
             engine.LoopThroughChromosomesHighPrecision();
-
 //        engine.LoopThroughChromosomesLeaveOneOut();
         if (!fixTrans) engine.UpdateThetas();
         errorRate = engine.UpdateErrorRate();

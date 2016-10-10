@@ -38,6 +38,7 @@ public:
 
 	void Transpose(int site, float * source, float * dest);
 
+	virtual void RandomSetup(Random * rand = NULL);
     virtual void ScoreLeftConditional();
 
     virtual void ConditionOnData(float * matrix, int marker, char phred11, char phred12, char phred22);

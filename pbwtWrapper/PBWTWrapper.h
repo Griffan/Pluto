@@ -670,6 +670,36 @@ public:
         std::cerr<<sum<<" childless state out of "<<a.size()<<" total states"<<std::endl;
         return sum;
     }
+    int HowManyChildHapCount(std::vector<StateNode*> & currentNodes, int childSite)
+    {
+        int sum1(0),sum2(0);
+        int index=0;
+        std::unordered_map<int,bool> bag;
+        for (int i = 0; i <currentNodes.size(); ++i) {
+            if(currentNodes[i]->childNodeIndex[0]!= nullptr )
+            {
+                index=*(currentNodes[i]->childNodeIndex[0]);
+                sum2+=currentNodes[i]->numHapChild[0];
+                if(bag.find(index) ==bag.end()) bag[index]=true;
+                else continue;
+                sum1+=Graph.StateNodeMat[childSite][index]->numHap;
+
+            }
+            if(currentNodes[i]->childNodeIndex[1]!= nullptr)
+            {
+                sum2+=currentNodes[i]->numHapChild[1];
+                index=*(currentNodes[i]->childNodeIndex[1]);
+                if(bag.find(index) ==bag.end()) bag[index]=true;
+                else continue;
+                sum1+=Graph.StateNodeMat[childSite][index]->numHap;
+
+            }
+
+        }
+        if(sum1 != sum2) exit(EXIT_FAILURE);
+//        std::cerr<<sum1<<" child haps from sum1 and  "<<sum2<<" child haps from sum2 out of "<<currentNodes.size()<<" total states"<<std::endl;
+        return sum1;
+    }
 private:
     PBWTWrapper(const PBWTWrapper&);
     PBWTWrapper & operator=(const PBWTWrapper&);

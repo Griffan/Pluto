@@ -223,6 +223,7 @@ void PBWTHaplotyper::InitialSampleCopy(Random * rand)
         rand = &globalRandom;
     CalculatePhred2Prob();
 
+    if (nSampleCopy == 0) return;
     sampledHaps = new char* [nSampleCopy*(individuals-phased)*2];
     for (int l = 0; l < nSampleCopy*(individuals-phased)*2; ++l) {
         sampledHaps[l]= new char[markers];
@@ -544,7 +545,7 @@ int PBWTHaplotyper::LoopThroughChromosomesSingleRound() {
         Wrapper = nullptr;
     }
     Wrapper = new PBWTWrapper(2*phased, markers);
-    Wrapper->SetHaps(haplotypes,2*(individuals-phased),2*individuals,nullptr,0,0, thetas);
+    Wrapper->SetHaps(haplotypes,2*(individuals-phased),2*individuals,nullptr,0,0, thetas);//only copy phased haps into pbwt
     Wrapper->CursorBackwards();//calculate backwards order of suffix
     Wrapper->CursorForwards(false);
     clock_t t1=clock();
@@ -1289,7 +1290,10 @@ int PBWTHaplotyper::InitialFwdValues()
             int allele1=GetAllele(0,i);
             int allele2=GetAllele(0,j);
             gl=GetGL(SampleIndex,0,allele1,allele2);
-            if(gl>1e-1) {
+//            fprintf(stderr,"site:%d,prev(0,0) to current(%d,%d) : allell1:%d\tallele2:%d\tgl:%g\n",
+//                    0,i,j,allele1,allele2,gl);
+            if(gl>1e-1)
+            {
                 tmpFwdValue = prior * gl;
                 if (tmpFwdValue < UNDERFLOW_MIN) {
                     tmpFwdValue = UNDERFLOW_MIN;
@@ -1319,8 +1323,51 @@ int PBWTHaplotyper::ResetFwdValues()
 
 float PBWTHaplotyper::GetGL(int individual, int marker, char allele1, char allele2)
 {
+//    std::cerr<<individual<<"\t"<<marker<<"\t"<<(int)allele1<<"\t"<<(int)allele2<<std::endl;
+
     return phred2prob[genotypes[individual][3*marker+allele1+allele2]];
 }
+
+void PBWTHaplotyper::RandomSetup(Random * rand)
+{
+    if (rand == NULL)
+        rand = &globalRandom;
+
+    CalculatePhred2Prob();
+
+    for (int j = 0; j < markers; j++)
+    {
+        int markerindex = 3*j;
+        for (int i = 0; i < individuals-phased; i++)
+        {
+
+            int posterior_11 =  genotypes[i][markerindex];
+            int posterior_12 =  genotypes[i][markerindex+1];
+            int posterior_22 =  genotypes[i][markerindex+2];
+            int min =std::min(std::min(posterior_11,posterior_12),posterior_22);//phred score
+            if (min == posterior_11)
+            {
+                haplotypes[i * 2][j] = 0;
+                haplotypes[i * 2 + 1][j] = 0;
+            }
+            else if (min== posterior_12)
+            {
+                bool bit = rand->Binary();
+
+                haplotypes[i * 2][j] = bit;
+                haplotypes[i * 2 + 1][j] = bit ^ 1;
+            }
+            else
+            {
+                haplotypes[i * 2][j] = 1;
+                haplotypes[i * 2 + 1][j] = 1;
+            }
+
+        }
+    }
+}
+
+
 
 int PBWTHaplotyper::ForwardAlgorithm()
 {
@@ -1342,10 +1389,10 @@ int PBWTHaplotyper::ForwardAlgorithm()
         totalPair=0;
         noChildPair=0;
         fwdValueSum[i]=0;
-//        std::cerr<<"site:"<<i-1<<"Before merge:";
-//        Wrapper->HowManyChildlessState(Wrapper->Graph.StateNodeMat[i-1]);
-        for(auto iter=genuienParents[i-1].begin();iter!=genuienParents[i-1].end();++iter)//i-1 states
-            for (auto iter2 = iter->second.begin(); iter2 !=iter->second.end(); ++iter2) {
+
+        for(auto iter=genuienParents[i-1].begin();iter!=genuienParents[i-1].end();++iter)//all states at site i-1, iter->first: hap1
+            for (auto iter2 = iter->second.begin(); iter2 !=iter->second.end(); ++iter2)// iter2->first:hap2; iter2->second:all the source states to current state
+            {
                 prevFwdValue=SumFwdValueFromOriginVec(iter2->second);//all the parents that lead to current child pair
                 totalPair++;
                 for ( allele1 = 0; allele1 <2 ; ++allele1) {
@@ -1355,9 +1402,9 @@ int PBWTHaplotyper::ForwardAlgorithm()
                         childNode2=GetChildNode(i-1,iter2->first,allele2);//i child of i-1 child state
                         if(childNode2==-1) continue;
                         gl = GetGL(SampleIndex, i, allele1, allele2);//i gl
-//                        fprintf(stderr,"site:%d,prev(%d,%d) to current(%d,%d) : allell1:%d\tallele2:%d\tgl:%g\n",
-//                                    i,iter->first,iter2->first,childNode1,childNode2,allele1,allele2,gl);
-                        if (gl > 1e-1)
+//                        fprintf(stderr,"site:%d,prev(%d,%d) to current(%d,%d) : allell1:%d\tallele2:%d\tedgeNumHap1:%g\tedgeNumHap2:%g\tgl:%g\n",
+//                                    i,iter->first,iter2->first,childNode1,childNode2,allele1,allele2,GetTransitionProb(i-1,iter->first,childNode1),GetTransitionProb(i-1,iter2->first,childNode2),gl);
+                        if (gl > 1e-1 )
                         {
                             fitPair++;
                             tmpFwdValue=prevFwdValue*
@@ -1382,10 +1429,13 @@ int PBWTHaplotyper::ForwardAlgorithm()
                     }
                 }
             }
-        if (fitPair == 0) {
-            brokenList[i] = true;
+        if (fitPair == 0)
+        {
+
             fprintf(stderr,"[Warning]marker %d broken! %d totalPair, %d noChildPair\n",i,totalPair,noChildPair);
-//            exit(EXIT_FAILURE);
+            exit(EXIT_FAILURE);
+            //brokenList[i] = true;
+
             UpdateStateNum(GetStateNumFrom(i));
             prevFwdValue = 1.f / (states * states);
             for (int j = 0; j < states; ++j)
@@ -1451,34 +1501,9 @@ int PBWTHaplotyper::BackwardSampling(Random *rand, int SampleIndex, char** sampl
                 }
         }
     SAMPLE_BREAK:
-    ImputeAllelesRaw(markers-1, sampledFirst, sampledSecond, rand, SampleIndex, sampledHaps);
+    ImputeAlleles(markers-1, sampledFirst, sampledSecond, rand, SampleIndex, sampledHaps);
 //    fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\toverallFwd:%g\n",markers-1,sum,choice,sampledFirst,sampledSecond,prevFwdValue,fwdValueSum[markers-1]);
     sum=0.;
-    if(brokenList[markers-1])
-    {
-        chosenOrigin.fwdValue=1;
-        choice = rand->Uniform(0, chosenOrigin.fwdValue);
-        for (auto kv:genuienParents[markers-2])//we are actually sampling i-1's states
-        {
-            for (auto kv2:kv.second)
-            {
-                float tmpFwdValue=SumFwdValueFromOriginVec(kv2.second);
-                sum+=tmpFwdValue;
-                if (sum > choice) {
-
-                    chosenOrigin.firstState = kv.first;
-                    chosenOrigin.secondState = kv2.first;
-                    chosenOrigin.fwdValue = tmpFwdValue;
-//                        break;
-                    goto END_OF_SAMPLING_LOOP1;
-                }
-            }
-        }
-        END_OF_SAMPLING_LOOP1:
-        ;
-    }
-    else
-    {
         choice=rand->Uniform(0,prevFwdValue);
         for (auto kv: genuienParents[markers-1][sampledFirst][sampledSecond])
         {
@@ -1497,7 +1522,6 @@ int PBWTHaplotyper::BackwardSampling(Random *rand, int SampleIndex, char** sampl
                 break;
             }
         }
-    }
 
 
     for (int i = markers-2; i >0; --i) {
@@ -1508,35 +1532,12 @@ int PBWTHaplotyper::BackwardSampling(Random *rand, int SampleIndex, char** sampl
         first0=chosenOrigin.firstState;
         second0=chosenOrigin.secondState;
 
-        ImputeAllelesRaw(i, first0, second0, rand, SampleIndex, sampledHaps);
+        ImputeAlleles(i, first0, second0, rand, SampleIndex, sampledHaps);
 
-
-        if(brokenList[i])
         {
-            chosenOrigin.fwdValue=1;
-            choice = rand->Uniform(0, chosenOrigin.fwdValue);
-            for (auto kv:genuienParents[i-1])//we are actually sampling i-1's states
-            {
-                for (auto kv2:kv.second)
-                {
-                    float tmpFwdValue=SumFwdValueFromOriginVec(kv2.second);
-                    sum+=tmpFwdValue;
-                    if (sum > choice) {
-
-                        chosenOrigin.firstState = kv.first;
-                        chosenOrigin.secondState = kv2.first;
-                        chosenOrigin.fwdValue = tmpFwdValue;
-//                        break;
-                        goto END_OF_SAMPLING_LOOP2;
-                    }
-                }
-            }
-            END_OF_SAMPLING_LOOP2:
-            continue;
-        }
-        else {
             if (fabs(chosenOrigin.fwdValue - UNDERFLOW_MIN) < std::numeric_limits<double>::epsilon())
                 chosenOrigin.fwdValue = SumFwdValueFromOriginVec(genuienParents[i][first0][second0]);
+
             choice = rand->Uniform(0, chosenOrigin.fwdValue);
 //        fprintf(stderr,"fwd:%g and summation:%g\n",chosenOrigin.fwdValue,SumFwdValueFromOriginVec(genuienParents[i][first0][second0]));
             if (genuienParents[i].find(first0) == genuienParents[i].end() ||
@@ -1578,7 +1579,7 @@ int PBWTHaplotyper::BackwardSampling(Random *rand, int SampleIndex, char** sampl
 //        FillPath(SampleIndex * 2 + 1, i, i0 + 1, chosenOrigin.secondState,haplotypes);
     }
 
-    ImputeAllelesRaw(0, chosenOrigin.firstState, chosenOrigin.secondState, rand, SampleIndex, sampledHaps);
+    ImputeAlleles(0, chosenOrigin.firstState, chosenOrigin.secondState, rand, SampleIndex, sampledHaps);
 }
 
 int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after swap individualToProcess to the back
