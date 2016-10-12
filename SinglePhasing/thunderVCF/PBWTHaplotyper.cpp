@@ -349,7 +349,7 @@ void PBWTHaplotyper::ConditionOnData(float *matrix, int marker, char phred11, ch
 //            nan=1;
 //        }
     }
-    if(!nan) exit(EXIT_FAILURE);
+
     matrix=source;
     for (int i = 0; i < states; i++) {
         for (int j = 0; j <= i; j++, matrix++) {
@@ -1310,6 +1310,7 @@ int PBWTHaplotyper::InitialFwdValues()
             for (auto iter3 = iter2->second.begin(); iter3 != iter2->second.end(); ++iter3) {
                 iter3->second/=fwdValueSum[0];
             }
+    return 0;
 }
 
 int PBWTHaplotyper::ResetFwdValues()
@@ -1319,6 +1320,7 @@ int PBWTHaplotyper::ResetFwdValues()
     for (int k = 0; k <markers; ++k) {
         genuienParents[k].clear();
     }
+    return 0;
 }
 
 float PBWTHaplotyper::GetGL(int individual, int marker, char allele1, char allele2)
@@ -1470,6 +1472,7 @@ int PBWTHaplotyper::ForwardAlgorithm()
 //        }
 
     }
+    return 0;
 }
 int PBWTHaplotyper::BackwardSampling(Random *rand, int SampleIndex, char** sampledHaps)
 {
@@ -1580,6 +1583,7 @@ int PBWTHaplotyper::BackwardSampling(Random *rand, int SampleIndex, char** sampl
     }
 
     ImputeAlleles(0, chosenOrigin.firstState, chosenOrigin.secondState, rand, SampleIndex, sampledHaps);
+    return 0;
 }
 
 int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after swap individualToProcess to the back

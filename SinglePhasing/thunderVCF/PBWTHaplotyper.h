@@ -142,13 +142,13 @@ public:
     struct pairhash {
     public:
         template <typename T, typename U>
-        std::size_t operator()(const std::pair<T, U> &x) const
+        long operator()(const std::pair<T, U> &x) const//Cantor pairing function:
         {
-            uint a=std::hash<T>()(x.first);
-            uint b=std::hash<U>()(x.second);
-            uint A = (uint)(a >= 0 ? 2 * a : -2 * a - 1);
-            uint B = (uint)(b >= 0 ? 2 * b : -2 * b - 1);
-            uint C = (int)((A >= B ? A * A + A + B : A + B * B) / 2);
+            unsigned long a=std::hash<T>()(x.first);
+			unsigned long b=std::hash<U>()(x.second);
+			unsigned long A = (unsigned long)(a >= 0 ? 2 * a : -2 * a - 1);
+			unsigned long B = (unsigned long)(b >= 0 ? 2 * b : -2 * b - 1);
+            long C = (long)((A >= B ? A * A + A + B : A + B * B) / 2);
             return a < 0 && b < 0 || a >= 0 && b >= 0 ? C : -C - 1;
         }
     };

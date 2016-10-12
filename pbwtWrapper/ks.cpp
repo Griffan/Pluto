@@ -395,9 +395,9 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
 //        for (auto i: wOrder) {
 //            cout << wOrder[i] << endl;
 //        }
-        int decline_cycle=0;
-        int previous_sign=0;
-        int num_switch=0;
+//        int decline_cycle=0;
+//        int previous_sign=0;
+//        int num_switch=0;
         for (int j = 0; j <wOrder.size() ; ++j) {
 //            if(j==0)
 //            {

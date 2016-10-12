@@ -10,5 +10,5 @@ file(GLOB SOURCE_FILES
 )
 add_library(Vcf ${SOURCE_FILES})
 #set_target_properties(Vcf PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/libVcf")
-
-target_include_directories(Vcf PRIVATE "../libStatGen/include")
+target_include_directories(Vcf PRIVATE ${LibStatGen_INCLUDE_DIR})
+add_dependencies(Vcf LIBSTATGEN)

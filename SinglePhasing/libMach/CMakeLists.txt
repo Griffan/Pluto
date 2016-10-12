@@ -8,5 +8,5 @@ file(GLOB SOURCE_FILES
     "*.cpp"
 )
 add_library(Mach ${SOURCE_FILES})
-#set_target_properties(Mach PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
-target_include_directories(Mach PRIVATE "../libStatGen/include")
+target_include_directories(Mach PRIVATE ${LibStatGen_INCLUDE_DIR})
+add_dependencies(Mach LIBSTATGEN)

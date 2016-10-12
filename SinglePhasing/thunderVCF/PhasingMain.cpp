@@ -812,9 +812,9 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
             StringArray phred;
             int genoindex = markerindex * 3;
 
-            int phred11;
-            int phred12;
-            int phred22;
+            long phred11;
+            long phred12;
+            long phred22;
             for (int i = 0; i < nSamples; i++)//for each individual
             {
                 if (personIndices.find(i) != personIndices.end()) {
@@ -835,8 +835,8 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
                     }
                     else//found GT
                     {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], "|\/");
-                        int geno=phred[0].AsInteger()+phred[1].AsInteger();
+                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], "|/");
+                        long geno=phred[0].AsInteger()+phred[1].AsInteger();
                         if(geno==0)
                         {
                             phred11=0;
@@ -857,7 +857,7 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
                         }
                     }
 
-                    if ((phred11 < 0) || (phred11 < 0) || (phred12 < 0)) {
+                    if ((phred11 < 0) || (phred12 < 0) || (phred22 < 0)) {
                         error("Negative PL or Positive GL observed");
                     }
 

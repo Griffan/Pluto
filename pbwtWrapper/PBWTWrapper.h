@@ -233,7 +233,7 @@ public:
                 kv.second->childNodeIndex[1]=&(this->nodeIndex);
             }
             else{
-                fprintf(stderr,"roar from StateNode operator+=!!!!\n%x and %x: %x\n",kv.second->childNodeIndex[0],kv.second->childNodeIndex[1],&(A.nodeIndex));
+                fprintf(stderr,"roar from StateNode operator+=!!!!\n%p and %p: %p\n",kv.second->childNodeIndex[0],kv.second->childNodeIndex[1],&(A.nodeIndex));
                 exit(EXIT_FAILURE);
             }
         }
@@ -255,15 +255,16 @@ public:
         return *this;
     }
 
-    void AddParentNode(int index, StateNode* parentAddress) {
+    int AddParentNode(int index, StateNode *parentAddress) {
         parentNodeIndex2NumHap[index]=parentAddress;
 //        if(parentAddress!= nullptr)
 //            SetID(index,parentAddress->ID,allele);
 //        else
 //            SetID(index,0,allele);
+        return 0;
     }
 
-    bool AddChildNode(char allele,int* index, float numHaplotype) {//should only be called once
+    int AddChildNode(char allele, int *index, float numHaplotype) {//should only be called once
 //        if(index != nullptr) fprintf(stderr,"add %d to allele %d with numHaplotype:%f\n",*index,allele,numHaplotype);
 //        else fprintf(stderr,"add nullptr to allele %d with numHaplotype:%f\n",allele,numHaplotype);
         if(childNodeIndex[allele]!=index && childNodeIndex[allele]!= nullptr)
@@ -273,6 +274,7 @@ public:
         }
         childNodeIndex[allele]=index;
         numHapChild[allele]+=numHaplotype;
+        return 0;
     }
 
     float GetTransitionProbToChildNode(char allele) {
@@ -287,10 +289,11 @@ public:
 class StateNodeContainer
 {
 public:
-    std::vector<std::unordered_multimap<int64_t, int*> > StateNodeID2IndexPtr;
-    std::vector<std::vector<StateNode*> > StateNodeMat;
-    std::vector<StateNode*> tmpNodeVec;
     int nsnps;
+    std::vector<std::vector<StateNode*> > StateNodeMat;
+    std::vector<std::unordered_multimap<int64_t, int*> > StateNodeID2IndexPtr;
+    std::vector<StateNode*> tmpNodeVec;
+
 
     StateNodeContainer();
     ~StateNodeContainer()
@@ -555,6 +558,7 @@ public:
             }
         }
         std::cerr<<"Exit CalculatePvalueMatrix() "<<std::endl;
+        return 0;
     }
 
     inline int WritePvalueMatrix()
@@ -577,6 +581,7 @@ public:
             }
         }
         fout.close();
+        return 0;
     }
 
     inline int ReadPvalueMatrix()
@@ -601,6 +606,7 @@ public:
             }
         }
         fin.close();
+        return 0;
     }
     inline float GetPValue(int n1, int n2, double D)
     {
