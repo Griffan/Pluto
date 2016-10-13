@@ -107,17 +107,6 @@ PBWTWrapper::PBWTWrapper(int nhaps, int nsnps) : prefixLength(1200),Graph(nsnps)
 
     haplotype = nullptr;
 
-//    CalculatePvalueMatrix();
-//    WritePvalueMatrix();
-//    std::cerr<<"finish pvalue write"<<std::endl;
-    ReadPvalueMatrix();
-//    exit(EXIT_FAILURE);
-
-
-//    exact_ks_test_p_val=0.05;
-    //CalculatePvalueMatrix();
-    //PrintMatrix(DvalueMatrix,"Dvalue:");
-    //cerr<<"Inside PBWTWrapper M:"<<M<<endl;
 }
 
 

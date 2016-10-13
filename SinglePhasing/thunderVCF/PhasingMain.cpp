@@ -1106,9 +1106,11 @@ void LoadGenotypeFromPhasedVCF(Pedigree &ped, const String &filename, int maxPhr
 }
 
 int PhasingMain(int argc, char **argv) {
+
+
     String unphasedfile, mapfile, outfile("mach1.out"), phasedfile("Empty"), pidIncludeFromUnphased(
             ""), pidIncludeFromPhased(
-            ""), pidExcludeFromUnphased(""), pidExcludeFromPhased("");
+            ""), pidExcludeFromUnphased(""), pidExcludeFromPhased(""), pMatrix("");
     String crossFile, errorFile;
     String GDFile;
     clock_t t;
@@ -1181,6 +1183,7 @@ int PhasingMain(int argc, char **argv) {
                     LONG_PARAMETER_GROUP("Interim Output")
                     LONG_INTPARAMETER("sampleInterval", &samples)
                     LONG_INTPARAMETER("interimInterval", &polling)
+                    LONG_STRINGPARAMETER("pMatrix", &pMatrix)
     END_LONG_PARAMETERS();
 
     pl.Add(new LongParameters("Available Options", longParameters));
@@ -1200,6 +1203,8 @@ int PhasingMain(int argc, char **argv) {
     // Setup random seed ...
     globalRandom.Reset(seed);
 
+
+
     SetCrashExplanation("loading information on polymorphic sites");
 
     if (rounds < burnin) burnin = 0;
@@ -1208,6 +1213,18 @@ int PhasingMain(int argc, char **argv) {
     engine.nSampleCopy = samplingRounds;
     engine.onlyHeterSite = onlyHeterSite;
     engine.geneticMapAvailable = false;
+
+    //read pMatrix
+    //    CalculatePvalueMatrix();
+//    WritePvalueMatrix();
+//    std::cerr<<"finish pvalue write"<<std::endl;
+    if(pMatrix.IsEmpty()) {
+        std::cerr<<"parameter --pMatrix [PATH] required!"<<std::endl;
+        exit(EXIT_FAILURE);
+    }
+    engine.ReadPvalueMatrix(std::string(pMatrix.c_str()));
+//    exit(EXIT_FAILURE);
+
 
     // Setup and load a list of polymorphic sites, each with two allele labels ...
     Pedigree ped;

@@ -167,6 +167,88 @@ public:
     }
 	char ** sampledHaps;
 	int nSampleCopy;
+
+
+
+    //    //KS D value related
+#include "GzipFileType.h"
+    float *** PvalueMatrix;//10k X 10k
+    inline int CalculatePvalueMatrix()
+    {
+        std::cerr<<"Enter CalculatePvalueMatrix() "<<std::endl;
+        PvalueMatrix=new float ** [101];
+        for (int i = 1; i <=100; ++i) {
+            PvalueMatrix[i]=new float* [(int)floor(10000.0/i)+1];
+            std::cerr<<"Calculating "<<i<<" thousand"<<std::endl;
+            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
+                PvalueMatrix[i][j]=new float [1000];
+
+                for(int D=1000;D>0;D--)
+                {
+                    PvalueMatrix[i][j][D-1]=1.-psmirnov2x(double(D)/1000.0, i, j);
+//                    std::cerr<<i<<"\t"<<j<<"\t"<<D<<"\t"<<PvalueMatrix[i][j][size_t(D*1000)-1]<<std::endl;
+                }
+            }
+        }
+        std::cerr<<"Exit CalculatePvalueMatrix() "<<std::endl;
+        return 0;
+    }
+
+    inline int WritePvalueMatrix(std::string fileName)
+    {
+        //std::fstream fout("/Users/fanzhang/Downloads/PlutoTest/PvalueMatrix",std::ios_base::binary|std::ios_base::out);
+        GzipFileType fout(fileName.c_str(),'r');
+        if(!fout.isOpen())
+        {
+            std::cerr<<"open file /Users/fanzhang/Downloads/PlutoTest/PvalueMatrix failed!"<<std::endl;
+            exit(EXIT_FAILURE);
+        }
+        for (int i = 1; i <=100 ; ++i) {
+            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
+
+                for(int D=1000;D>0;D--)
+                {
+                    fout.write((char*)&(PvalueMatrix[i][j][D-1]),sizeof(float));
+//                    std::cerr<<"write:"<<i<<"\t"<<j<<"\t"<<D<<"\t"<<PvalueMatrix[i][j][size_t(D*1000)-1]<<std::endl;
+
+                }
+            }
+        }
+        fout.close();
+        return 0;
+    }
+
+    inline int ReadPvalueMatrix(std::string fileName)
+    {
+        //std::fstream fin("/Users/fanzhang/Downloads/PlutoTest/PvalueMatrix",std::ios_base::binary|std::ios_base::in);
+        GzipFileType fin(fileName.c_str(),'r');
+        if(!fin.isOpen())
+        {
+            std::cerr<<"open file "<<fileName<<" failed!"<<std::endl;
+            exit(EXIT_FAILURE);
+        }
+        PvalueMatrix=new float ** [101];
+        for (int i = 1; i <=100 ; ++i) {
+            PvalueMatrix[i]=new float* [(int)floor(10000.0/i)+1];
+            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
+                PvalueMatrix[i][j]=new float [1000];
+                for(int D=1000;D>0;D--)
+                {
+                    fin.read((char*)&(PvalueMatrix[i][j][D-1]),sizeof(float));
+//                    std::cerr<<"read:"<<i<<"\t"<<j<<"\t"<<D<<"\t"<<PvalueMatrix[i][j][size_t(D*1000)-1]<<std::endl;
+
+                }
+            }
+        }
+        fin.close();
+        return 0;
+    }
+    inline float GetPValue(int n1, int n2, double D)
+    {
+        if(n1>n2) std::swap(n1,n2);
+        int a=(int)floor(D*1000+0.5);
+        return PvalueMatrix[n1][n2][(a<1?1:a)-1];
+    }
 protected:
 
     PBWTWrapper* Wrapper,*fwdWrapper,*backWrapper,*baseWrapper;

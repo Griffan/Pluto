@@ -10,9 +10,10 @@ file(GLOB SOURCE_FILES
 
 add_library(thunderVCF ${SOURCE_FILES})
 add_dependencies(thunderVCF LIBSTATGEN)
-target_link_libraries(thunderVCF Mach Vcf  PBWTWrapper  z ${LibStatGen_LIB_DIR}/libStatGen.a)
+target_link_libraries(thunderVCF Mach Vcf  PBWTWrapper  z ${LIBSTATGEN_LIB_DIR}/libStatGen.a)
 
 target_include_directories(thunderVCF PRIVATE "../libStatGen/include/")
 target_include_directories(thunderVCF PRIVATE "../libMach/")
 target_include_directories(thunderVCF PRIVATE "../libVcf/")
 target_include_directories(thunderVCF PRIVATE "../../pbwtWrapper/")
+target_include_directories(thunderVCF PRIVATE ${LIBRMATH_INCLUDE_DIR})

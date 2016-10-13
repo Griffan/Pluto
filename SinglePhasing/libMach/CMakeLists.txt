@@ -8,5 +8,5 @@ file(GLOB SOURCE_FILES
     "*.cpp"
 )
 add_library(Mach ${SOURCE_FILES})
-target_include_directories(Mach PRIVATE ${LibStatGen_INCLUDE_DIR})
+target_include_directories(Mach PRIVATE ${LIBSTATGEN_INCLUDE_DIR})
 add_dependencies(Mach LIBSTATGEN)

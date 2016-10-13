@@ -6,3 +6,5 @@ SinglePhasing/libStatGen
 Debug
 Release
 build
+pbwtWrapper/libRmath
+pbwtWrapper/build
