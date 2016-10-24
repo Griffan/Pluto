@@ -1227,7 +1227,7 @@ int PhasingMain(int argc, char **argv) {
         engine.ReadPvalueMatrix(std::string(PMatrix.c_str()));
     else if(!calPMatrix.IsEmpty()) {
         engine.CalculatePvalueMatrix();
-        engine.WritePvalueMatrix(std::string(PMatrix.c_str()));
+        engine.WritePvalueMatrix(std::string(calPMatrix.c_str()));
         std::cerr<<"Pvalue Matrix calculated, next time you can specify parameter --PvalueMatrix [PATH] to skip calculation stage!"<<std::endl;
     }
 
