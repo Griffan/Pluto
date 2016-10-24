@@ -12,6 +12,7 @@
 #include "ShotgunHaplotyper.h"
 #include "../../pbwtWrapper/PBWTWrapper.h"
 #include "GeneticDistanceMap.h"
+#include "GzipFileType.h"
 
 class PBWTHaplotyper : public ShotgunHaplotyper{
 public:
@@ -169,9 +170,8 @@ public:
 	int nSampleCopy;
 
 
+    //KS D value related
 
-    //    //KS D value related
-#include "GzipFileType.h"
     float *** PvalueMatrix;//10k X 10k
     inline int CalculatePvalueMatrix()
     {
@@ -197,7 +197,7 @@ public:
     inline int WritePvalueMatrix(std::string fileName)
     {
         //std::fstream fout("/Users/fanzhang/Downloads/PlutoTest/PvalueMatrix",std::ios_base::binary|std::ios_base::out);
-        GzipFileType fout(fileName.c_str(),'r');
+        GzipFileType fout(fileName.c_str(),"r");
         if(!fout.isOpen())
         {
             std::cerr<<"open file /Users/fanzhang/Downloads/PlutoTest/PvalueMatrix failed!"<<std::endl;
@@ -221,7 +221,7 @@ public:
     inline int ReadPvalueMatrix(std::string fileName)
     {
         //std::fstream fin("/Users/fanzhang/Downloads/PlutoTest/PvalueMatrix",std::ios_base::binary|std::ios_base::in);
-        GzipFileType fin(fileName.c_str(),'r');
+        GzipFileType fin(fileName.c_str(),"r");
         if(!fin.isOpen())
         {
             std::cerr<<"open file "<<fileName<<" failed!"<<std::endl;
@@ -243,11 +243,17 @@ public:
         fin.close();
         return 0;
     }
-    inline float GetPValue(int n1, int n2, double D)
+
+    inline int DestroyPvalueMatrix()
     {
-        if(n1>n2) std::swap(n1,n2);
-        int a=(int)floor(D*1000+0.5);
-        return PvalueMatrix[n1][n2][(a<1?1:a)-1];
+        //KS table
+        for (int i = 1; i <=100; ++i) {
+            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
+                delete [] PvalueMatrix[i][j];
+            }
+            delete [] PvalueMatrix[i];
+        }
+        delete [] PvalueMatrix;
     }
 protected:
 

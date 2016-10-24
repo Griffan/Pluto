@@ -1223,6 +1223,8 @@ int PhasingMain(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     engine.ReadPvalueMatrix(std::string(pMatrix.c_str()));
+//    engine.CalculatePvalueMatrix();
+//    engine.WritePvalueMatrix(std::string(pMatrix.c_str()));
 //    exit(EXIT_FAILURE);
 
 

@@ -8,7 +8,6 @@
 #include "iostream"
 #include "pbwt/pbwt.h"
 #include <fstream>
-#include "math.h"
 #include <functional>
 
 const float T_CRITICAL_VALUE[] =
@@ -80,7 +79,7 @@ bool comparator(const max_pair_t &lhs, const max_pair_t &rhs) {
     return lhs.pval < rhs.pval;
 }
 
-PBWTWrapper::PBWTWrapper(int nhaps, int nsnps) : prefixLength(1200),Graph(nsnps),
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float *** t_PvalueMatrix) : prefixLength(1200),Graph(nsnps),
                                                  a(nsnps, std::vector<int>(nhaps, 0)), alpha(a), aMap(a),alphaMap(a),
         /*alphaMap(nsnps,std::unordered_map<int,int>()),
         aMap(nsnps,std::unordered_map<int,int>()),*/
@@ -97,6 +96,7 @@ PBWTWrapper::PBWTWrapper(int nhaps, int nsnps) : prefixLength(1200),Graph(nsnps)
     nMarkers = nsnps;
     N = nsnps;
     M = nhaps;//last two haps are slots for current individual need to be phased
+    PvalueMatrix=t_PvalueMatrix;
     //cerr<<"Inside PBWTWrapper M:"<<M<<endl;
     pbwtCore = pbwtCreate(nhaps, nsnps);
     //pbwtCore->CompressedAllele = arrayCreate(4096 * 32, uchar);
@@ -185,7 +185,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
                     if (k >= 2) {
                         prevSiteStateIndex = GetHapStateFromFwd(k - 2, hapID);
                         Graph.StateNodeMat[k - 1][group]->AddParentNode(prevSiteStateIndex, Graph.StateNodeMat[k - 2][prevSiteStateIndex]);//site k-1
-                        Graph.StateNodeMat[k - 2][prevSiteStateIndex]->AddChildNode(allele, &(Graph.StateNodeMat[k - 1][group]->nodeIndex), 1);
+                        Graph.StateNodeMat[k - 2][prevSiteStateIndex]->AddChildNode(allele, &(Graph.StateNodeMat[k - 1][group]->nodeIndex), hapID <= M ? 1.f : 1e-6f);
                     }
                 }
 
@@ -236,7 +236,8 @@ int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
                     prevSiteStateIndex = GetHapStateFromFwd(k - 2, hapID);
                     Graph.StateNodeMat[k - 1][group]->AddParentNode(prevSiteStateIndex,
                                                                     Graph.StateNodeMat[k - 2][prevSiteStateIndex]);
-                    Graph.StateNodeMat[k - 2][prevSiteStateIndex]->AddChildNode(allele, &(Graph.StateNodeMat[k - 1][group]->nodeIndex), 1);
+                    Graph.StateNodeMat[k - 2][prevSiteStateIndex]->AddChildNode(allele, &(Graph.StateNodeMat[k - 1][group]->nodeIndex),
+                                                                                hapID <= M ? 1.f : 1e-6f);
                 }
             }
 
@@ -378,7 +379,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
                                                                         Graph.StateNodeMat[k - 1][prevSiteStateIndex]);
                             Graph.StateNodeMat[k - 1][prevSiteStateIndex]->AddChildNode(allele,
                                                                                         &(Graph.StateNodeMat[k][group]->nodeIndex),
-                                                                                        1);
+                                                                                        hapID <= M ? 1.f : 1e-6f);
                         }
                     }
                     Graph.StateNodeMat[k][group]->SetID(prevSiteStateIndex,Graph.StateNodeMat[k - 1][prevSiteStateIndex]->ID);
@@ -413,7 +414,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
                                                                 Graph.StateNodeMat[k - 1][prevSiteStateIndex]);
                     Graph.StateNodeMat[k - 1][prevSiteStateIndex]->AddChildNode(allele,
                                                                                 &(Graph.StateNodeMat[k][group]->nodeIndex),
-                                                                                1);
+                                                                                hapID <= M ? 1.f : 1e-6f);
                 }
             }
             Graph.StateNodeMat[k][group]->SetID(prevSiteStateIndex,Graph.StateNodeMat[k - 1][prevSiteStateIndex]->ID);
@@ -1166,7 +1167,6 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
 //
             if (dist[stateL].size() <= 4) {
                 if (dist[stateR].size() <= 4) {//both rare
-//                    if (!IsEditDistanceOK(stateL, stateR, site, 100))
                     continue;
                 }
                 else//j rare, k not

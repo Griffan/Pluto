@@ -343,6 +343,14 @@ public:
     int nSamples;
     int nMarkers;
 
+    float *** PvalueMatrix;//10k X 10k
+    inline float GetPValue(int n1, int n2, double D)
+    {
+        if(n1>n2) std::swap(n1,n2);
+        int a=(int)floor(D*1000+0.5);
+        return PvalueMatrix[n1][n2][(a<1?1:a)-1];
+    }
+
     int prefixLength;
 
     StateNodeContainer Graph;
@@ -426,15 +434,6 @@ public:
             Graph.StateNodeMat[i].clear();
         }
 
-        //KS table
-        for (int i = 1; i <=100; ++i) {
-            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
-                delete [] PvalueMatrix[i][j];
-            }
-            delete [] PvalueMatrix[i];
-        }
-        delete [] PvalueMatrix;
-
     }
 
     void ResetWrapper()
@@ -470,8 +469,8 @@ public:
 //        clusterAllele=std::vector<std::vector<uchar> >(N,std::vector<uchar>());
     }
 
-    PBWTWrapper(const char ** haps, int nhaps, int nsnps);
-    PBWTWrapper(int nhaps,int nsnps);
+//    PBWTWrapper(const char ** haps, int nhaps, int nsnps);
+    PBWTWrapper(int nhaps,int nsnps, float *** _PvalueMatrix);
 
 
     int CursorForwards(bool isSingleRound);

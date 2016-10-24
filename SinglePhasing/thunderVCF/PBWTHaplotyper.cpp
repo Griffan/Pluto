@@ -70,6 +70,7 @@ PBWTHaplotyper::~PBWTHaplotyper() {
     if(fwdWrapper != nullptr)
         delete fwdWrapper;
 	ReleaseMemoryBlock();
+    DestroyPvalueMatrix();
 }
 
 //memory management
@@ -441,31 +442,10 @@ void PBWTHaplotyper::PrepareRefSetPBWTWrapper()
         delete Wrapper;
         Wrapper = nullptr;
     }
-    Wrapper = new PBWTWrapper(2*phased, markers);
+    Wrapper = new PBWTWrapper(2*phased, markers, PvalueMatrix);
     Wrapper->SetHaps(haplotypes,2*(individuals-phased),2*individuals, nullptr,0,0, thetas);
     Wrapper->CursorBackwards();//calculate backwards order of suffix
     Wrapper->CursorForwards(false);
-}
-void PBWTHaplotyper::PrepareRefSetPBWTWrapperLeaveOneOut()
-{
-    if(fwdWrapper!= nullptr) {
-        delete fwdWrapper;
-        fwdWrapper = nullptr;
-    }
-    fwdWrapper = new PBWTWrapper(2*individuals, markers);
-    fwdWrapper->SetHaps(haplotypes,0,2*individuals, nullptr,0,0, thetas);
-    fwdWrapper->CursorBackwards();//calculate backwards order of suffix
-    fwdWrapper->CursorForwards(false);
-    ReverseInput();
-    if(backWrapper!= nullptr) {
-        delete backWrapper;
-        backWrapper = nullptr;
-    }
-    backWrapper = new PBWTWrapper(2*individuals, markers);
-    backWrapper->SetHaps(haplotypes,0,2*individuals, nullptr,0,0, thetas);
-    backWrapper->CursorBackwards();//calculate backwards order of suffix
-    backWrapper->CursorForwards(false);
-    ReverseInput();
 }
 int PBWTHaplotyper::LoopThroughChromosomesHighPrecision() {
 
@@ -477,7 +457,7 @@ int PBWTHaplotyper::LoopThroughChromosomesHighPrecision() {
         delete Wrapper;
         Wrapper = nullptr;
     }
-    Wrapper = new PBWTWrapper(2*individuals+(individuals-phased)*nSampleCopy*2, markers);
+    Wrapper = new PBWTWrapper(2*individuals+(individuals-phased)*nSampleCopy*2, markers, PvalueMatrix);
     Wrapper->SetHaps(haplotypes,0,2*individuals,sampledHaps,0,(individuals-phased)*nSampleCopy*2, thetas);
     Wrapper->CursorBackwards();//calculate backwards order of suffix
     Wrapper->CursorForwards(false);
@@ -544,7 +524,7 @@ int PBWTHaplotyper::LoopThroughChromosomesSingleRound() {
         delete Wrapper;
         Wrapper = nullptr;
     }
-    Wrapper = new PBWTWrapper(2*phased, markers);
+    Wrapper = new PBWTWrapper(2*phased, markers, PvalueMatrix);
     Wrapper->SetHaps(haplotypes,2*(individuals-phased),2*individuals,nullptr,0,0, thetas);//only copy phased haps into pbwt
     Wrapper->CursorBackwards();//calculate backwards order of suffix
     Wrapper->CursorForwards(false);
@@ -598,81 +578,6 @@ int PBWTHaplotyper::LoopThroughChromosomesSingleRound() {
     if(useRev) ReverseInput();
     return 0;
 }
-
-int PBWTHaplotyper::LoopThroughChromosomesLeaveOneOut() {
-
-    ResetCrossovers();
-
-    if(useRev)
-    {
-        ReverseInput();
-        baseWrapper=backWrapper;
-    }
-    else
-    {
-        baseWrapper=fwdWrapper;
-    }
-
-    for (int i = individuals - 1; i >= 0; i--) {
-
-        if (i < individuals - phased) {
-            indexBeingSampled=i;
-            SwapIndividuals(i, individuals - 1);
-            clock_t t=clock();
-
-            Wrapper = new PBWTWrapper(2*(individuals-1+nSampleCopy*(individuals-phased-1)), markers);
-            Wrapper->SetHaps(haplotypes,0,2*(individuals-1),sampledHaps,0,2*nSampleCopy*(individuals-phased-1), thetas);
-//            PBWTWrapper* tmpWrapper = new PBWTWrapper(2*individuals, markers);
-//            tmpWrapper->SetHaps(haplotypes,0,2*individuals, nullptr,0,0);
-            Wrapper->CursorBackwards();//calculate backwards order of suffix
-            Wrapper->FastCursorForwards(*baseWrapper);
-            clock_t t1=clock();
-            printf("build model time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
-
-#ifdef DEBUG
-            {
-                Wrapper->PrintHap(tmpHaps, Wrapper->a[0]);
-
-                // Wrapper->PrintHap(tmpHaps,Wrapper->a[6]);
-                Wrapper->PrintHap(tmpHaps, Wrapper->a[Wrapper->N - 1]);
-                // Wrapper->PrintMatrix(Wrapper->a,"a array matrix");
-                Wrapper->PrintMatrix(Wrapper->d, "d array");
-                //Wrapper->PrintVector(Wrapper->a[Wrapper->N-7],"last a array");
-            }
-#endif
-
-            fprintf(stderr, "phasing individual %d...\n", i);
-//            ScoreLeftConditional();
-            ForwardAlgorithm();
-            t=clock();
-            printf("forward algorithm time:%.2f sec\n", (float) (t-t1) / CLOCKS_PER_SEC);
-
-//            SampleChromosomes(&globalRandom);
-            BackwardSampling(&globalRandom,individuals-1,haplotypes);
-
-            for (int j = 0; j <nSampleCopy; ++j) {//n copy per individual
-                BackwardSampling(&globalRandom,j+(individuals-phased-1)*nSampleCopy,sampledHaps);
-            }
-            t1=clock();
-            printf("sampling time:%.2f sec\n", (float) (t1-t) / CLOCKS_PER_SEC);
-
-#ifdef _DEBUG
-            if (!SanityCheck())
-               {
-               printf("\nProblems above occurred haplotyping individual %d\n\n", i);
-               Print();
-               }
-#endif
-            SwapIndividuals(i, individuals - 1);
-            ResetFwdValues();
-            delete Wrapper;
-            Wrapper = nullptr;
-        }
-    }
-    if(useRev) ReverseInput();
-    return 0;
-}
-
 
 int PBWTHaplotyper::LoopThroughChromosomesViaPBWTWithHeterOnly() {
 
@@ -1406,7 +1311,7 @@ int PBWTHaplotyper::ForwardAlgorithm()
                         gl = GetGL(SampleIndex, i, allele1, allele2);//i gl
 //                        fprintf(stderr,"site:%d,prev(%d,%d) to current(%d,%d) : allell1:%d\tallele2:%d\tedgeNumHap1:%g\tedgeNumHap2:%g\tgl:%g\n",
 //                                    i,iter->first,iter2->first,childNode1,childNode2,allele1,allele2,GetTransitionProb(i-1,iter->first,childNode1),GetTransitionProb(i-1,iter2->first,childNode2),gl);
-                        if (gl > 1e-1 )
+                        if (gl > 1e-1 or i < 10)
                         {
                             fitPair++;
                             tmpFwdValue=prevFwdValue*
@@ -1646,7 +1551,7 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
         fprintf(stderr,"found 0 markers available...abort!\n");
         abort();
     }
-    Wrapper = new PBWTWrapper(2*individuals+(individuals-phased)*nSampleCopy*2, tmpMarkers);
+    Wrapper = new PBWTWrapper(2*individuals+(individuals-phased)*nSampleCopy*2, tmpMarkers, PvalueMatrix);
 
     return 0;
 }

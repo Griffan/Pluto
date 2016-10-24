@@ -5,6 +5,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wall -O3 -std=c++11 -Wno-char-subscrip
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
 #SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 #SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
+
+add_definitions(-D__ZLIB_AVAILABLE__)
+
 find_library(LIBRMATH NAMES libRmath Rmath)
 if(NOT LIBRMATH)
     include(ExternalProject)
@@ -25,8 +28,8 @@ if(NOT LIBRMATH)
             )
 endif()
 
-set(LIBRMATH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/pbwtWrapper/libRmath/Rmath/)
-set(LIBRMATH_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/pbwtWrapper/libRmath/)
+set(LIBRMATH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/pbwtWrapper/libRmath/Rmath)
+set(LIBRMATH_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/pbwtWrapper/libRmath)
 
 
 
@@ -50,8 +53,8 @@ if(NOT LIBSTATGEN)
 
 
 endif()
-set(LIBSTATGEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen/include/)
-set(LIBSTATGEN_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen/)
+set(LIBSTATGEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen/include)
+set(LIBSTATGEN_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen)
 
 message(STATUS "LIBRMATH_INCLUDE_DIR: " ${LIBRMATH_INCLUDE_DIR})
 message(STATUS "LIBSTATGEN_INCLUDE_DIR: " ${LIBSTATGEN_INCLUDE_DIR})
