@@ -9,7 +9,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wall -O3 -std=c++11 -Wno-char-subscrip
 add_definitions(-D__ZLIB_AVAILABLE__)
 
 find_library(LIBRMATH NAMES libRmath Rmath)
-if(NOT LIBRMATH)
+find_path(LIBRMATH_INCLUDE NAMES libRmath Rmath)
+if(NOT LIBRMATH OR NOT LIBRMATH_INCLUDE)
     include(ExternalProject)
     ExternalProject_Add(LIBRMATH
             PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/build
@@ -26,10 +27,19 @@ if(NOT LIBRMATH)
             BUILD_COMMAND make
             INSTALL_COMMAND ""
             )
+
+    set(LIBRMATH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/pbwtWrapper/libRmath/Rmath)
+    set(LIBRMATH_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/pbwtWrapper/libRmath)
+else()
+    message(STATUS "libRmath found: " ${LIBRMATH})
+    message(STATUS "libRmath_include found: " ${LIBRMATH_INCLUDE})
+    get_filename_component(LIBRMATH_INCLUDE_PARENT_DIR ${LIBRMATH_INCLUDE} DIRECTORY)
+    set(LIBRMATH_INCLUDE_DIR ${LIBRMATH_INCLUDE_PARENT_DIR})
+    get_filename_component(LIBRMATH_PARENT_DIR ${LIBRMATH} DIRECTORY)
+    set(LIBRMATH_LIB_DIR ${LIBRMATH_PARENT_DIR})
 endif()
 
-set(LIBRMATH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/pbwtWrapper/libRmath/Rmath)
-set(LIBRMATH_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/pbwtWrapper/libRmath)
+
 
 
 
@@ -50,11 +60,17 @@ if(NOT LIBSTATGEN)
             BUILD_COMMAND make opt
             INSTALL_COMMAND ""
             )
+    set(LIBSTATGEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen/include)
+    set(LIBSTATGEN_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen)
+else()
+    message(STATUS "libStatGen found: " ${LIBSTATGEN})
 
-
+    get_filename_component(LIBSTATGEN_INCLUDE_PARENT_DIR ${LIBSTATGEN} DIRECTORY)
+    set(LIBRMATH_INCLUDE_DIR ${LIBRMATH_INCLUDE_PARENT_DIR}/include)
+    get_filename_component(LIBSTATGEN_PARENT_DIR ${LIBSTATGEN} DIRECTORY)
+    set(LIBRMATH_LIB_DIR ${LIBSTATGEN_PARENT_DIR})
 endif()
-set(LIBSTATGEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen/include)
-set(LIBSTATGEN_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen)
+
 
 message(STATUS "LIBRMATH_INCLUDE_DIR: " ${LIBRMATH_INCLUDE_DIR})
 message(STATUS "LIBSTATGEN_INCLUDE_DIR: " ${LIBSTATGEN_INCLUDE_DIR})

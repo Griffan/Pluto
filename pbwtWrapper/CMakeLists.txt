@@ -4,13 +4,13 @@ project(PBWTWrapper)
 
 
 add_subdirectory(pbwt)
+
 set(SOURCE_FILES PBWTWrapper.cpp ks.cpp)
 
 add_library(PBWTWrapper ${SOURCE_FILES})
+add_dependencies(PBWTWrapper LIBRMATH)
 target_link_libraries(PBWTWrapper pbwt)
 target_include_directories(PBWTWrapper PRIVATE ${LIBRMATH_INCLUDE_DIR})
-add_dependencies(PBWTWrapper LIBRMATH)
-#add_library(PBWTViewer PBWTViewer.cpp PBWTViewer.h ks.cpp )
-#target_link_libraries(PBWTViewer PBWTWrapper pbwt ${CMAKE_CURRENT_SOURCE_DIR}/../Debug/libRmath.a)
+
 
 
