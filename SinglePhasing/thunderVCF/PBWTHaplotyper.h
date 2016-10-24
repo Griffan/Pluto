@@ -225,6 +225,7 @@ public:
         if(!fin.isOpen())
         {
             std::cerr<<"open file "<<fileName<<" failed!"<<std::endl;
+            std::cerr<<"please specify --calPvalueMatrix to obtain PvalueMatrix file!"<<std::endl;
             exit(EXIT_FAILURE);
         }
         PvalueMatrix=new float ** [101];

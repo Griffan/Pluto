@@ -1110,7 +1110,7 @@ int PhasingMain(int argc, char **argv) {
 
     String unphasedfile, mapfile, outfile("mach1.out"), phasedfile("Empty"), pidIncludeFromUnphased(
             ""), pidIncludeFromPhased(
-            ""), pidExcludeFromUnphased(""), pidExcludeFromPhased(""), pMatrix("");
+            ""), pidExcludeFromUnphased(""), pidExcludeFromPhased(""), PMatrix(""),calPMatrix("");
     String crossFile, errorFile;
     String GDFile;
     clock_t t;
@@ -1183,7 +1183,8 @@ int PhasingMain(int argc, char **argv) {
                     LONG_PARAMETER_GROUP("Interim Output")
                     LONG_INTPARAMETER("sampleInterval", &samples)
                     LONG_INTPARAMETER("interimInterval", &polling)
-                    LONG_STRINGPARAMETER("pMatrix", &pMatrix)
+                    LONG_STRINGPARAMETER("PvalueMatrix", &PMatrix)
+                    LONG_STRINGPARAMETER("calPvalueMatrix", &calPMatrix)
     END_LONG_PARAMETERS();
 
     pl.Add(new LongParameters("Available Options", longParameters));
@@ -1218,14 +1219,17 @@ int PhasingMain(int argc, char **argv) {
     //    CalculatePvalueMatrix();
 //    WritePvalueMatrix();
 //    std::cerr<<"finish pvalue write"<<std::endl;
-    if(pMatrix.IsEmpty()) {
-        std::cerr<<"parameter --pMatrix [PATH] required!"<<std::endl;
+    if(PMatrix.IsEmpty() and calPMatrix.IsEmpty()) {
+        std::cerr<<"parameter --PvalueMatrix [PATH] or --calPvalueMatrix [PATH] required!"<<std::endl;
         exit(EXIT_FAILURE);
     }
-    engine.ReadPvalueMatrix(std::string(pMatrix.c_str()));
-//    engine.CalculatePvalueMatrix();
-//    engine.WritePvalueMatrix(std::string(pMatrix.c_str()));
-//    exit(EXIT_FAILURE);
+    else if(!PMatrix.IsEmpty())
+        engine.ReadPvalueMatrix(std::string(PMatrix.c_str()));
+    else if(!calPMatrix.IsEmpty()) {
+        engine.CalculatePvalueMatrix();
+        engine.WritePvalueMatrix(std::string(PMatrix.c_str()));
+        std::cerr<<"Pvalue Matrix calculated, next time you can specify parameter --PvalueMatrix [PATH] to skip calculation stage!"<<std::endl;
+    }
 
 
     // Setup and load a list of polymorphic sites, each with two allele labels ...
