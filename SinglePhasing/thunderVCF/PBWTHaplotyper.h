@@ -145,10 +145,10 @@ public:
         template <typename T, typename U>
         long operator()(const std::pair<T, U> &x) const//Cantor pairing function:
         {
-            unsigned long a=std::hash<T>()(x.first);
-			unsigned long b=std::hash<U>()(x.second);
-			unsigned long A = (unsigned long)(a >= 0 ? 2 * a : -2 * a - 1);
-			unsigned long B = (unsigned long)(b >= 0 ? 2 * b : -2 * b - 1);
+            int a=std::hash<T>()(x.first);
+			int b=std::hash<U>()(x.second);
+			unsigned long A = (unsigned long)(a >= 0 ? 2 * (long)a : -2 * (long)a - 1);
+			unsigned long B = (unsigned long)(b >= 0 ? 2 * (long)b : -2 * (long)b - 1);
             long C = (long)((A >= B ? A * A + A + B : A + B * B) / 2);
             return a < 0 && b < 0 || a >= 0 && b >= 0 ? C : -C - 1;
         }
@@ -200,7 +200,7 @@ public:
         GzipFileType fout(fileName.c_str(),"r");
         if(!fout.isOpen())
         {
-            std::cerr<<"open file /Users/fanzhang/Downloads/PlutoTest/PvalueMatrix failed!"<<std::endl;
+            std::cerr<<"open file "<<fileName<<" failed!"<<std::endl;
             exit(EXIT_FAILURE);
         }
         for (int i = 1; i <=100 ; ++i) {
@@ -245,7 +245,7 @@ public:
         return 0;
     }
 
-    inline int DestroyPvalueMatrix()
+    inline void DestroyPvalueMatrix()
     {
         //KS table
         for (int i = 1; i <=100; ++i) {
