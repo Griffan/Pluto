@@ -197,7 +197,7 @@ public:
     inline int WritePvalueMatrix(std::string fileName)
     {
         //std::fstream fout("/Users/fanzhang/Downloads/PlutoTest/PvalueMatrix",std::ios_base::binary|std::ios_base::out);
-        GzipFileType fout(fileName.c_str(),"r");
+        GzipFileType fout(fileName.c_str(),"w");
         if(!fout.isOpen())
         {
             std::cerr<<"open file "<<fileName<<" failed!"<<std::endl;
