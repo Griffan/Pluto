@@ -8,8 +8,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wall -O3 -std=c++11 -Wno-char-subscrip
 
 add_definitions(-D__ZLIB_AVAILABLE__)
 
-find_library(LIBRMATH NAMES libRmath Rmath)
-find_path(LIBRMATH_INCLUDE NAMES libRmath Rmath)
+#find_library(LIBRMATH NAMES libRmath Rmath)
+#find_path(LIBRMATH_INCLUDE NAMES Rmath.h)
 if(NOT LIBRMATH OR NOT LIBRMATH_INCLUDE)
     include(ExternalProject)
     ExternalProject_Add(LIBRMATH
@@ -33,8 +33,7 @@ if(NOT LIBRMATH OR NOT LIBRMATH_INCLUDE)
 else()
     message(STATUS "libRmath found: " ${LIBRMATH})
     message(STATUS "libRmath_include found: " ${LIBRMATH_INCLUDE})
-    get_filename_component(LIBRMATH_INCLUDE_PARENT_DIR ${LIBRMATH_INCLUDE} DIRECTORY)
-    set(LIBRMATH_INCLUDE_DIR ${LIBRMATH_INCLUDE_PARENT_DIR})
+    set(LIBRMATH_INCLUDE_DIR ${LIBRMATH_INCLUDE})
     get_filename_component(LIBRMATH_PARENT_DIR ${LIBRMATH} DIRECTORY)
     set(LIBRMATH_LIB_DIR ${LIBRMATH_PARENT_DIR})
 endif()
