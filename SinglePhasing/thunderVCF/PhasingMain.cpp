@@ -158,7 +158,7 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
         VcfMarker *pMarker= nullptr;// = new VcfMarker;
 
         char sDose[255];
-        double freq, maf, avgPost, rsq;
+        double freq(0.), maf(0.), avgPost(0.), rsq(0.);
         String markerName;
         for (int m = 0; pVcf->iterateMarker(); ++m) {
             //fprintf(stderr,"m=%d\n",m);
@@ -173,54 +173,54 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                 ////fprintf(stderr,"foo1\n");
                 int nInfo = pMarker->asInfoKeys.Find("LDAF");
                 if (nInfo < 0) {
-                    sprintf(sDose, "%.4lf", 1. - freq);
+                    sprintf(sDose, "%.4f", 1. - freq);
                     pMarker->asInfoKeys.Add("LDAF");
                     pMarker->asInfoValues.Add(sDose);
                 }
                 else
-                    pMarker->asInfoValues[nInfo].printf("%.4lf", 1. - freq);
+                    pMarker->asInfoValues[nInfo].printf("%.4f", 1. - freq);
 
                 nInfo = pMarker->asInfoKeys.Find("AVGPOST");
                 if (nInfo < 0) {
-                    sprintf(sDose, "%.4lf", avgPost);
+                    sprintf(sDose, "%.4f", avgPost);
                     pMarker->asInfoKeys.Add("AVGPOST");
                     pMarker->asInfoValues.Add(sDose);
                 }
                 else
-                    pMarker->asInfoValues[nInfo].printf("%.4lf", avgPost);
+                    pMarker->asInfoValues[nInfo].printf("%.4f", avgPost);
 
                 nInfo = pMarker->asInfoKeys.Find("RSQ");
                 if (nInfo < 0) {
-                    sprintf(sDose, "%.4lf", rsq);
+                    sprintf(sDose, "%.4f", rsq);
                     pMarker->asInfoKeys.Add("RSQ");
                     pMarker->asInfoValues.Add(sDose);
                 }
                 else
-                    pMarker->asInfoValues[nInfo].printf("%.4lf", rsq);
+                    pMarker->asInfoValues[nInfo].printf("%.4f", rsq);
 
                 nInfo = pMarker->asInfoKeys.Find("ERATE");
                 if (nInfo < 0) {
-                    sprintf(sDose, "%.4lf", nerror_rates ? error_rates[m] / nerror_rates : 0);
+                    sprintf(sDose, "%.4f", nerror_rates ? error_rates[m] / nerror_rates : 0);
                     pMarker->asInfoKeys.Add("ERATE");
                     pMarker->asInfoValues.Add(sDose);
                 }
                 else
-                    pMarker->asInfoValues[nInfo].printf("%.4lf", nerror_rates ? error_rates[m] / nerror_rates : 0);
+                    pMarker->asInfoValues[nInfo].printf("%.4f", nerror_rates ? error_rates[m] / nerror_rates : 0);
 
                 nInfo = pMarker->asInfoKeys.Find("THETA");
                 if (nInfo < 0) {
                     if (m != engine.markers - 1)
-                        sprintf(sDose, "%.4lf", nthetas ? thetas[m] / nthetas : 0);
+                        sprintf(sDose, "%.4f", nthetas ? thetas[m] / nthetas : 0);
                     else
-                        sprintf(sDose, "%.4lf", nthetas ? thetas[m - 1] / nthetas : 0);
+                        sprintf(sDose, "%.4f", nthetas ? thetas[m - 1] / nthetas : 0);
                     pMarker->asInfoKeys.Add("THETA");
                     pMarker->asInfoValues.Add(sDose);
                 }
                 else {
                     if (m != engine.markers - 1)
-                        pMarker->asInfoValues[nInfo].printf("%.4lf", nthetas ? thetas[m] / nthetas : 0);
+                        pMarker->asInfoValues[nInfo].printf("%.4f", nthetas ? thetas[m] / nthetas : 0);
                     else
-                        pMarker->asInfoValues[nInfo].printf("%.4lf", nthetas ? thetas[m - 1] / nthetas : 0);
+                        pMarker->asInfoValues[nInfo].printf("%.4f", nthetas ? thetas[m - 1] / nthetas : 0);
                 }
 
                 int GTidx = pMarker->asFormatKeys.Find("GT");
@@ -259,12 +259,12 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                     }
                     if(!engine.GetOnlyGT()) {
                         // add DS values
-                        sprintf(sDose, "%.3lf", 2 - doses.GetDosage(pi, m));
+                        sprintf(sDose, "%.3f", 2 - doses.GetDosage(pi, m));
                         if (DSidx < 0) {
                             pMarker->asSampleValues.InsertAt(nFormats * i + DSidx, sDose);
                         }
                         else
-                            pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3lf", sDose);
+                            pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3f", sDose);
                     }
                 }
             }
@@ -360,7 +360,7 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
         // read VCF lines
         VcfMarker *pMarker = nullptr;// = new VcfMarker;
         char sDose[255];
-        double freq, maf, avgPost, rsq;
+        double freq(0.), maf(0.), avgPost(0.), rsq(0.);
         String markerName;
 
         for (int m = 0; pVcf->iterateMarker(); ++m) {
@@ -372,60 +372,60 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
 
                 doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
 
-                //fprintf(stderr,"foo1,marker:%d\n",m);
-                //if(pMarker->nPos == 60479) continue;
+//                fprintf(stderr,"foo1,marker:%d\t%f\t%f\t%f\t%f\n",m,freq,maf,avgPost,rsq);
+
                 int nInfo = pMarker->asInfoKeys.Find("LDAF");
                 if (nInfo < 0) {
-                    sprintf(sDose, "%.4lf", 1. - freq);
+                    sprintf(sDose, "%.4f", 1. - freq);
                     pMarker->asInfoKeys.Add("LDAF");
                     pMarker->asInfoValues.Add(sDose);
                 }
                 else {
                     //fprintf(stderr,"pMarker->asInfoValues[nInfo]:%s\tfreq:%f\n",pMarker->asInfoValues[nInfo].c_str(),freq);
-                    pMarker->asInfoValues[nInfo].printf("%.4lf", 1. - freq);
+                    pMarker->asInfoValues[nInfo].printf("%.4f", 1. - freq);
                 }
 
                 nInfo = pMarker->asInfoKeys.Find("AVGPOST");
                 if (nInfo < 0) {
-                    sprintf(sDose, "%.4lf", avgPost);
+                    sprintf(sDose, "%.4f", avgPost);
                     pMarker->asInfoKeys.Add("AVGPOST");
                     pMarker->asInfoValues.Add(sDose);
                 }
                 else
-                    pMarker->asInfoValues[nInfo].printf("%.4lf", avgPost);
+                    pMarker->asInfoValues[nInfo].printf("%.4f", avgPost);
 
                 nInfo = pMarker->asInfoKeys.Find("RSQ");
                 if (nInfo < 0) {
-                    sprintf(sDose, "%.4lf", rsq);
+                    sprintf(sDose, "%.4f", rsq);
                     pMarker->asInfoKeys.Add("RSQ");
                     pMarker->asInfoValues.Add(sDose);
                 }
                 else
-                    pMarker->asInfoValues[nInfo].printf("%.4lf", rsq);
+                    pMarker->asInfoValues[nInfo].printf("%.4f", rsq);
 
                 nInfo = pMarker->asInfoKeys.Find("ERATE");
                 if (nInfo < 0) {
-                    sprintf(sDose, "%.4lf", nerror_rates ? error_rates[m] / nerror_rates : 0);
+                    sprintf(sDose, "%.4f", nerror_rates ? error_rates[m] / nerror_rates : 0);
                     pMarker->asInfoKeys.Add("ERATE");
                     pMarker->asInfoValues.Add(sDose);
                 }
                 else
-                    pMarker->asInfoValues[nInfo].printf("%.4lf", nerror_rates ? error_rates[m] / nerror_rates : 0);
+                    pMarker->asInfoValues[nInfo].printf("%.4f", nerror_rates ? error_rates[m] / nerror_rates : 0);
 
                 nInfo = pMarker->asInfoKeys.Find("THETA");
                 if (nInfo < 0) {
                     if (m != engine.markers - 1)
-                        sprintf(sDose, "%.4lf", nthetas ? thetas[m] / nthetas : 0);
+                        sprintf(sDose, "%.4f", nthetas ? thetas[m] / nthetas : 0);
                     else
-                        sprintf(sDose, "%.4lf", nthetas ? thetas[m - 1] / nthetas : 0);
+                        sprintf(sDose, "%.4f", nthetas ? thetas[m - 1] / nthetas : 0);
                     pMarker->asInfoKeys.Add("THETA");
                     pMarker->asInfoValues.Add(sDose);
                 }
                 else {
                     if (m != engine.markers - 1)
-                        pMarker->asInfoValues[nInfo].printf("%.4lf", nthetas ? thetas[m] / nthetas : 0);
+                        pMarker->asInfoValues[nInfo].printf("%.4f", nthetas ? thetas[m] / nthetas : 0);
                     else
-                        pMarker->asInfoValues[nInfo].printf("%.4lf", nthetas ? thetas[m - 1] / nthetas : 0);
+                        pMarker->asInfoValues[nInfo].printf("%.4f", nthetas ? thetas[m - 1] / nthetas : 0);
                 }
 
                 int GTidx = pMarker->asFormatKeys.Find("GT");
@@ -464,14 +464,14 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
                     }
                     if(!engine.GetOnlyGT()) {
 //                    // add DS values
-                        sprintf(sDose, "%.3lf", 2 - doses.GetDosage(pi, m));
+                        sprintf(sDose, "%.3f", 2 - doses.GetDosage(pi, m));
                         if (DSidx < 0) {
                             // fprintf(stderr,"cant find DS filed\n");
                             pMarker->asSampleValues.InsertAt(nFormats * i + DSidx, sDose);
                         }
                         else {
                             //fprintf(stderr,"pMarker->asSampleValues.size:%s nFormtas:%d\tDSidx:%d\tsDose:%s\n",pMarker->asSampleValues[nFormats * i + DSidx].c_str(),nFormats,DSidx,sDose);
-                            pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3lf", sDose);
+                            pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3f", sDose);
                         }
                     }
                 }

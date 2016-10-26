@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(Pluto)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wall -O3 -std=c++11 -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wall -g -O3 -std=c++11 -Wextra")
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
 #SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 #SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
