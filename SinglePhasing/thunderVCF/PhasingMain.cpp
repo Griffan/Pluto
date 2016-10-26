@@ -155,7 +155,7 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
         pVcf->printVCFHeaderSubset(outVCF, outputSubset); // print header file
 
         // read VCF lines
-        VcfMarker *pMarker = new VcfMarker;
+        VcfMarker *pMarker= nullptr;// = new VcfMarker;
 
         char sDose[255];
         double freq, maf, avgPost, rsq;
@@ -245,7 +245,7 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
 
                 //fprintf(stderr,"nFormats=%d\tGTidx=%d\tDSidx=%d\n",nFormats,GTidx,DSidx);
 
-                for (int i = 0; i < vcf2ped.size(); ++i) {
+                for (int i = 0; i < (int)vcf2ped.size(); ++i) {
                     int pi = vcf2ped[i];
                     // modify GT values;
                     //fprintf(stderr,"i=%d, pi=%d, GTidx = %d, nFormats = %d, asSampleValues.Length() = %d, haplotypes = %x\n",i,pi,GTidx,nFormats,pMarker->asSampleValues.Length(), haplotypes);
@@ -358,7 +358,7 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
         }
         pVcf->printVCFHeaderSubset(outVCF, outputSubset); // print header file
         // read VCF lines
-        VcfMarker *pMarker = new VcfMarker;
+        VcfMarker *pMarker = nullptr;// = new VcfMarker;
         char sDose[255];
         double freq, maf, avgPost, rsq;
         String markerName;
@@ -450,7 +450,7 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
 
 //                fprintf(stderr,"nFormats=%d\tGTidx=%d\tDSidx=%d\n",nFormats,GTidx,DSidx);
 
-                for (int i = 0; i < vcf2ped.size(); ++i) {
+                for (int i = 0; i < (int)vcf2ped.size(); ++i) {
                     int pi = vcf2ped[i];
                     // modify GT values;
                     //fprintf(stderr,"i=%d, tok=%d, pi=%d, GTidx = %d, nFormats = %d, asSampleValues.Length() = %d, haplotypes = %x\n",i, tok,pi,GTidx,nFormats,pMarker->asSampleValues.Length(), engine.haplotypes);

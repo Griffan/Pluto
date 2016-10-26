@@ -74,8 +74,8 @@ public:
 //		if(Wrapper->transVector[site].size()<=from) {fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);abort();}
 //		if(Wrapper->transVector[site][from].size()<=to) {fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
 //		return Wrapper->transVector[site][from][to];
-		if(Wrapper->Graph.StateNodeMat.size()<= site) {fprintf(stderr,"site %d doesn't exist!\n",site);abort();}
-		if(Wrapper->Graph.StateNodeMat[site].size()<=from) {fprintf(stderr,"site:%d, from:%d states too large!\n",site,from);abort();}
+		if((int)Wrapper->Graph.StateNodeMat.size()<= site) {fprintf(stderr,"site %d doesn't exist!\n",site);abort();}
+		if((int)Wrapper->Graph.StateNodeMat[site].size()<=from) {fprintf(stderr,"site:%d, from:%d states too large!\n",site,from);abort();}
         if(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[GetAllele(site+1,to)]== nullptr||*(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[GetAllele(site+1,to)])!=to)
 		{fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
 		return Wrapper->Graph.StateNodeMat[site][from]->numHapChild[GetAllele(site+1,to)];
@@ -119,12 +119,12 @@ public:
     float* fwdValueSum;
     int InitialFwdValues();
     int ResetFwdValues();
-    float GetGL(int individual, int marker, char allele1, char allele2);
+    double GetGL(int individual, int marker, char allele1, char allele2);
     int GetChildNode(int site, int stateIndex, char allele)
     {
-        if(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[allele]== nullptr)
+        if(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[(size_t)allele]== nullptr)
             return -1;
-        else return *(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[allele]);
+        else return *(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[(size_t)allele]);
     }
 //    int SwitchFwdValuePtr()
 //    {

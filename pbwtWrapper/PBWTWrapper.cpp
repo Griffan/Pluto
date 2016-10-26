@@ -342,7 +342,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T, bool isSingleRound) {
     forwardCursor->d[forwardCursor->M] = k + 2; /* sentinels */
     a[k].assign(forwardCursor->a, forwardCursor->a + forwardCursor->M);
 
-    for (int j = 0; j < a[k].size(); ++j) {
+    for (int j = 0; j < (int)a[k].size(); ++j) {
         aMap[k][a[k][j]] = j;
     }
     d[k].assign(forwardCursor->d, forwardCursor->d + forwardCursor->M);
@@ -659,7 +659,7 @@ int PBWTWrapper::FastCursorForwardsTo(int k, int T, const PBWTWrapper& baseWrapp
     forwardCursor->d[forwardCursor->M] = k + 2; /* sentinels */
     a[k].assign(forwardCursor->a, forwardCursor->a + forwardCursor->M);
 
-    for (int j = 0; j < a[k].size(); ++j) {
+    for (int j = 0; j < (int)a[k].size(); ++j) {
         aMap[k][a[k][j]] = j;
     }
     d[k].assign(forwardCursor->d, forwardCursor->d + forwardCursor->M);
@@ -829,7 +829,7 @@ int PBWTWrapper::CursorBackwardsTo(int siteBackword, int T) {
     reverseCursor->d[reverseCursor->M] = siteBackword + 2; /* sentinels */
     alpha[siteForward].assign(reverseCursor->a, reverseCursor->a + reverseCursor->M);
     celta[siteForward] = u;
-    for (int j = 0; j < alpha[siteForward].size(); ++j) {
+    for (int j = 0; j < (int)alpha[siteForward].size(); ++j) {
         alphaMap[siteForward][alpha[siteForward][j]] = j;
     }
     bkDistance[siteForward].assign(tmpD1, tmpD1 + reverseCursor->M);
@@ -854,8 +854,9 @@ int PBWTWrapper::CopyHap(int k, PbwtCursor *Cursor) {//this function has the sam
 
 void PBWTWrapper::MergeSortedArrayToA(std::vector<int> &a, std::vector<int> &b) {
     int indexA(0), indexB(0), indexTotal(0);
-    std::vector<int> mergedDist(a.size() + b.size());
-    while (indexA < a.size() && indexB < b.size()) {
+    int sizeA(a.size()),sizeB(b.size());
+    std::vector<int> mergedDist(sizeA + sizeB);
+    while (indexA <sizeA && indexB <sizeB) {
         if (a[indexA] < b[indexB]) {
             mergedDist[indexTotal++] = a[indexA];
             indexA++;
@@ -867,11 +868,11 @@ void PBWTWrapper::MergeSortedArrayToA(std::vector<int> &a, std::vector<int> &b) 
         }
 
     }
-    while (indexA < a.size()) {
+    while (indexA < sizeA) {
         mergedDist[indexTotal++] = a[indexA];
         indexA++;
     }
-    while (indexB < b.size()) {
+    while (indexB < sizeB) {
         mergedDist[indexTotal++] = b[indexB];
         indexB++;
     }
@@ -883,8 +884,8 @@ bool PBWTWrapper::IsRecipricalLengthOK(std::vector<int> &a, std::vector<int> &b)
     int cnt = 0;
     if (a.front() < b.front()) {
         if (a.back() < b.back()) {
-            for (int i = 0; i < b.size(); ++i) {
-                if (b[i] < a.back()) cnt++;
+            for (auto& value: b) {
+                if (value < a.back()) cnt++;
                 else break;
             }
             return cnt / size > 0.8;
@@ -896,8 +897,8 @@ bool PBWTWrapper::IsRecipricalLengthOK(std::vector<int> &a, std::vector<int> &b)
         if (a.back() < b.back())
             return true;
         else {
-            for (int i = 0; i < a.size(); ++i) {
-                if (a[i] < b.back()) cnt++;
+            for (auto & value:a) {
+                if (value < b.back()) cnt++;
                 else break;
             }
             return cnt / size > 0.8;
@@ -913,7 +914,8 @@ bool PBWTWrapper::IsEditDistanceOK(int stateA, int stateB, int index, int error_
     int lower, upper;
     int backRankA, backRankB;
     int numTruth(0);
-    for (int i = 0; i < dist[stateB].size(); ++i) {
+    const int sizeB=(int)dist[stateB].size();
+    for (int i = 0; i < sizeB; ++i) {
         backRankB = dist[stateB][i];
         auto lowerRankA = std::lower_bound(dist[stateA].begin(), dist[stateA].end(), backRankB);
         if (lowerRankA == dist[stateA].end()) lower = backRankB + 1;
@@ -937,7 +939,7 @@ bool PBWTWrapper::IsEditDistanceOK(int stateA, int stateB, int index, int error_
         }
         if (lower == backRankB || upper == backRankB) numTruth++;
     }
-    if (numTruth == dist[stateB].size()) return true;
+    if (numTruth == sizeB) return true;
     return false;
 }
 
@@ -949,7 +951,8 @@ bool PBWTWrapper::IsInSameBackCluster(int stateA, int stateB, int site, int erro
     int hapIDa,hapIDb;
     int backRankA, backRankB;
     int numTruth(0);
-    for (int i = 0; i < dist[stateB].size(); ++i) {
+    int sizeB=(int)dist[stateB].size();
+    for (int i = 0; i < sizeB; ++i) {
         backRankB = dist[stateB][i];
         auto lowerRankA = std::lower_bound(dist[stateA].begin(), dist[stateA].end(), backRankB);
         if (lowerRankA == dist[stateA].end()) lower = backRankB + 1;
@@ -983,31 +986,32 @@ bool PBWTWrapper::IsInSameBackCluster(int stateA, int stateB, int site, int erro
             }
         }
     }
-    if (numTruth == dist[stateB].size()) return true;
+    if (numTruth == sizeB) return true;
     return false;
 
 }
 
 int PBWTWrapper::CalculateDmax(double &pval, double &Dmax, std::vector<int> &j, std::vector<int> &k) {
-    double thresh = 1.44 * 1.22 * sqrt(1. / j.size() + 1. / k.size());
+    int sizeJ(j.size()),sizeK(k.size());
+    double thresh = 1.44 * 1.22 * sqrt(1. / sizeJ + 1. / sizeK);
     //assume dist has sorted ranks
     double Ddiff = 0;
     pval = 0;
     Dmax = 0;
     int indexA(0), indexB(0);
-    while (indexA < j.size() && indexB < k.size()) {
+    while (indexA < sizeJ && indexB < sizeK) {
         if (j[indexA] < k[indexB]) {
             indexA++;
-            Ddiff += 1. / j.size();
+            Ddiff += 1. / sizeJ;
         }
         else {
             indexB++;
-            Ddiff -= 1. / k.size();
+            Ddiff -= 1. / sizeK;
         }
         if (fabs(Ddiff) > Dmax) {
             Dmax = fabs(Ddiff);
-            if (j.size() * k.size() < 10000) {
-                if (GetPValue(j.size(), k.size(), Dmax) < P_thresh) return 1;
+            if (sizeJ * sizeK < 10000) {
+                if (GetPValue(sizeJ, sizeK, Dmax) < P_thresh) return 1;
             }
             else {
                 if (Dmax > thresh)
@@ -1015,13 +1019,13 @@ int PBWTWrapper::CalculateDmax(double &pval, double &Dmax, std::vector<int> &j, 
             }
         }
     }
-    while (indexA < j.size()) {
+    while (indexA < sizeJ) {
         indexA++;
-        Ddiff += 1. / j.size();
+        Ddiff += 1. / sizeJ;
         if (fabs(Ddiff) > Dmax) {
             Dmax = fabs(Ddiff);
-            if (j.size() * k.size() < 10000) {
-                if (GetPValue(j.size(), k.size(), Dmax) < P_thresh) return 1;
+            if (sizeJ * sizeK < 10000) {
+                if (GetPValue(sizeJ, sizeK, Dmax) < P_thresh) return 1;
             }
             else {
                 if (Dmax > thresh)
@@ -1029,13 +1033,13 @@ int PBWTWrapper::CalculateDmax(double &pval, double &Dmax, std::vector<int> &j, 
             }
         }
     }
-    while (indexB < k.size()) {
+    while (indexB <sizeK) {
         indexB++;
-        Ddiff -= 1. / k.size();
+        Ddiff -= 1. / sizeK;
         if (fabs(Ddiff) > Dmax) {
             Dmax = fabs(Ddiff);
-            if (j.size() * k.size() < 10000) {
-                if (GetPValue(j.size(), k.size(), Dmax) < P_thresh) return 1;
+            if (sizeJ * sizeK < 10000) {
+                if (GetPValue(sizeJ, sizeK, Dmax) < P_thresh) return 1;
             }
             else {
                 if (Dmax > thresh)
@@ -1054,7 +1058,8 @@ int PBWTWrapper::CalculateDmaxBeta(double &pval, double &Dmax, std::vector<int> 
     Dmax = 0;
     double nx(0), ny(0), alpha(0.5), beta(0.5), pA(0), pB(0);
     int indexA(0), indexB(0);
-    while (indexA < j.size() && indexB < k.size()) {
+    int sizeJ(j.size()), sizeK(k.size());
+    while (indexA < sizeJ && indexB < sizeK) {
         if (j[indexA] < k[indexB]) {
             indexA++;
             nx++;
@@ -1063,9 +1068,9 @@ int PBWTWrapper::CalculateDmaxBeta(double &pval, double &Dmax, std::vector<int> 
             indexB++;
             ny++;
         }
-        pA = (nx + alpha) / (j.size() + alpha + beta);
-        pB = (ny + alpha) / (k.size() + alpha + beta);
-        Ddiff = (pA - pB) * (pA - pB) / (pA * (1 - pA) / j.size() + pB * (1 - pB) / k.size());
+        pA = (nx + alpha) / (sizeJ + alpha + beta);
+        pB = (ny + alpha) / (sizeK + alpha + beta);
+        Ddiff = (pA - pB) * (pA - pB) / (pA * (1 - pA) / sizeJ + pB * (1 - pB) /sizeK);
         if (Ddiff > Dmax) Dmax = Ddiff;
         if (Dmax >= thresh) {
             Dmax = sqrt(Dmax);
@@ -1074,11 +1079,11 @@ int PBWTWrapper::CalculateDmaxBeta(double &pval, double &Dmax, std::vector<int> 
         }
 
     }
-    while (indexA < j.size()) {
+    while (indexA < sizeJ) {
         indexA++;
         nx++;
-        pA = (nx + alpha) / (j.size() + alpha + beta);
-        Ddiff = (pA - pB) * (pA - pB) / (pA * (1 - pA) / j.size() + pB * (1 - pB) / k.size());
+        pA = (nx + alpha) / (sizeJ + alpha + beta);
+        Ddiff = (pA - pB) * (pA - pB) / (pA * (1 - pA) / sizeJ + pB * (1 - pB) / sizeK);
         if (Ddiff > Dmax) Dmax = Ddiff;
         if (Dmax >= thresh) {
             Dmax = sqrt(Dmax);
@@ -1086,11 +1091,11 @@ int PBWTWrapper::CalculateDmaxBeta(double &pval, double &Dmax, std::vector<int> 
             return 1;
         }
     }
-    while (indexB < k.size()) {
+    while (indexB < sizeK) {
         indexB++;
         ny++;
-        pB = (ny + alpha) / (k.size() + alpha + beta);
-        Ddiff = (pA - pB) * (pA - pB) / (pA * (1 - pA) / j.size() + pB * (1 - pB) / k.size());
+        pB = (ny + alpha) / (sizeK + alpha + beta);
+        Ddiff = (pA - pB) * (pA - pB) / (pA * (1 - pA) / sizeJ + pB * (1 - pB) / sizeK);
         if (Ddiff > Dmax) Dmax = Ddiff;
         if (Dmax >= thresh) {
             Dmax = sqrt(Dmax);
@@ -1139,7 +1144,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
     double Ddiff = 0.;
 
     std::vector<int> stateWithSibs, stateWithoutSibs;
-    for (int i = 0; i < dist.size(); ++i) {
+    for (int i = 0; i <(int) dist.size(); ++i) {
         if (!HasSiblings(site, i)) stateWithoutSibs.push_back(i);
         else stateWithSibs.push_back(i);
     }
@@ -1150,9 +1155,9 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
 
 //    int totalPair=0;
 //    int skippedPair=0;
-    for (int j = 0; j < stateWithSibs.size() - stateWithoutSibs.size(); ++j) {//enumerate through all the states, usually retain stateWithSibs
+    for (int j = 0; j < int(stateWithSibs.size() - stateWithoutSibs.size()); ++j) {//enumerate through all the states, usually retain stateWithSibs
         stateL = stateWithSibs[j];
-        for (int k = j + 1; k < stateWithSibs.size(); ++k) {
+        for (int k = j + 1; k < (int)stateWithSibs.size(); ++k) {
             stateR = stateWithSibs[k];
 
             if (GetAllele(site,stateL)!=GetAllele(site,stateR))
@@ -1223,8 +1228,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
             }
 
             {
-                max_pair_t mergePair = {stateL, stateR, Dmax, EXACT, pval, dist[stateL].size(),
-                                        dist[stateR].size()};
+                max_pair_t mergePair = {stateL, stateR, Dmax, EXACT, pval};
                 mergePairList.push(mergePair);
             }
 
@@ -1281,8 +1285,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
                 iter_pair.pval = 1 - pkstwo_wrapper(1, &Ddiff, 1e-06);
             }
             if (iter_pair.pval < old_p_max) {
-                max_pair_t mergePair = {clusterA, clusterB, iter_pair.Dmax, iter_pair.exact, iter_pair.pval,
-                                        dist[clusterA].size(), dist[clusterB].size()};
+                max_pair_t mergePair = {clusterA, clusterB, iter_pair.Dmax, iter_pair.exact, iter_pair.pval};
                 mergePairList.push(mergePair);
                 continue;
             }
@@ -1356,8 +1359,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
     }
 
     if (ret) {
-        for (int stateM = 0;
-             stateM < dist.size(); ++stateM)//loop through all remained states with the help of mergeIndicator
+        for (int stateM = 0; stateM < (int)dist.size(); ++stateM)//loop through all remained states with the help of mergeIndicator
         {
             if (removeIndicator[stateM]) continue;
             tmpAllele.push_back(GetAllele(site,stateM));
@@ -1368,8 +1370,8 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
         }
 //        PrintVector(clusterAllele[site],"allele cluster states after");
         //PrintVector(haplotypeCluster[site],"haplotype cluster states after");
-        for (int k = 0; k < haplotypeCluster[site].size(); ++k) {
-            haplotypeCluster[site][k] = stateOrder[haplotypeCluster[site][k]];//TODO:don't forget index in StateNode
+        for (auto & value:haplotypeCluster[site]) {
+            value = stateOrder[value];//TODO:don't forget index in StateNode
         }
 //        clusterAllele[site] = tmpAllele;//update merged cluster allele
         Graph.StateNodeMat[site] = Graph.tmpNodeVec;
@@ -1405,7 +1407,7 @@ void PBWTWrapper::DoMerge(int site, int retainState, int removeState, std::vecto
     removeIndicator[removeState] = true;
 
     int removeRankID = 0;
-    for (int t = 0; t != clusterMembership[removeState].size(); ++t) {
+    for (int t = 0; t < (int)clusterMembership[removeState].size(); ++t) {
         removeRankID = clusterMembership[removeState][t];
         haplotypeCluster[site][GetHapIDFromFwd(site, removeRankID)] = retainState;
         clusterMembership[retainState].push_back(removeRankID);
@@ -1504,12 +1506,12 @@ int PBWTWrapper::MoveSegment(const std::unordered_map<int, int> &mergedMembershi
     int lastHapID;
     int firstHapID;
     int index;
-    for (int i = 0; i < clusterMembership.size(); ++i) {
+    for (int i = 0; i < (int)clusterMembership.size(); ++i) {
         if (clusterMembership[i].size() != 0) {
             if (prevState == 0 && clusterMembership[prevState].size() == 0) {
                 newD = site + 1;
             }
-            else if (i != 0 && prevState != (i -
+            else if (i != 0 && prevState != int(i -
                                              1)) {//if current state is not the first state, and prevState is not the immediate preious state
                 //fprintf(stderr,"site:%d\tclusterSize:%d\ti:%d\tprevState:%d\tprev Size:%d\n",site,clusterMembership[i].size(),i,prevState,clusterMembership[prevState].size());
                 lastHapID = GetHapIDFromFwd(site, clusterMembership[prevState].back());//lastHap of previous state
@@ -1521,7 +1523,7 @@ int PBWTWrapper::MoveSegment(const std::unordered_map<int, int> &mergedMembershi
                 newD = index;
             }
 
-            for (int j = 0; j < clusterMembership[i].size(); ++j) {
+            for (int j = 0; j < (int)clusterMembership[i].size(); ++j) {
                 if (mergedMembership.find(clusterMembership[i][j]) != mergedMembership.end()) {
                     tmpD.push_back(0);
                 }

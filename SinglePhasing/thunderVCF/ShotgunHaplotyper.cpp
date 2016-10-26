@@ -194,7 +194,7 @@ void ShotgunHaplotyper:: ChooseByLikelihood(int *array, int numStates, double* m
 			for (int l = 0; l < markers; ++l)
 			{
 				//fprintf(stderr,"marker %d of individual %d allele on h:%d and genotype:%d,%d,%d\n",l,i,h[l],genotypes[i][3*l],genotypes[i][3*l+1],genotypes[i][3*l+2]);
-				logLik += log(phred2prob[genotypes[individuals - 1][3 * l + h[l]]] * freq1s[l] + phred2prob[genotypes[individuals - 1][3 * l + h[l] + 1]] * (1 - freq1s[l]));
+				logLik += log(phred2prob[(size_t)genotypes[individuals - 1][3 * l + h[l]]] * freq1s[l] + phred2prob[(size_t)genotypes[individuals - 1][3 * l + h[l] + 1]] * (1 - freq1s[l]));
 				/*if (h[l]==0)
 					logLik += log(phred2prob[genotypes[individuals - 1][3 * l + h[l]]] * (1-freq1s[l]) * (1-freq1s[l]) + phred2prob[genotypes[individuals - 1][3 * l + h[l] + 1]] * 2 * freq1s[l]*(1 - freq1s[l]));
 				else
@@ -813,11 +813,11 @@ void ShotgunHaplotyper::ConditionOnData(float * matrix, int marker,
       {
       double factors[2];
 
-      factors[0] = conditional_probs[haplotypes[i][marker]];
-      factors[1] = conditional_probs[haplotypes[i][marker] + 1];
+      factors[0] = conditional_probs[(size_t)haplotypes[i][marker]];
+      factors[1] = conditional_probs[(size_t)haplotypes[i][marker] + 1];
 
       for (int j = 0; j <= i; j++, matrix++)
-         *matrix *= factors[haplotypes[j][marker]];
+         *matrix *= factors[(size_t)haplotypes[j][marker]];
       }
    }
 

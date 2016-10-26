@@ -28,21 +28,19 @@
 struct max_pair_t
 {
     int clusterA;
-    size_t sizeA;
+//    size_t sizeA;
     int clusterB;
-    size_t sizeB;
+//    size_t sizeB;
     double Dmax;
     bool exact;
     double pval;
-    max_pair_t(int a,int b,double c, bool d,double e, size_t A, size_t B)
+    max_pair_t(int a,int b,double c, bool d,double e)
     {
         clusterA=a;
         clusterB=b;
         Dmax=c;
         exact=d;
         pval=e;
-        sizeA=A;
-        sizeB=B;
     }
 };
 bool comparator(const max_pair_t& lhs, const max_pair_t& rhs);
@@ -267,18 +265,18 @@ public:
     int AddChildNode(char allele, int *index, float numHaplotype) {//should only be called once
 //        if(index != nullptr) fprintf(stderr,"add %d to allele %d with numHaplotype:%f\n",*index,allele,numHaplotype);
 //        else fprintf(stderr,"add nullptr to allele %d with numHaplotype:%f\n",allele,numHaplotype);
-        if(childNodeIndex[allele]!=index && childNodeIndex[allele]!= nullptr)
+        if(childNodeIndex[(size_t)allele]!=index && childNodeIndex[(size_t)allele]!= nullptr)
         {
             fprintf(stderr,"roar from StateNode AddChildNode!!!!\n");
             exit(EXIT_FAILURE);
         }
-        childNodeIndex[allele]=index;
-        numHapChild[allele]+=numHaplotype;
+        childNodeIndex[(size_t)allele]=index;
+        numHapChild[(size_t)allele]+=numHaplotype;
         return 0;
     }
 
     float GetTransitionProbToChildNode(char allele) {
-        return numHapChild[allele];
+        return numHapChild[(size_t)allele];
     }
 
 //    float GetTransitionProbFromParentNode(int index) {
@@ -295,14 +293,17 @@ public:
     std::vector<StateNode*> tmpNodeVec;
 
 
-    StateNodeContainer();
+    StateNodeContainer()
+    {
+        nsnps=0;
+    }
     ~StateNodeContainer()
     {
-        for (int i = 0; i <StateNodeMat.size() ; ++i) {
-            for (int j = 0; j <StateNodeMat[i].size() ; ++j) {
-                delete StateNodeMat[i][j];
+        for (auto &col:StateNodeMat) {
+            for (auto & row:col) {
+                delete row;
             }
-            StateNodeMat[i].clear();
+            col.clear();
         }
     }
     StateNodeContainer(StateNodeContainer& A)
@@ -317,10 +318,10 @@ public:
     void NormalizeCurrentSiteTransitionProb(int index)
     {
         if(index>=0)
-        for (int i = 0; i <StateNodeMat[index].size(); ++i) {
+        for (auto & node: StateNodeMat[index]) {
 
-            StateNodeMat[index][i]->numHapChild[0]/= StateNodeMat[index][i]->numHap;
-            StateNodeMat[index][i]->numHapChild[1]/= StateNodeMat[index][i]->numHap;
+            node->numHapChild[0]/= node->numHap;
+            node->numHapChild[1]/= node->numHap;
 //            fprintf(stderr,"marker:%d\t0:%f\t1:%f\t%f\n",index,StateNodeMat[index][i]->numHapChild[0],StateNodeMat[index][i]->numHapChild[1],StateNodeMat[index][i]->numHap);
         }
     }
@@ -427,11 +428,11 @@ public:
 //            }
             delete [] haplotype;
         }
-        for (int i = 0; i < Graph.StateNodeMat.size(); ++i) {
-            for (int j = 0; j <Graph.StateNodeMat[i].size() ; ++j) {
-                delete Graph.StateNodeMat[i][j];
+        for (auto &col: Graph.StateNodeMat) {
+            for (auto & row:col) {
+                delete row;
             }
-            Graph.StateNodeMat[i].clear();
+            col.clear();
         }
 
     }
@@ -458,11 +459,11 @@ public:
         }
         //TODO:REVERSE
 
-        for (int i = 0; i < Graph.StateNodeMat.size(); ++i) {
-            for (int j = 0; j <Graph.StateNodeMat[i].size() ; ++j) {
-                delete Graph.StateNodeMat[i][j];
+        for (auto & col:Graph.StateNodeMat) {
+            for (auto &row:col) {
+                delete row;
             }
-            Graph.StateNodeMat[i].clear();
+            col.clear();
         }
         alphaMap=aMap=a=alpha=d=u=ultra=haplotypeCluster=bkHaplotypeCluster=std::vector<std::vector<int> >(N,std::vector<int>(M,0));
         c=celta=std::vector<int>(N,0);
@@ -590,8 +591,8 @@ public:
     int HowManyChildlessState(std::vector<StateNode*> & a)
     {
         int sum=0;
-        for (int i = 0; i <a.size(); ++i) {
-            if(a[i]->childNodeIndex[0]== nullptr || a[i]->childNodeIndex[1]== nullptr)
+        for (auto & node:a) {
+            if(node->childNodeIndex[0]== nullptr || node->childNodeIndex[1]== nullptr)
                 sum++;
         }
         std::cerr<<sum<<" childless state out of "<<a.size()<<" total states"<<std::endl;
@@ -602,20 +603,20 @@ public:
         int sum1(0),sum2(0);
         int index=0;
         std::unordered_map<int,bool> bag;
-        for (int i = 0; i <currentNodes.size(); ++i) {
-            if(currentNodes[i]->childNodeIndex[0]!= nullptr )
+        for (auto & node:currentNodes) {
+            if(node->childNodeIndex[0]!= nullptr )
             {
-                index=*(currentNodes[i]->childNodeIndex[0]);
-                sum2+=currentNodes[i]->numHapChild[0];
+                index=*(node->childNodeIndex[0]);
+                sum2+=node->numHapChild[0];
                 if(bag.find(index) ==bag.end()) bag[index]=true;
                 else continue;
                 sum1+=Graph.StateNodeMat[childSite][index]->numHap;
 
             }
-            if(currentNodes[i]->childNodeIndex[1]!= nullptr)
+            if(node->childNodeIndex[1]!= nullptr)
             {
-                sum2+=currentNodes[i]->numHapChild[1];
-                index=*(currentNodes[i]->childNodeIndex[1]);
+                sum2+=node->numHapChild[1];
+                index=*(node->childNodeIndex[1]);
                 if(bag.find(index) ==bag.end()) bag[index]=true;
                 else continue;
                 sum1+=Graph.StateNodeMat[childSite][index]->numHap;

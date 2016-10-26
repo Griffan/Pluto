@@ -104,7 +104,7 @@ float* PBWTHaplotyper::GetLargeBlock()
 		numInUse[blockSize] = 0;
 		memoryBlockList[blockSize] = std::vector<float*>(0, nullptr);
 	}
-	if (numInUse[blockSize] < memoryBlockList[blockSize].size())
+	if (numInUse[blockSize] < (int)memoryBlockList[blockSize].size())
 	{
 		numInUse[blockSize]++;
 		return memoryBlockList[blockSize][numInUse[blockSize] - 1];
@@ -124,7 +124,7 @@ float* PBWTHaplotyper::GetReuseableBlock()
 		numInUse[blockSize] = 0;
 		memoryBlockList[blockSize] = std::vector<float*>(0, nullptr);
 	}
-	if (numInUse[blockSize] < memoryBlockList[blockSize].size())
+	if (numInUse[blockSize] < (int)memoryBlockList[blockSize].size())
 	{
 		numInUse[blockSize]++;//TODO::reset needed
 		return memoryBlockList[blockSize][numInUse[blockSize] - 1];
@@ -241,9 +241,9 @@ void PBWTHaplotyper::InitialSampleCopy(Random * rand)
 
         for (int i = 0; i < individuals; i++)
         {
-            double post11 = hyperprior11 * phred2prob[genotypes[i][markerindex]];
-            double post12 = hyperprior12 * phred2prob[genotypes[i][markerindex+1]];
-            double post22 = hyperprior22 * phred2prob[genotypes[i][markerindex+2]];
+            double post11 = hyperprior11 * phred2prob[(size_t)genotypes[i][markerindex]];
+            double post12 = hyperprior12 * phred2prob[(size_t)genotypes[i][markerindex+1]];
+            double post22 = hyperprior22 * phred2prob[(size_t)genotypes[i][markerindex+2]];
             double sumpost = post11 + post12 + post22;
             post11 /= sumpost;
             post12 /= sumpost;
@@ -266,9 +266,9 @@ void PBWTHaplotyper::InitialSampleCopy(Random * rand)
         {
             int observed = (unsigned char) (genotypes[i][j]);
 
-            double posterior_11 = prior_11 * phred2prob[genotypes[i][markerindex]];
-            double posterior_12 = prior_12 * phred2prob[genotypes[i][markerindex+1]];
-            double posterior_22 = prior_22 * phred2prob[genotypes[i][markerindex+2]];
+            double posterior_11 = prior_11 * phred2prob[(size_t)genotypes[i][markerindex]];
+            double posterior_12 = prior_12 * phred2prob[(size_t)genotypes[i][markerindex+1]];
+            double posterior_22 = prior_22 * phred2prob[(size_t)genotypes[i][markerindex+2]];
             double sum = posterior_11 + posterior_12 + posterior_22;
 
             if (sum == 0)
@@ -1228,11 +1228,11 @@ int PBWTHaplotyper::ResetFwdValues()
     return 0;
 }
 
-float PBWTHaplotyper::GetGL(int individual, int marker, char allele1, char allele2)
+double PBWTHaplotyper::GetGL(int individual, int marker, char allele1, char allele2)
 {
 //    std::cerr<<individual<<"\t"<<marker<<"\t"<<(int)allele1<<"\t"<<(int)allele2<<std::endl;
 
-    return phred2prob[genotypes[individual][3*marker+allele1+allele2]];
+    return phred2prob[(size_t)genotypes[individual][3*marker+allele1+allele2]];
 }
 
 void PBWTHaplotyper::RandomSetup(Random * rand)
@@ -1567,8 +1567,8 @@ int PBWTHaplotyper::FillHeterSitesBack(int individualToProcess) {
             haplotypes[2 * individualToProcess + 1][markerAbsoluteNow] = tmpHaps[2 * individualToProcess+1][i];
         }
     }
-    for (int j = 0; j < genuienParents.size(); ++j) {
-        genuienParents[j].clear();
+    for (auto & parents: genuienParents) {
+        parents.clear();
     }
     return 0;
 }
