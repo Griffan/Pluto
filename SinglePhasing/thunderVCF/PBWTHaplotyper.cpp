@@ -67,8 +67,6 @@ PBWTHaplotyper::~PBWTHaplotyper() {
     if(Wrapper != nullptr)
         delete Wrapper;
 
-    if(fwdWrapper != nullptr)
-        delete fwdWrapper;
 	ReleaseMemoryBlock();
     DestroyPvalueMatrix();
 }

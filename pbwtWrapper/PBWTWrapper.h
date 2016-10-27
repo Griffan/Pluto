@@ -198,6 +198,11 @@ public:
         needMergeUpdate=false;
     }
 
+    ~StateNode()
+    {
+        parentNodeIndex2NumHap.clear();
+    }
+
     void SetID(int parentNodeIndex,int64_t parentID)
     {
             ID=(parentID<<1)|int64_t(allele);
@@ -299,11 +304,11 @@ public:
     }
     ~StateNodeContainer()
     {
-        for (auto &col:StateNodeMat) {
-            for (auto & row:col) {
-                delete row;
+        for (auto &vec:StateNodeMat) {
+            for (auto & node:vec) {
+                delete node;
             }
-            col.clear();
+            vec.clear();
         }
     }
     StateNodeContainer(StateNodeContainer& A)

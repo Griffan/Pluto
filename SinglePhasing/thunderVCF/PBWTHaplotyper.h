@@ -258,7 +258,7 @@ public:
     }
 protected:
 
-    PBWTWrapper* Wrapper,*fwdWrapper,*backWrapper,*baseWrapper;
+    PBWTWrapper* Wrapper;
 
     int indexBeingSampled;
 	//subset markers related
