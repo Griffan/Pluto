@@ -47,7 +47,11 @@ float GeneticDistanceMap::InferGeneticDistance(std::string chr, int start) {
     else {
         auto after = before;
         before--;
-        return (start - before->first) * (after->second - before->second) / (after->first - before->second);
+//        std::cerr<<"start:"<<start<<"\tbefore.first:"<<before->first
+//                 <<"\tafter.second:"<<after->second<<"\tbefore.second:"<<before->second
+//                 <<"\tafter.first:"<<after->first <<"\tbefore.first:"<<before->first<<std::endl;
+
+        return (start - before->first) * (after->second - before->second) / (after->first - before->first)+before->second;
     }
 }
 

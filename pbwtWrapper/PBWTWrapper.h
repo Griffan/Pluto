@@ -179,7 +179,7 @@ public:
 //    std::vector<int> numHapFromParentNode;
 //    std::vector<int> childNodeIndex;
 //    std::vector<float> numHapToChildNode;
-    std::unordered_map<int,StateNode* > parentNodeIndex2NumHap;
+    std::unordered_map<int,StateNode* > parentNodeIndex2Address;
 //    std::unordered_map<int,float > childNodeIndex2NumHap;
     int* childNodeIndex[2];
     float numHapChild[2];
@@ -200,7 +200,7 @@ public:
 
     ~StateNode()
     {
-        parentNodeIndex2NumHap.clear();
+        parentNodeIndex2Address.clear();
     }
 
     void SetID(int parentNodeIndex,int64_t parentID)
@@ -208,13 +208,6 @@ public:
             ID=(parentID<<1)|int64_t(allele);
     }
 
-//    void SetID(std::vector<int>& )
-//    {
-//        for (int i = 0; i < ; ++i) {
-//
-//        }
-//        ID=(parentID<<1)|int64_t(allele);
-//    }
     bool IsStateIdentical(StateNode& A)
     {
 //        if(fabsf(numHap-A.numHap)>0.01) std::cerr<<"comparing:"<<nodeIndex<<" and "<<A.nodeIndex<<"numHap:"<<numHap<<" and "<<A.numHap<<" ratio "<<fabsf(numHap-A.numHap)/(float)std::min(numHap,A.numHap) <<"\tID:"<<ID<<"\tA.ID:"<<A.ID<<std::endl;
@@ -224,7 +217,7 @@ public:
     StateNode& operator+=(const StateNode& A)
     {
         numHap+=A.numHap;
-        for (auto kv:A.parentNodeIndex2NumHap) {
+        for (auto kv:A.parentNodeIndex2Address) {
             AddParentNode(kv.first,kv.second);
 //            fprintf(stderr,"allele 0:%x, allele 1:%x, address:%x\n",kv.second->childNodeIndex[0],kv.second->childNodeIndex[1],&(A.nodeIndex));
             if(kv.second->childNodeIndex[0]==&(A.nodeIndex))//A has 0 allele
@@ -250,7 +243,7 @@ public:
         ID=A.ID;
         nodeIndex=A.nodeIndex;
         allele=A.allele;
-        parentNodeIndex2NumHap=A.parentNodeIndex2NumHap;
+        parentNodeIndex2Address=A.parentNodeIndex2Address;
         childNodeIndex[0]=A.childNodeIndex[0];
         childNodeIndex[1]=A.childNodeIndex[1];
         numHapChild[0]=A.numHapChild[0];
@@ -258,8 +251,8 @@ public:
         return *this;
     }
 
-    int AddParentNode(int index, StateNode *parentAddress) {
-        parentNodeIndex2NumHap[index]=parentAddress;
+    int AddParentNode(int parentIndex, StateNode *parentAddress) {
+        parentNodeIndex2Address[parentIndex]=parentAddress;
 //        if(parentAddress!= nullptr)
 //            SetID(index,parentAddress->ID,allele);
 //        else
@@ -285,7 +278,7 @@ public:
     }
 
 //    float GetTransitionProbFromParentNode(int index) {
-//        return parentNodeIndex2NumHap[index];
+//        return parentNodeIndex2Address[index];
 //    }
 };
 
@@ -330,7 +323,6 @@ public:
 //            fprintf(stderr,"marker:%d\t0:%f\t1:%f\t%f\n",index,StateNodeMat[index][i]->numHapChild[0],StateNodeMat[index][i]->numHapChild[1],StateNodeMat[index][i]->numHap);
         }
     }
-
     void RegisterState(int site, int64_t ID, int* indexPtr)
     {
         StateNodeID2IndexPtr[site].insert({ID,indexPtr});
@@ -491,7 +483,7 @@ public:
 
     bool HasSiblings(int site, int state) {
         if(site ==0) return true;
-        for(auto kv:Graph.StateNodeMat[site][state]->parentNodeIndex2NumHap)
+        for(auto kv:Graph.StateNodeMat[site][state]->parentNodeIndex2Address)
         {
 //            if(Graph.StateNodeMat[site-1][kv.first].childNodeIndex2NumHap.size()>1) return true;
             if(Graph.StateNodeMat[site-1][kv.first]->childNodeIndex[0]!= nullptr&&Graph.StateNodeMat[site-1][kv.first]->childNodeIndex[1]!= nullptr) return true;
@@ -542,7 +534,10 @@ public:
     inline int GetHapStateFromFwd(int site, int hapID) { return haplotypeCluster[site][hapID]; }
     inline int GetHapStateFromBack(int site, int hapID) { return bkHaplotypeCluster[site][hapID]; }
 
-
+    inline float GetHapProbAt(int site,int index)
+    {
+        return Graph.StateNodeMat[site][index]->numHap/M;
+    }
 
     //fast update pbwt
     int FastCursorForwards(const PBWTWrapper& motherWrapper);

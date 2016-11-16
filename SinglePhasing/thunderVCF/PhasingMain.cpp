@@ -959,6 +959,7 @@ void LoadGenotypeFromPhasedVCF(Pedigree &ped, const String &filename, int maxPhr
                 if (markerindex != 0) {//start from 2nd marker
                     engine.thetas[markerindex-1] = engine.GDMap.CalculateRecombinationRate(prevGeneticDistance,currentGeneticDistance);
                 }
+//                std::cerr<<"prev:"<<prevGeneticDistance<<"\tcurr:"<<currentGeneticDistance<<"\ttheta:"<<engine.thetas[markerindex-1]<<"\tmarkerindex:"<<markerindex<<std::endl;
                 prevGeneticDistance=currentGeneticDistance;
             }
             else {
@@ -1125,7 +1126,7 @@ int PhasingMain(int argc, char **argv) {
     bool inputPhased = false;
     bool phaseByRef = false;
     bool randomPhase = false;
-    bool fixTrans = false;
+    bool fixTrans = true;
 
     bool isSingleRound = false;
     bool onlyHeterSite = false;
@@ -1254,10 +1255,10 @@ int PhasingMain(int argc, char **argv) {
 
     /*Notice that now we adding markers as subset of phased markers*/
     // here only extracted site information only, used for site check
-//    if (!GDFile.IsEmpty()) {
-//        engine.GDMap.InputGeneticDistanceMap(std::string(GDFile.c_str()));
-//        engine.geneticMapAvailable = true;
-//    }
+    if (!GDFile.IsEmpty()) {
+        engine.GDMap.InputGeneticDistanceMap(std::string(GDFile.c_str()));
+        engine.geneticMapAvailable = true;
+    }
 
     if (phasedfile != "Empty")
     {
@@ -1387,8 +1388,8 @@ int PhasingMain(int argc, char **argv) {
     if (newline) printf("\n");
 
     //engine.SetErrorRate(errorRate);
-    UpdateVector(engine.thetas, thetas, nthetas, engine.markers - 1);
-    UpdateErrorRates(engine.error_models, error_rates, nerror_rates, engine.markers);
+//    UpdateVector(engine.thetas, thetas, nthetas, engine.markers - 1);
+//    UpdateErrorRates(engine.error_models, error_rates, nerror_rates, engine.markers);
 
     SetCrashExplanation("searching for initial haplotype set");
 
@@ -1437,6 +1438,9 @@ int PhasingMain(int argc, char **argv) {
         if (i < burnin)
             continue;
 
+        if (rounds - i < 2)
+            engine.LoopThroughChromosomesRecomb();
+
         if (OutputManager::outputHaplotypes) {
             if(isSingleRound)
                 consensus.StoreForSingleRound(engine.sampledHaps,engine.nSampleCopy);
@@ -1448,8 +1452,8 @@ int PhasingMain(int argc, char **argv) {
 	if (doses.storeDosage || doses.storeDistribution)
 		doses.Update(engine.haplotypes);
 
-	UpdateVector(engine.thetas, thetas, nthetas, engine.markers - 1);
-	UpdateErrorRates(engine.error_models, error_rates, nerror_rates, engine.markers);
+//	UpdateVector(engine.thetas, thetas, nthetas, engine.markers - 1);
+//	UpdateErrorRates(engine.error_models, error_rates, nerror_rates, engine.markers);
 
 //		if (polling > 0 && ((i - burnin) % polling) == 0) {
 //		int i = 0;// adjust for following code

@@ -1425,6 +1425,9 @@ int PBWTWrapper::SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampled
 //    phased = nPhase;
 //    nSampledCopy = nCopy;
     recomRate.assign(rate,rate+nMarkers-1);
+//    for (int k = 0; k <nMarkers-1 ; ++k) {
+//        std::cerr<<"marker "<<k+1<<":"<<recomRate[k]<<std::endl;
+//    }
     haplotype = new char *[M];
 //    int unphased = (nSamples - phased) / (nSampledCopy + 1);
 //    int nonCoppiedIndividuals = unphased + phased;//nSampledCopy additional copies, the original one not included

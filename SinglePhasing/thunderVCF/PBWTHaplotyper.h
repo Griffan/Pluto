@@ -30,10 +30,11 @@ public:
 //    void RandomSetup(Random * rand);
     void SwapIndividuals(int a, int b);
     void PrepareRefSetPBWTWrapper();
-    void PrepareRefSetPBWTWrapperLeaveOneOut();
+
     int LoopThroughChromosomesHighPrecision();
+    int LoopThroughChromosomesRecomb();
     int LoopThroughChromosomesSingleRound();
-    int LoopThroughChromosomesLeaveOneOut();
+
 
 	int LoopThroughChromosomesViaPBWTWithHeterOnly();
 
@@ -80,6 +81,10 @@ public:
 		{fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
 		return Wrapper->Graph.StateNodeMat[site][from]->numHapChild[GetAllele(site+1,to)];
 	}
+    inline float GetHapProbAt(int site,int index)
+    {
+        return Wrapper->GetHapProbAt(site,index);
+    }
 	inline uchar GetAllele(int site, int state)
 	{
 		return Wrapper->GetAllele(site,state);
@@ -101,22 +106,37 @@ public:
     }
 
     //HMM version two
-    struct origin
-    {
-        int firstState;
-        int secondState;
-		float fwdValue;
-        origin(int a,int b, float c)
+
+    struct pairhash {
+    public:
+        template <typename T, typename U>
+        long operator()(const std::pair<T, U> &x) const//Cantor pairing function:
         {
-            firstState=a;
-            secondState=b;
-            fwdValue=c;
+            int a=std::hash<T>()(x.first);
+            int b=std::hash<U>()(x.second);
+            unsigned long A = (unsigned long)(a >= 0 ? 2 * (long)a : -2 * (long)a - 1);
+            unsigned long B = (unsigned long)(b >= 0 ? 2 * (long)b : -2 * (long)b - 1);
+            long C = (long)((A >= B ? A * A + A + B : A + B * B) / 2);
+            return a < 0 && b < 0 || a >= 0 && b >= 0 ? C : -C - 1;
         }
     };
-//    typedef std::vector<origin> originVec;
-
+    typedef std::unordered_map<std::pair<int32_t,int32_t>,float,pairhash> Source;//(nodeA,nodeB)->fwd
+    typedef std::unordered_set<std::pair<int32_t,int32_t>,pairhash> NodePair;//(nodeA,nodeB)
+    typedef std::unordered_map<int,std::unordered_map<int,Source> > ChildToSource;
+    std::vector<ChildToSource> genuienParents;
 
     float* fwdValueSum;
+    std::vector<std::unordered_map<int,float> > fwdValueNode1Sum;
+    std::vector<std::unordered_map<int,float> > fwdValueNode2Sum;
+    float SumFwdValueFromOriginVec(const Source& a)
+    {
+        float sum(0.f);
+        for (auto kv:a) {
+            sum+=kv.second;
+        }
+        return sum;
+    }
+
     int InitialFwdValues();
     int ResetFwdValues();
     double GetGL(int individual, int marker, char allele1, char allele2);
@@ -126,46 +146,54 @@ public:
             return -1;
         else return *(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[(size_t)allele]);
     }
-//    int SwitchFwdValuePtr()
-//    {
-//        std::unordered_map<int,std::unordered_map<int,originVec> >* tmp;
-//        currentFwdValuePtr->clear();
-//        tmp=currentFwdValuePtr;
-//        currentFwdValuePtr=nextFwdValuePtr;
-//        nextFwdValuePtr=tmp;
-//    }
-    int ForwardAlgorithm();
+
+
+
+    //without recombination
     std::vector<bool> brokenList;
+    int ForwardAlgorithm();
     int BackwardSampling(Random *rand, int SampleIndex, char** sampledHaps);
-//    std::unordered_map<int,std::unordered_map<int,originVec> > currentFwdValue,nextFwdValue;
-//    std::unordered_map<int,std::unordered_map<int,originVec> >* currentFwdValuePtr,*nextFwdValuePtr;
-
-    struct pairhash {
+    //with recombination
+    class AvailableParentStatePair {
+//        std::vector<NodePair > nextAvailableStatePair;//marker/availablePair
+        NodePair::iterator nextAvailableStatePairIndex;
+//        int MarkerIndex;
     public:
-        template <typename T, typename U>
-        long operator()(const std::pair<T, U> &x) const//Cantor pairing function:
+        int MarkerIndex;
+        std::vector<NodePair > nextAvailableStatePair;//marker/availablePair
+        AvailableParentStatePair(int nmarker):nextAvailableStatePair(nmarker,NodePair()),MarkerIndex(0)
+        {}
+        ~AvailableParentStatePair()
         {
-            int a=std::hash<T>()(x.first);
-			int b=std::hash<U>()(x.second);
-			unsigned long A = (unsigned long)(a >= 0 ? 2 * (long)a : -2 * (long)a - 1);
-			unsigned long B = (unsigned long)(b >= 0 ? 2 * (long)b : -2 * (long)b - 1);
-            long C = (long)((A >= B ? A * A + A + B : A + B * B) / 2);
-            return a < 0 && b < 0 || a >= 0 && b >= 0 ? C : -C - 1;
+            nextAvailableStatePair.clear();
         }
+        void FillNextAvailableStatePair(std::pair<int, int> p) {
+            nextAvailableStatePair[MarkerIndex].insert(p);
+        }
+
+        void ResetMarkerIndexAt(int index) {
+            MarkerIndex = index;
+            nextAvailableStatePairIndex=nextAvailableStatePair[MarkerIndex].begin();
+        }
+
+        std::pair<int, int> GetNextAvailableStatePair() {
+            return *(nextAvailableStatePairIndex++);
+        }
+
+        bool IsEnd() {
+            return nextAvailableStatePairIndex == nextAvailableStatePair[MarkerIndex].end();
+        }
+        void NextMarker(){MarkerIndex++;}
+        void LastMarker(){
+//            nextAvailableStatePair[MarkerIndex].clear();
+            MarkerIndex--;
+            nextAvailableStatePairIndex=nextAvailableStatePair[MarkerIndex].begin();}
     };
+    AvailableParentStatePair availablePair;
+    int ForwardAlgorithmRec();
+    int BackwardSamplingRec(Random *rand, int SampleIndex, char** sampledHaps);
 
-    typedef std::unordered_map<std::pair<int32_t,int32_t>,float,pairhash> Source;
-	typedef std::unordered_map<int,std::unordered_map<int,Source> > ChildToSource;
-    std::vector<ChildToSource> genuienParents;
 
-    float SumFwdValueFromOriginVec(const Source& a)
-    {
-        float sum(0.f);
-        for (auto kv:a) {
-            sum+=kv.second;
-        }
-        return sum;
-    }
 	char ** sampledHaps;
 	int nSampleCopy;
 
