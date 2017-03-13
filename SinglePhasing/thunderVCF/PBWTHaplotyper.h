@@ -26,6 +26,20 @@ public:
 	void InitAuxillary();
     ~PBWTHaplotyper();
 
+    /*!InitialHaplotypeByConsensus
+     * copy consencus haplotypes into haplotypes char[][], and reset consensus
+     * @param consensus
+     */
+    void InitialHaplotypeByConsensus(ConsensusBuilder& consensus)
+    {
+        for (int i = 0; i < (individuals-phased)*2; ++i) {
+            for (int j = 0; j < markers ; ++j) {
+                haplotypes[i][j] = consensus.consensus[i][j];
+            }
+        }
+        consensus.stored=0;
+    }
+
 	void InitialSampleCopy(Random * rand);
 //    void RandomSetup(Random * rand);
     void SwapIndividuals(int a, int b);
@@ -52,7 +66,7 @@ public:
     virtual void SampleChromosomes(Random * rand);
 
 
-    void SetUseRev(bool useOrNot){useRev=useOrNot;}
+    void SetUseRev(bool useOrNot){isRev=useOrNot;}
 	bool ReverseInput();
 
     void SetOnlyGT(bool onlyOrNot){onlyGT=onlyOrNot;}
@@ -140,6 +154,7 @@ public:
     int InitialFwdValues();
     int ResetFwdValues();
     double GetGL(int individual, int marker, char allele1, char allele2);
+    float GetRecombRate(int marker);
     int GetChildNode(int site, int stateIndex, char allele)
     {
         if(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[(size_t)allele]== nullptr)
@@ -156,7 +171,7 @@ public:
     //with recombination
     class AvailableParentStatePair {
 //        std::vector<NodePair > nextAvailableStatePair;//marker/availablePair
-        NodePair::iterator nextAvailableStatePairIndex;
+        NodePair::iterator nextAvailableStatePairIter;
 //        int MarkerIndex;
     public:
         int MarkerIndex;
@@ -173,24 +188,35 @@ public:
 
         void ResetMarkerIndexAt(int index) {
             MarkerIndex = index;
-            nextAvailableStatePairIndex=nextAvailableStatePair[MarkerIndex].begin();
+            nextAvailableStatePairIter=nextAvailableStatePair[MarkerIndex].begin();
         }
 
         std::pair<int, int> GetNextAvailableStatePair() {
-            return *(nextAvailableStatePairIndex++);
+            return *(nextAvailableStatePairIter++);
         }
 
         bool IsEnd() {
-            return nextAvailableStatePairIndex == nextAvailableStatePair[MarkerIndex].end();
+            return nextAvailableStatePairIter == nextAvailableStatePair[MarkerIndex].end();
         }
         void NextMarker(){MarkerIndex++;}
         void LastMarker(){
 //            nextAvailableStatePair[MarkerIndex].clear();
             MarkerIndex--;
-            nextAvailableStatePairIndex=nextAvailableStatePair[MarkerIndex].begin();}
+            nextAvailableStatePairIter=nextAvailableStatePair[MarkerIndex].begin();}
     };
     AvailableParentStatePair availablePair;
+    /*!ForwadAlgorithmRec()
+     * forward algorithm with recombination model added
+     * @return
+     */
     int ForwardAlgorithmRec();
+    /*!BackwardSamplingRec()
+     * sampling haplotype while backward algorithm with recombination model added
+     * @param rand random number generator
+     * @param SampleIndex index of sample about to sample for
+     * @param sampledHaps char[][] array to store sampled haplotype
+     * @return
+     */
     int BackwardSamplingRec(Random *rand, int SampleIndex, char** sampledHaps);
 
 
@@ -300,7 +326,7 @@ protected:
 
 //    double * phred2prob;
 
-	bool useRev;
+	bool isRev;
     bool onlyGT;
 
 	std::vector<int> relativeIndexToAbsolute;

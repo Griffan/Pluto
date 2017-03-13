@@ -431,7 +431,7 @@ int PBWTHaplotyper::LoopThroughChromosomesHighPrecision() {
 
     ResetCrossovers();
 
-    if (useRev) ReverseInput();
+    if (isRev) ReverseInput();
     clock_t t = clock();
     if (Wrapper != nullptr) {
         delete Wrapper;
@@ -490,14 +490,14 @@ int PBWTHaplotyper::LoopThroughChromosomesHighPrecision() {
     }
     t = clock();
     printf("[HighPrecision]forward algorithm and sampling time:%.2f sec\n", (float) (t - t1) / CLOCKS_PER_SEC);
-    if (useRev) ReverseInput();
+    if (isRev) ReverseInput();
     return 0;
 }
 int PBWTHaplotyper::LoopThroughChromosomesRecomb() {
 
     ResetCrossovers();
 
-    if (useRev) ReverseInput();
+    if (isRev) ReverseInput();
     clock_t t = clock();
     if (Wrapper != nullptr) {
         delete Wrapper;
@@ -550,7 +550,7 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb() {
     }
     t = clock();
     printf("[Recomb]forward algorithm and sampling time:%.2f sec\n", (float) (t - t1) / CLOCKS_PER_SEC);
-    if (useRev) ReverseInput();
+    if (isRev) ReverseInput();
     return 0;
 }
 
@@ -558,7 +558,7 @@ int PBWTHaplotyper::LoopThroughChromosomesSingleRound() {
 
     ResetCrossovers();
 
-    if (useRev) ReverseInput();
+    if (isRev) ReverseInput();
     clock_t t = clock();
     if (Wrapper != nullptr) {
         delete Wrapper;
@@ -616,7 +616,7 @@ int PBWTHaplotyper::LoopThroughChromosomesSingleRound() {
     }
     t = clock();
     printf("[SingleRound]forward algorithm and sampling time:%.2f sec\n", (float) (t - t1) / CLOCKS_PER_SEC);
-    if (useRev) ReverseInput();
+    if (isRev) ReverseInput();
     return 0;
 }
 
@@ -629,7 +629,7 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWTWithHeterOnly() {
         if (i < individuals - phased) {
             indexBeingSampled = i;
             SwapIndividuals(i, individuals - 1);
-            if (useRev) ReverseInput();
+            if (isRev) ReverseInput();
             clock_t t = clock();
             ExtractHeterSites(individuals - 1);
             Wrapper->SetHaps(haplotypes, 0, 2 * individuals, sampledHaps, 0, (individuals - phased) * nSampleCopy * 2,
@@ -688,7 +688,7 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWTWithHeterOnly() {
             FillHeterSitesBack(individuals - 1);
             SwapIndividuals(i, individuals - 1);
             //Wrapper->ResetWrapper();
-            if (useRev) ReverseInput();
+            if (isRev) ReverseInput();
         }
 
 
@@ -1278,6 +1278,15 @@ double PBWTHaplotyper::GetGL(int individual, int marker, char allele1, char alle
     return phred2prob[(size_t) genotypes[individual][3 * marker + allele1 + allele2]];
 }
 
+float PBWTHaplotyper::GetRecombRate(int marker)
+{
+    if(isRev)
+    {
+        marker = Wrapper->nMarkers-1 - marker;
+    }
+    return Wrapper->recomRate[marker];
+}
+
 void PBWTHaplotyper::RandomSetup(Random *rand) {
     if (rand == NULL)
         rand = &globalRandom;
@@ -1564,7 +1573,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
                         gl = GetGL(SampleIndex, i, allele1, allele2);
                         if (gl > 1e-1) {
                             fitPair++;
-                            recRate = Wrapper->recomRate[i - 1];//start from marker 1 but store at index 0
+                            recRate = GetRecombRate(i - 1);//start from marker 1 but store at index 0
                             baseProb = GetTransitionProb(i - 1, parentNode1, childNode1) *
                                        GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
 
@@ -1625,6 +1634,8 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
 }
 
 int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sampledHaps) {
+    int seflSwitch(0);
+
     double choice(0.);
     double sum(0.);
     float gl0(0.f);
@@ -1658,7 +1669,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
 
     for (int i = markers - 1; i > 0; --i) {
 
-//        fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\ttotalValue:%g\t",i,sum,choice,sampledFirst,sampledSecond,sampledFwd);
+ //       fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\ttotalValue:%g\t",i,sum,choice,sampledFirst,sampledSecond,sampledFwd);
 //        fprintf(stderr,"marker:%d\tsum:%g\n",i,sum);
         sum = 0.;
         first0 = sampledFirst;
@@ -1676,7 +1687,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
 
 
         gl0 = GetGL(individuals - 1, i, GetAllele(i, first0), GetAllele(i, second0));
-        recRate = Wrapper->recomRate[i-1];//start from marker 1 but store at index 0
+        recRate = GetRecombRate(i-1);//start from marker 1 but store at index 0
 //        fprintf(stderr,"recombRate:%g\n",recRate);
 //
 //        fprintf(stderr,"marker:%d and avaIndex:%d\t",i,availablePair.MarkerIndex);
@@ -1698,6 +1709,10 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
             if (genuienParents[i][first0][second0].find(std::make_pair(NodePair.first,NodePair.second)) !=
                 genuienParents[i][first0][second0].end())//no recomb
             {
+//                fprintf(stderr,"[normalBang] 2 noRecomb marker:%d and tmpSum:%g\t (%d,%d) \tgl:%g\ttp1:%g\ttp2:%g\thp1:%g\thp2:%g\tfwd:%g\tfwdnode1:%g\tfwdnode2:%g\tfwdsum:%g\n", i,sum,NodePair.first,NodePair.second,
+//  gl0,GetTransitionProb(i-1, NodePair.first, first0),GetTransitionProb(i-1, NodePair.second, second0),GetHapProbAt(i-1, NodePair.first),GetHapProbAt(i-1, NodePair.second),
+//                                genuienParents[i][first0][second0][std::make_pair(NodePair.first,NodePair.second)],
+//                                fwdValueNode1Sum[i][NodePair.first],fwdValueNode2Sum[i][NodePair.second],fwdValueSum[i]);
 
                 sum += (1 - recRate) * (1 - recRate) * GetTransitionProb(i-1, NodePair.first, first0) *
                        GetTransitionProb(i-1, NodePair.second, second0) * gl0 * SumFwdValueFromOriginVec(genuienParents[i-1][NodePair.first][NodePair.second]);
@@ -1763,11 +1778,8 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
                     if (sum > choice) {
                         sampledFirst = NodePair.first;
                         sampledSecond = NodePair.second;
-                        fprintf(stderr,"[bigbang] %d %d noRecomb marker:%d and tmpSum:%g\t parent:(%d,%d) uncle:(%d,%d)\n",noRecomb1,noRecomb2,i,sum,parentNode1,parentNode2,NodePair.first,NodePair.second);
-//                        fprintf(stderr,"[bigbang] %d %d noRecomb marker:%d and tmpSum:%g\t (%d,%d) \tgl:%g\thp1:%g\thp2:%g\tfwd:%g\tfwdnode1:%g\tfwdnode2:%g\tfwdsum:%g\n", i,sum,NodePair.first,NodePair.second,
-//  gl0,GetHapProbAt(i-1, NodePair.first),GetHapProbAt(i-1, NodePair.second),
-//                                genuienParents[i][first0][second0][std::make_pair(NodePair.first,NodePair.second)],
-//                                fwdValueNode1Sum[i][NodePair.first],fwdValueNode2Sum[i][NodePair.second],fwdValueSum[i]);
+                        if(parentNode1== NodePair.second and parentNode2==NodePair.first) std::swap(sampledFirst,sampledSecond);
+//                        fprintf(stderr,"[bigBang] %d %d noRecomb marker:%d and tmpSum:%g\t parent:(%d,%d) uncle:(%d,%d)\n",noRecomb1,noRecomb2,i,sum,parentNode1,parentNode2,NodePair.first,NodePair.second);
                         sampledFwd = SumFwdValueFromOriginVec(genuienParents[i - 1][sampledFirst][sampledSecond])*fwdValueSum[i-1];
                         break;
                     }

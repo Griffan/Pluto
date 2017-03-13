@@ -1216,10 +1216,7 @@ int PhasingMain(int argc, char **argv) {
     engine.onlyHeterSite = onlyHeterSite;
     engine.geneticMapAvailable = false;
 
-    //read pMatrix
-    //    CalculatePvalueMatrix();
-//    WritePvalueMatrix();
-//    std::cerr<<"finish pvalue write"<<std::endl;
+
     if(PMatrix.IsEmpty() and calPMatrix.IsEmpty()) {
         std::cerr<<"parameter --PvalueMatrix [PATH] or --calPvalueMatrix [PATH] required!"<<std::endl;
         exit(EXIT_FAILURE);
@@ -1408,7 +1405,7 @@ int PhasingMain(int argc, char **argv) {
         engine.RandomSetup(NULL);
         engine.InitialSampleCopy(NULL);
     }
-//    UnphasedSamplesOutputVCF(unphasedfile, ped, doses, outfile + ".checkpoint1.vcf.gz", thetas, error_rates, engine);
+//  UnphasedSamplesOutputVCF(unphasedfile, ped, doses, outfile + ".checkpoint1.vcf.gz", thetas, error_rates, engine);
     printf("Found initial haplotype set\n\n");
     //OutputManager::WriteHaplotypes(outfile, ped, engine.haplotypes);
     //return 0;
@@ -1438,9 +1435,6 @@ int PhasingMain(int argc, char **argv) {
         if (i < burnin)
             continue;
 
-        if (rounds - i < 2)
-            engine.LoopThroughChromosomesRecomb();
-
         if (OutputManager::outputHaplotypes) {
             if(isSingleRound)
                 consensus.StoreForSingleRound(engine.sampledHaps,engine.nSampleCopy);
@@ -1451,51 +1445,25 @@ int PhasingMain(int argc, char **argv) {
 
 	if (doses.storeDosage || doses.storeDistribution)
 		doses.Update(engine.haplotypes);
-
-//	UpdateVector(engine.thetas, thetas, nthetas, engine.markers - 1);
-//	UpdateErrorRates(engine.error_models, error_rates, nerror_rates, engine.markers);
-
-//		if (polling > 0 && ((i - burnin) % polling) == 0) {
-//		int i = 0;// adjust for following code
-//			OutputVCFConsensus(unphasedfile, ped, consensus, doses, outfile + ".prelim" + (i + 1) + ".vcf.gz", thetas, error_rates);
-//			OutputManager::OutputConsensus(ped, consensus, doses, outfile + ".prelim" + (i + 1));
-//		}
-//
-//		if (samples > 0 && ((i - burnin) % samples) == 0)
-//			OutputManager::WriteHaplotypes(outfile + ".sample" + (i + 1) + ".gz", ped, engine.haplotypes);
-
     }
+/*
+    consensus.Merge();
+    engine.InitialHaplotypeByConsensus(consensus);
+    for (int j = 0; j < ConsensusBuilderRounds ; ++j) {
 
+        engine.SetUseRev(j%2);
+        engine.LoopThroughChromosomesRecomb();
+
+        if (OutputManager::outputHaplotypes) {
+                consensus.Store(engine.haplotypes);
+        }
+    }
+*/
     if (rounds) printf("\n");
-
-    SetCrashExplanation("estimating maximum likelihood solution, conditional on current state");
-
-//	if (mle)
-//	{
-//		// Use best available error and crossover rates for MLE
-//		if (nerror_rates)
-//			for (int i = 0; i < engine.markers; i++)
-//				engine.SetErrorRate(i, error_rates[i] / nerror_rates);
-//
-//		if (nthetas)
-//			for (int i = 0; i < engine.markers - 1; i++)
-//				engine.thetas[i] = thetas[i] / nthetas;
-//
-//		engine.OutputMLEs(ped, outfile, mledetails);
-//	}
-
-    //   ParseHaplotypes(engine.haplotypes, engine.individuals * 2 - 2, engine.markers, 32);
 
     SetCrashExplanation("outputing solution");
     fprintf(stderr, "%d %d\n", ped.count, ped.markerCount);
     // If we did multiple rounds of haplotyping, then generate consensus
-    //if (rounds > 1)
-    //	OutputVCFConsensus(unphasedfile, ped, consensus, doses, outfile + ".vcf.gz", thetas, error_rates);
-    //OutputManager::OutputConsensus(ped, consensus, doses, outfile);
-    //else
-    //if (OutputManager::outputHaplotypes)
-    //	OutputManager::WriteHaplotypes(outfile, ped, engine.haplotypes);
-    //else
     {
         UnphasedSamplesOutputVCF(unphasedfile, ped, doses, outfile + ".vcf.gz", thetas, error_rates, engine);
         if (OutputManager::outputHaplotypes)
@@ -1503,7 +1471,7 @@ int PhasingMain(int argc, char **argv) {
                            engine);
     }
 
-    printf("Estimated mismatch rate in Markov model is: %.5f\n", errorRate);
+//    printf("Estimated mismatch rate in Markov model is: %.5f\n", errorRate);
     printf("Total time:%.2f sec\n", (float) (clock() - t) / CLOCKS_PER_SEC);
     return 0;
 }

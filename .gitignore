@@ -8,3 +8,4 @@ Release
 build
 pbwtWrapper/libRmath
 pbwtWrapper/build
+cmake-build-debug
