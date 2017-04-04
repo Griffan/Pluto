@@ -28,19 +28,19 @@
 struct max_pair_t
 {
     int clusterA;
-//    size_t sizeA;
     int clusterB;
-//    size_t sizeB;
     double Dmax;
     bool exact;
     double pval;
-    max_pair_t(int a,int b,double c, bool d,double e)
+    double f_id;//float id for breaking tie
+    max_pair_t(int a,int b,double c, bool d,double e,double id)
     {
         clusterA=a;
         clusterB=b;
         Dmax=c;
         exact=d;
         pval=e;
+        f_id=id;
     }
 };
 bool comparator(const max_pair_t& lhs, const max_pair_t& rhs);
@@ -355,7 +355,7 @@ public:
 
     PBWT* pbwtCore;
     PbwtCursor* forwardCursor,*reverseCursor;
-    std::vector<std::vector<int> > a,alpha/*reverse*/;
+    std::vector<std::vector<int> > a,alpha/*reverse*/;//stores array a status after process current column haps
     //std::vector<std::unordered_map<int,int> > aMap,alphaMap;
     std::vector<std::vector<int> > aMap,alphaMap;
     std::vector<std::vector<int> > d,delta;
@@ -471,10 +471,11 @@ public:
     PBWTWrapper(int nhaps,int nsnps, float *** _PvalueMatrix);
 
 
-    int CursorForwards(bool isSingleRound);
+    int CursorForwards();
     int CursorBackwards();
 
-    int CursorForwardsTo(int k, int T, bool isSingleRound);
+    int CursorForwardsToDeprecated(int k, int T);
+    int CursorForwardsTo(int k, int T);
 
 
     int CursorBackwardsTo(int siteBackword, int T=5);
@@ -551,10 +552,10 @@ public:
     */
     int PrintDistributionAtSite(int state,std::vector<int>& dist);
 
-    template<typename T> void PrintVector(std::vector<T> a,const char* str)
+    template<typename T> void PrintVector(T* a, int size, const char* str)
     {
         fprintf(stderr,"debug array %s:\n",str);
-        for (int i = 0; i < a.size(); ++i) {
+        for (int i = 0; i < size; ++i) {
             fprintf(stderr,"%f\t",(float)a[i]);
         }
         fprintf(stderr,"\n");
@@ -591,16 +592,18 @@ public:
     int HowManyChildlessState(std::vector<StateNode*> & a)
     {
         int sum=0;
+        std::cerr<<sum<<" enter childless state out of "<<a.size()<<" total states"<<std::endl;
         for (auto & node:a) {
             if(node->childNodeIndex[0]== nullptr || node->childNodeIndex[1]== nullptr)
                 sum++;
         }
-        std::cerr<<sum<<" childless state out of "<<a.size()<<" total states"<<std::endl;
+        std::cerr<<sum<<" leave childless state out of "<<a.size()<<" total states"<<std::endl;
         return sum;
     }
     int HowManyChildHapCount(std::vector<StateNode*> & currentNodes, int childSite)
     {
         int sum1(0),sum2(0);
+        std::cerr<<sum1<<" enter child haps from sum1 and  "<<sum2<<" child haps from sum2 out of "<<currentNodes.size()<<" total states"<<std::endl;
         int index=0;
         std::unordered_map<int,bool> bag;
         for (auto & node:currentNodes) {
@@ -625,13 +628,18 @@ public:
 
         }
         if(sum1 != sum2) exit(EXIT_FAILURE);
-//        std::cerr<<sum1<<" child haps from sum1 and  "<<sum2<<" child haps from sum2 out of "<<currentNodes.size()<<" total states"<<std::endl;
+        std::cerr<<sum1<<" leave child haps from sum1 and  "<<sum2<<" child haps from sum2 out of "<<currentNodes.size()<<" total states"<<std::endl;
         return sum1;
     }
 private:
     PBWTWrapper(const PBWTWrapper&);
     PBWTWrapper & operator=(const PBWTWrapper&);
 
+    void UpdateAandD(int k);
+
+    int CreateNewCluster(int k, int rank, int i0, int group);
+
+    void CreateLastSiteCluster(int k, int rank, int i0, int group);
 };
 
 #endif //PLUTO_PBWTWRAPPER_H

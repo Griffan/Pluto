@@ -424,7 +424,7 @@ void PBWTHaplotyper::PrepareRefSetPBWTWrapper() {
     Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix);
     Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
     Wrapper->CursorBackwards();//calculate backwards order of suffix
-    Wrapper->CursorForwards(false);
+    Wrapper->CursorForwards();
 }
 
 int PBWTHaplotyper::LoopThroughChromosomesHighPrecision() {
@@ -437,12 +437,13 @@ int PBWTHaplotyper::LoopThroughChromosomesHighPrecision() {
         delete Wrapper;
         Wrapper = nullptr;
     }
+    printf("[HighPrecision]build model start...\n");
     Wrapper = new PBWTWrapper(2 * individuals + (individuals - phased) * nSampleCopy * 2, markers, PvalueMatrix);
     Wrapper->SetHaps(haplotypes, 0, 2 * individuals, sampledHaps, 0, (individuals - phased) * nSampleCopy * 2, thetas);
     Wrapper->CursorBackwards();//calculate backwards order of suffix
-    Wrapper->CursorForwards(false);
+    Wrapper->CursorForwards();
     clock_t t1 = clock();
-    printf("[HighPrecision]build model time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
+    printf("[HighPrecision]build model end time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     for (int i = individuals - 1; i >= 0; i--) {
 
         if (i < individuals - phased) {
@@ -506,7 +507,7 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb() {
     Wrapper = new PBWTWrapper(2 * individuals + (individuals - phased) * nSampleCopy * 2, markers, PvalueMatrix);
     Wrapper->SetHaps(haplotypes, 0, 2 * individuals, sampledHaps, 0, (individuals - phased) * nSampleCopy * 2, thetas);
     Wrapper->CursorBackwards();//calculate backwards order of suffix
-    Wrapper->CursorForwards(false);
+    Wrapper->CursorForwards();
     clock_t t1 = clock();
     printf("[Recomb]build model time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     for (int i = individuals - 1; i >= 0; i--) {
@@ -564,11 +565,12 @@ int PBWTHaplotyper::LoopThroughChromosomesSingleRound() {
         delete Wrapper;
         Wrapper = nullptr;
     }
+    printf("[SingleRound]build model start...\n");
     Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix);
     Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0,
                      thetas);//only copy phased haps into pbwt
     Wrapper->CursorBackwards();//calculate backwards order of suffix
-    Wrapper->CursorForwards(false);
+    Wrapper->CursorForwards();
     clock_t t1 = clock();
     printf("[SingleRound]build model time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     for (int i = individuals - 1; i >= 0; i--) {
@@ -635,7 +637,7 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWTWithHeterOnly() {
             Wrapper->SetHaps(haplotypes, 0, 2 * individuals, sampledHaps, 0, (individuals - phased) * nSampleCopy * 2,
                              thetas);
             Wrapper->CursorBackwards();//calculate backwards order of suffix
-            Wrapper->CursorForwards(false);
+            Wrapper->CursorForwards();
 
 #ifdef DEBUG
             {
