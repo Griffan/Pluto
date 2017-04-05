@@ -452,8 +452,8 @@ void PBWTWrapper::CreateLastSiteCluster(int k, int rank, int i0, int group) {
 
     Graph.StateNodeMat[k].push_back(new StateNode(group, tmpNumHap, allele));
     Graph.StateNodeMat[k][group]->nodeIndex = group;
-    dist.push_back(std::__1::vector<int>(tmpNumHap, 0));//state->rank_occupied
-    std::__1::vector<int> tmpMem;
+    dist.push_back(std::vector<int>(tmpNumHap, 0));//state->rank_occupied
+    std::vector<int> tmpMem;
     for (int ia = i0; ia < rank; ++ia) {
                         hapID = GetHapIDFromFwd(ia);//original ID, by treating rank as backward ranking
                         haplotypeCluster[k][hapID] = group;
@@ -486,9 +486,9 @@ int PBWTWrapper::CreateNewCluster(int k, int rank, int i0, int group) {
     Graph.StateNodeMat[k - 1].push_back(new StateNode(group, tmpNumHap, allele));
     Graph.StateNodeMat[k - 1][group]->nodeIndex = group;
 
-    dist.push_back(std::__1::vector<int>(tmpNumHap, 0));//state->rank_occupied
-    rightCoordinate.push_back(std::__1::vector<float>(tmpNumHap, (float) 0.));//state->rank_occupied
-    std::__1::vector<int> tmpMem;
+    dist.push_back(std::vector<int>(tmpNumHap, 0));//state->rank_occupied
+    rightCoordinate.push_back(std::vector<float>(tmpNumHap, (float) 0.));//state->rank_occupied
+    std::vector<int> tmpMem;
     for (int ia = i0; ia < rank; ++ia) {
         hapID = GetHapIDFromFwd(ia);//original ID, by treating rank as backward ranking
         haplotypeCluster[k - 1][hapID] = group;
