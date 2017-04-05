@@ -355,26 +355,23 @@ public:
 
     PBWT* pbwtCore;
     PbwtCursor* forwardCursor,*reverseCursor;
-    std::vector<std::vector<int> > a,alpha/*reverse*/;//stores array a status after process current column haps
-    //std::vector<std::unordered_map<int,int> > aMap,alphaMap;
-    std::vector<std::vector<int> > aMap,alphaMap;
+    std::vector<int> a,alpha/*reverse*/;//stores array a status after process current column haps;
+    //std::vector<std::vector<int> > alpha/*reverse*/;//stores array a status after process current column haps
+    std::vector<std::vector<int> > alphaMap;
     std::vector<std::vector<int> > d,delta;
-    std::vector<std::vector<float> > fwdDistance,bkDistance;/*reverse*/;
-    std::vector<std::vector<uchar> > sortedY/*only for test*/;
+    std::vector<std::vector<float> > bkDistance;/*reverse*/;
+    //std::vector<std::vector<uchar> > sortedY/*only for test*/;
     std::vector<int> c,celta;/*number of zero at each site*/
-    std::vector<std::vector<int> > u,ultra;/*relative rank within zeros*/
+    //std::vector<std::vector<int> > u,ultra;/*relative rank within zeros*/
 
     std::vector<std::vector<int> > haplotypeCluster;//site, hapID
-    std::vector<std::vector<int> > bkHaplotypeCluster;//site, hapID
-//    std::vector<std::vector<uchar> > clusterAllele;//numCluster;//at each site
+    //std::vector<std::vector<int> > bkHaplotypeCluster;//site, hapID
 
-//    std::vector<EDGE > inEdges;//valid edges:site, to, from; record indices of states that can arrive at current site and current state
-//    std::vector<EDGE > outEdges;//valid edges:site, from, to; record number of states that can reach out from current site and current state
+
     char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
-//    double * freq1s;
 
     std::vector<std::vector<int> > clusterMembership;//content is the fwd rank at that site
-//    std::vector<bool> hasSiblings;
+
 
     //mergeSite function variables
     std::vector<float> recomRate;
@@ -462,7 +459,9 @@ public:
             }
             col.clear();
         }
-        alphaMap=aMap=a=alpha=d=u=ultra=haplotypeCluster=bkHaplotypeCluster=std::vector<std::vector<int> >(N,std::vector<int>(M,0));
+        a=std::vector<int>(N,0);
+        alpha=a;
+        alphaMap=d=haplotypeCluster=std::vector<std::vector<int> >(N,std::vector<int>(M,0));
         c=celta=std::vector<int>(N,0);
 //        clusterAllele=std::vector<std::vector<uchar> >(N,std::vector<uchar>());
     }
@@ -523,17 +522,16 @@ public:
     inline unsigned long GetNumHaps(int site) const { return haplotypeCluster[site].size(); }
 
     inline float GetDistanceFromBack(int site, int backRank)const {return bkDistance[site][backRank];}
-    inline float GetDistanceFromFwd(int site, int fwdRank)const {return fwdDistance[site][fwdRank];}
+    //inline float GetDistanceFromFwd(int site, int fwdRank)const {return fwdDistance[site][fwdRank];}
 
-    inline int GetHapIDFromBack(int site, int backRank) const {
-        /*fprintf(stderr,"site:%d\tbackRank:%d\n",site,backRank); */ return alpha[site][backRank]; }
-    inline int GetHapIDFromFwd(int site, int fwdRank) const { return a[site][fwdRank]; }//you should only use it after a being updated
+    //inline int GetHapIDFromBack(int site, int backRank) const { return alpha[site][backRank]; }
+    inline int GetHapIDFromFwd(int fwdRank) const { return a[fwdRank]; }//you should only use it after a being updated
 
     inline int GetRankFromBack(int site, int hapID) {return alphaMap[site][hapID];}
-    inline int GetRankFromFwd(int site, int hapID) {return aMap[site][hapID];}
+    //inline int GetRankFromFwd(int site, int hapID) {return aMap[site][hapID];}
 
     inline int GetHapStateFromFwd(int site, int hapID) { return haplotypeCluster[site][hapID]; }
-    inline int GetHapStateFromBack(int site, int hapID) { return bkHaplotypeCluster[site][hapID]; }
+    //inline int GetHapStateFromBack(int site, int hapID) { return bkHaplotypeCluster[site][hapID]; }
 
     inline float GetHapProbAt(int site,int index)
     {
@@ -541,8 +539,8 @@ public:
     }
 
     //fast update pbwt
-    int FastCursorForwards(const PBWTWrapper& motherWrapper);
-    int FastCursorForwardsTo(int k, int T, const PBWTWrapper& baseWrapper);
+    //int FastCursorForwards(const PBWTWrapper& motherWrapper);
+    //int FastCursorForwardsTo(int k, int T, const PBWTWrapper& baseWrapper);
     /*
     function name: debug functions
     return value: :

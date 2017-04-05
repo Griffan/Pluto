@@ -10,7 +10,7 @@
 
 #include <unordered_set>
 #include "ShotgunHaplotyper.h"
-#include "../../pbwtWrapper/PBWTWrapper.h"
+#include "PBWTWrapper.h"
 #include "GeneticDistanceMap.h"
 #include "GzipFileType.h"
 
