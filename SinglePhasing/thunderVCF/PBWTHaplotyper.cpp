@@ -494,6 +494,7 @@ int PBWTHaplotyper::LoopThroughChromosomesHighPrecision() {
     if (isRev) ReverseInput();
     return 0;
 }
+
 int PBWTHaplotyper::LoopThroughChromosomesRecomb() {
 
     ResetCrossovers();
@@ -578,17 +579,6 @@ int PBWTHaplotyper::LoopThroughChromosomesSingleRound() {
         if (i < individuals - phased) {
             indexBeingSampled = i;
             SwapIndividuals(i, individuals - 1);
-#ifdef DEBUG
-            {
-                Wrapper->PrintHap(tmpHaps, Wrapper->a[0]);
-
-                // Wrapper->PrintHap(tmpHaps,Wrapper->a[6]);
-                Wrapper->PrintHap(tmpHaps, Wrapper->a[Wrapper->N - 1]);
-                // Wrapper->PrintMatrix(Wrapper->a,"a array matrix");
-                Wrapper->PrintMatrix(Wrapper->d, "d array");
-                //Wrapper->PrintVector(Wrapper->a[Wrapper->N-7],"last a array");
-            }
-#endif
 
             fprintf(stderr, "[SingleRound]phasing individual %d...\n", i);
 //            ScoreLeftConditional();
@@ -1361,7 +1351,7 @@ int PBWTHaplotyper::ForwardAlgorithm() {
                         gl = GetGL(SampleIndex, i, allele1, allele2);//i gl
 //                        fprintf(stderr,"site:%d,prev(%d,%d) to current(%d,%d) : allell1:%d\tallele2:%d\tedgeNumHap1:%g\tedgeNumHap2:%g\tgl:%g\n",
 //                                    i,parentNode1,parentNode2,childNode1,childNode2,allele1,allele2,GetTransitionProb(i-1,parentNode1,childNode1),GetTransitionProb(i-1,parentNode2,childNode2),gl);
-                        if (gl > 1e-1 or i < 10) {
+                        if (gl > 1e-1 ) {
                             fitPair++;
                             tmpFwdValue = prevFwdValue *
                                           GetTransitionProb(i - 1, parentNode1, childNode1) *
@@ -1406,6 +1396,7 @@ int PBWTHaplotyper::ForwardAlgorithm() {
                     }
                 }
         }
+        fprintf(stderr,"Effective rate %f out of totalPair %d at site %d...\n",fitPair/double(totalPair),totalPair,i);
 //        fprintf(stderr,"site:%d report overall fwd:%g\n",i,fwdValueSum[i]);
         for (auto iter = genuienParents[i].begin(); iter != genuienParents[i].end(); ++iter)
             for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); ++iter2)

@@ -166,11 +166,11 @@ private:
         numHapChild[1]=0;
         allele=0;
         ID=0;
-        needMergeUpdate=false;
+//        needMergeUpdate=false;
     }
 
 public:
-    bool needMergeUpdate;
+//    bool needMergeUpdate;
     int64_t ID;
     int nodeIndex;
     float numHap;
@@ -195,7 +195,7 @@ public:
         numHapChild[1]=0;
         allele=tAllele;
         ID=0;
-        needMergeUpdate=false;
+//        needMergeUpdate=false;
     }
 
     ~StateNode()
@@ -280,9 +280,18 @@ public:
 //    float GetTransitionProbFromParentNode(int index) {
 //        return parentNodeIndex2Address[index];
 //    }
+
+    int writeNode(std::ofstream & fout)
+    {
+        fout.write((char*)&ID,sizeof(int64_t));
+        fout.write((char*)&ID,sizeof(int64_t));
+        fout.write((char*)&ID,sizeof(int64_t));
+        fout.write((char*)&ID,sizeof(int64_t));
+    }
+    int readNode(std::ifstream & fin);
 };
 
-class StateNodeContainer
+class StateNodeContainer//actual graph
 {
 public:
     int nsnps;
@@ -327,6 +336,9 @@ public:
     {
         StateNodeID2IndexPtr[site].insert({ID,indexPtr});
     }
+
+    int writeContainer(const std::string& fileName);
+    int readContainer(const std::string& fileName);
 };
 
 
