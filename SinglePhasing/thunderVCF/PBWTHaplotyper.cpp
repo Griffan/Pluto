@@ -566,14 +566,14 @@ int PBWTHaplotyper::LoopThroughChromosomesSingleRound() {
         delete Wrapper;
         Wrapper = nullptr;
     }
-    printf("[SingleRound]build model start...\n");
+    fprintf(stderr,"[SingleRound]build model start...\n");
     Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix);
     Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0,
                      thetas);//only copy phased haps into pbwt
     Wrapper->CursorBackwards();//calculate backwards order of suffix
     Wrapper->CursorForwards();
     clock_t t1 = clock();
-    printf("[SingleRound]build model time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
+    fprintf(stderr,"[SingleRound]build model time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     for (int i = individuals - 1; i >= 0; i--) {
 
         if (i < individuals - phased) {
@@ -1331,7 +1331,7 @@ int PBWTHaplotyper::ForwardAlgorithm() {
         totalPair = 0;
         noChildPair = 0;
         fwdValueSum[i] = 0;
-
+REENTRY:
         for (auto iter = genuienParents[i - 1].begin();
              iter != genuienParents[i - 1].end(); ++iter)//all states at site i-1, parentNode1: hap1
         {
@@ -1351,7 +1351,7 @@ int PBWTHaplotyper::ForwardAlgorithm() {
                         gl = GetGL(SampleIndex, i, allele1, allele2);//i gl
 //                        fprintf(stderr,"site:%d,prev(%d,%d) to current(%d,%d) : allell1:%d\tallele2:%d\tedgeNumHap1:%g\tedgeNumHap2:%g\tgl:%g\n",
 //                                    i,parentNode1,parentNode2,childNode1,childNode2,allele1,allele2,GetTransitionProb(i-1,parentNode1,childNode1),GetTransitionProb(i-1,parentNode2,childNode2),gl);
-                        if (gl > 1e-1 ) {
+                        if (gl > 1e-1 || brokenList[i]) {//if fwd algorithm broke, relex genotype constraint
                             fitPair++;
                             tmpFwdValue = prevFwdValue *
                                           GetTransitionProb(i - 1, parentNode1, childNode1) *
@@ -1376,9 +1376,9 @@ int PBWTHaplotyper::ForwardAlgorithm() {
         if (fitPair == 0) {
 
             fprintf(stderr, "[Warning]marker %d broken! %d totalPair, %d noChildPair\n", i, totalPair, noChildPair);
-            exit(EXIT_FAILURE);
-            //brokenList[i] = true;
-
+//            exit(EXIT_FAILURE);
+            brokenList[i] = true;
+            goto REENTRY;
             UpdateStateNum(GetStateNumFrom(i));
             prevFwdValue = 1.f / (states * states);
             for (int j = 0; j < states; ++j)

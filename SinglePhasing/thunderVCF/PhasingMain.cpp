@@ -164,7 +164,7 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
             //fprintf(stderr,"m=%d\n",m);
 
             pMarker = pVcf->getLastMarker();
-            markerName.printf("%s:%d", pMarker->sChrom.c_str(), pMarker->nPos);
+            markerName.printf("%s:%d:%s", pMarker->sChrom.c_str(), pMarker->nPos,pMarker->asAlts[0].c_str());//assume tri-alleles was divided into two lines
 
             if (unphaseMarkerFlag[std::string(markerName.c_str())] ==
                 true) {//if unphase also has this marker, update content otherwise remains as before
@@ -365,7 +365,7 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
 
         for (int m = 0; pVcf->iterateMarker(); ++m) {
             pMarker = pVcf->getLastMarker();
-            markerName.printf("%s:%d", pMarker->sChrom.c_str(), pMarker->nPos);
+            markerName.printf("%s:%d:%s", pMarker->sChrom.c_str(), pMarker->nPos,pMarker->asAlts[0].c_str());//assume tri-alleles was divided into two lines
 
             if (unphaseMarkerFlag[std::string(markerName.c_str())] ==
                 true) {//if unphase also has this marker i.e. shared marker, update content otherwise remains as before
@@ -705,7 +705,7 @@ void LoadUnphasedPolymorphicSites(const String &filename) {
             int idx = Pedigree::markerLookup.Integer(markerName);//only look up, no add in
             if (idx != -1)//shown in ref panel marker set
             {
-                unphaseMarkerFlag[std::string(markerName.c_str())] = true;//TODO:confirm true  or false
+                unphaseMarkerFlag[std::string(markerName.c_str())] = true;//only shown in unphased vcf
                 unphaseMarkerIdx[std::string(markerName.c_str())] = localIdx;
             }
             else {
@@ -883,7 +883,7 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
     }
 }
 
-void LoadGenotypeFromPhasedVCF(Pedigree &ped, const String &filename, int maxPhred, int phased,
+void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename, int maxPhred, int phased,
                                PBWTHaplotyper &engine, double defaultErrorRate, double defaultTransRate) {
     //printf("starting LoadPhasedVcf\n\n");
 
@@ -1026,7 +1026,7 @@ void LoadGenotypeFromPhasedVCF(Pedigree &ped, const String &filename, int maxPhr
                     }
                     else//found GT
                     {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], "|\\");
+                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], "|/");
                         int geno=phred[0].AsInteger()+phred[1].AsInteger();
                         if(geno==0)
                         {
@@ -1046,6 +1046,8 @@ void LoadGenotypeFromPhasedVCF(Pedigree &ped, const String &filename, int maxPhr
                             phred12=30;
                             phred22=0;
                         }
+                        engine.haplotypes[personIndices[i] * 2][markerindex] = phred[0].AsInteger();
+                        engine.haplotypes[personIndices[i] * 2 + 1][markerindex] = phred[1].AsInteger();
                     }
                     if ((phred11 < 0) || (phred11 < 0) || (phred12 < 0)) {
                         error("Negative PL or Positive GL observed");
@@ -1094,145 +1096,6 @@ void LoadGenotypeFromPhasedVCF(Pedigree &ped, const String &filename, int maxPhr
                     engine.genotypes[i][genoindex] = phred11;
                     engine.genotypes[i][genoindex + 1] = phred12;
                     engine.genotypes[i][genoindex + 2] = phred22;
-                }
-            }
-        }
-
-        delete pVcf;
-        //delete pMarker;
-    }
-    catch (VcfFileException e) {
-        error(e.what());
-    }
-}
-
-void LoadReferencePanelAndTargetPanel(Pedigree &ped, const String &filename, int maxPhred, PBWTHaplotyper &engine)
-{
-    printf("starting LoadGenotypeFromUnphasedVCF\n\n");
-    try {
-        VcfFile *pVcf = new VcfFile;
-        pVcf->bSiteOnly = false;
-        pVcf->bParseGenotypes = false;
-        pVcf->bParseDosages = false;
-        pVcf->bParseValues = true;
-        pVcf->openForRead(filename.c_str());
-
-        // check the sanity of data
-        if (pVcf->getSampleCount() == 0) {
-            throw VcfFileException("No individual genotype information exist in the input VCF file %s",
-                                   filename.c_str());
-        }
-
-        int nSamples = pVcf->getSampleCount();
-
-        std::unordered_map<int, int> personIndices;
-        StringIntHash originalPeople; // key: famid+subID, value: original order (0 based);
-        int person = 0;
-        for (int i = 0; i < nSamples; i++) {
-            originalPeople.Add(pVcf->vpVcfInds[i]->sIndID + "." + pVcf->vpVcfInds[i]->sIndID, person);
-            person++;
-        }
-
-        for (int i = 0; i < (engine.individuals - engine.phased);/* ped.count;*/ i++) {
-            if (originalPeople.Integer(ped[i].famid + "." + ped[i].pid) != -1) {
-                personIndices[originalPeople.Integer(ped[i].famid + "." + ped[i].pid)] = i;
-            }
-
-        }
-
-        int markerindex = 0;
-        VcfMarker *pMarker = new VcfMarker;
-        String markerName;
-        while (pVcf->iterateMarker()) {//for each marker
-
-            pMarker = pVcf->getLastMarker();
-            markerName.printf("%s:%d", pMarker->sChrom.c_str(), pMarker->nPos);
-//            printf("now for marker %s:%d\t", pMarker->sChrom.c_str(), pMarker->nPos);
-            if (unphaseMarkerFlag.find(std::string(markerName.c_str())) != unphaseMarkerFlag.end() &&
-                unphaseMarkerFlag[std::string(markerName.c_str())] == true)
-                markerindex = unphaseMarkerUIdx[std::string(markerName.c_str())];
-            else
-                continue;
-            //int AFidx = pMarker->asInfoKeys.Find("AF");
-
-            int PLidx = pMarker->asFormatKeys.Find("PL");
-            int PLGLGTflag = 0;//0 for PL, 1 for GL, 2 for GT
-            if (PLidx < 0) {
-                PLidx = pMarker->asFormatKeys.Find("GL");
-                if (PLidx >= 0) PLGLGTflag = 1;//found GL
-                else {
-                    PLidx = pMarker->asFormatKeys.Find("GT");
-                    if(PLidx >= 0) PLGLGTflag = 2;//found GT
-                    else throw VcfFileException("Cannot recognize GT, GL or PL key in FORMAT field");
-                    engine.SetOnlyGT(true);
-                }
-            }
-            //printf("reading vcf 1\n\n");
-            int formatLength = pMarker->asFormatKeys.Length();
-            int idx11 = 0, idx12 = 1, idx22 = 2;
-
-            StringArray phred;
-            int genoindex = markerindex * 3;
-
-            long phred11;
-            long phred12;
-            long phred22;
-            for (int i = 0; i < nSamples; i++)//for each individual
-            {
-                if (personIndices.find(i) != personIndices.end()) {
-
-                    if(PLGLGTflag==0)//found PL
-                    {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
-                        phred11=phred[idx11].AsInteger();
-                        phred12=phred[idx12].AsInteger();
-                        phred22=phred[idx22].AsInteger();
-                    }
-                    else if(PLGLGTflag == 1)//found GL
-                    {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
-                        phred11=static_cast<int>(-10. * phred[idx11].AsDouble());
-                        phred12=static_cast<int>(-10. * phred[idx12].AsDouble());
-                        phred22=static_cast<int>(-10. * phred[idx22].AsDouble());
-                    }
-                    else//found GT
-                    {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], "|/");
-                        long geno=phred[0].AsInteger()+phred[1].AsInteger();
-                        if(geno==0)
-                        {
-                            phred11=0;
-                            phred12=30;
-                            phred22=50;
-                        }
-                        else if(geno==1)
-                        {
-                            phred11=50;
-                            phred12=0;
-                            phred22=50;
-                        }
-                        else
-                        {
-                            phred11=50;
-                            phred12=30;
-                            phred22=0;
-                        }
-                    }
-
-                    if ((phred11 < 0) || (phred12 < 0) || (phred22 < 0)) {
-                        error("Negative PL or Positive GL observed");
-                    }
-
-                    if (phred11 > maxPhred) phred11 = maxPhred;
-                    if (phred12 > maxPhred) phred12 = maxPhred;
-                    if (phred22 > maxPhred) phred22 = maxPhred;
-//
-//                    printf("phred scores are %f, %f, %f;\tphred11/12/22 %d, %d, %d\n", phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble(),phred11,phred12,phred22);
-
-                    engine.genotypes[personIndices[i]][genoindex] = phred11;
-                    engine.genotypes[personIndices[i]][genoindex + 1] = phred12;
-                    engine.genotypes[personIndices[i]][genoindex + 2] = phred22;
-//                    fprintf(stderr,"marker:%d\t%d\t%d\t%d\n",markerindex,engine.genotypes[personIndices[i]][genoindex],engine.genotypes[personIndices[i]][genoindex + 1],engine.genotypes[personIndices[i]][genoindex + 2] );
                 }
             }
         }
@@ -1372,7 +1235,7 @@ int PhasingMain(int argc, char **argv) {
     // Setup and load a list of polymorphic sites, each with two allele labels ...
     Pedigree ped;
 
-    SetCrashExplanation("loading shotgun data - first pass");
+    SetCrashExplanation("loading Pvalue Matrix - first pass");
     LoadPidToBeIncluded(pidIncludeFromUnphased, pidIncludeFromPhased);
     LoadPidToBeExcluded(pidExcludeFromUnphased, pidExcludeFromPhased);
 
@@ -1409,7 +1272,7 @@ int PhasingMain(int argc, char **argv) {
 
     SetCrashExplanation("loading map information for polymorphic sites");
 
-    printf("Loaded information on %d polymorphic sites\n\n", Pedigree::markerCount);
+    fprintf(stderr,"Load information on %d polymorphic sites\n\n", Pedigree::markerCount);
 
     Pedigree::LoadMarkerMap(mapfile);//the format of mapfiles is:	chrome\tmarker_name\tposition
 
@@ -1452,18 +1315,21 @@ int PhasingMain(int argc, char **argv) {
     engine.InitAuxillary();
 
 
-    printf("Copy unphased genotypes into haplotyping engine\n");
+    fprintf(stderr,"Copy unphased genotypes into haplotyping engine\n");
     // Copy genotypes into haplotyping engine
     if (engine.readyForUse)
         LoadGenotypeFromUnphasedVCF(ped, unphasedfile, maxPhred, engine);//this is where we copy GL into genotype arrays
 
-    printf("Done loading shotgun file\n\n");
+    fprintf(stderr,"Done loading unphased genotype file\n\n");
     // Copy phased haplotypes into haplotyping engine, but we put phased haps in the end
 
-    printf("Copy phased genotypes into haplotyping engine\n");
-    if (phasedfile!="Empty")
-        LoadGenotypeFromPhasedVCF(ped, phasedfile, maxPhred, engine.phased, engine, errorRate, transRate);//this is where we copy GL into genotype arrays
 
+    if (phasedfile!="Empty") {
+        fprintf(stderr, "Copy phased genotypes into haplotyping engine\n");
+        LoadGenotypeAndHaplotypeFromPhasedVCF(ped, phasedfile, maxPhred, engine.phased, engine, errorRate,
+                                              transRate);//this is where we copy GL into genotype arrays
+        fprintf(stderr, "Done loading phased genotype file\n\n");
+    }
 
 
     //if (engine.readyForUse == false || engine.ForceMemoryAllocation() == false)
@@ -1479,12 +1345,6 @@ int PhasingMain(int argc, char **argv) {
 
     engine.ShowMemoryInfo();
 
-    if (mle)//not sure
-    {
-        engine.ShowMLEMemoryInfo();
-        if (!engine.AllocateMLEMemory())
-            return MemoryAllocationFailure();
-    }
 
     int ConsensusBuilderRounds=0;
     if(rounds-burnin==1)
@@ -1523,10 +1383,6 @@ int PhasingMain(int argc, char **argv) {
     newline |= engine.LoadErrorRates(errorFile);
     if (newline) printf("\n");
 
-    //engine.SetErrorRate(errorRate);
-//    UpdateVector(engine.thetas, thetas, nthetas, engine.markers - 1);
-//    UpdateErrorRates(engine.error_models, error_rates, nerror_rates, engine.markers);
-
     SetCrashExplanation("searching for initial haplotype set");
 
     if (inputPhased) {
@@ -1548,8 +1404,8 @@ int PhasingMain(int argc, char **argv) {
     printf("Found initial haplotype set\n\n");
     //OutputManager::WriteHaplotypes(outfile, ped, engine.haplotypes);
     //return 0;
-    if(phasedfile!="Empty")
-    engine.LoadHaplotypesFromPhasedVCF(ped, phasedfile);// override randomsetup for phased samples
+//    if(phasedfile!="Empty")
+//    engine.LoadHaplotypesFromPhasedVCF(ped, phasedfile);// override randomsetup for phased samples
 
     SetCrashExplanation("revving up haplotyping engine");
 
