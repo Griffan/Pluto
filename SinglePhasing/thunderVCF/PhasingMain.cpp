@@ -241,7 +241,7 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
 
                 int nFormats = pMarker->asFormatKeys.Length();
 
-                pMarker->setSampleSize(vcf2ped.size(), pVcf->bParseGenotypes, pVcf->bParseDosages, pVcf->bParseValues);
+                pMarker->setSampleSize(static_cast<int>(vcf2ped.size()), pVcf->bParseGenotypes, pVcf->bParseDosages, pVcf->bParseValues);
 
                 //fprintf(stderr,"nFormats=%d\tGTidx=%d\tDSidx=%d\n",nFormats,GTidx,DSidx);
 
@@ -446,7 +446,7 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
 
                 int nFormats = pMarker->asFormatKeys.Length();
 
-                pMarker->setSampleSize(vcf2ped.size(), pVcf->bParseGenotypes, pVcf->bParseDosages, pVcf->bParseValues);
+                pMarker->setSampleSize(static_cast<int>(vcf2ped.size()), pVcf->bParseGenotypes, pVcf->bParseDosages, pVcf->bParseValues);
 
 //                fprintf(stderr,"nFormats=%d\tGTidx=%d\tDSidx=%d\n",nFormats,GTidx,DSidx);
 
@@ -636,7 +636,7 @@ void LoadPolymorphicSites(const String &filename) {
         pVcf->bParseValues = false;
         pVcf->openForRead(filename.c_str());
 
-        VcfMarker *pMarker = new VcfMarker;
+        VcfMarker *pMarker = nullptr;// = new VcfMarker;
 
         StringArray altalleles;
         String markerName;
@@ -692,7 +692,7 @@ void LoadUnphasedPolymorphicSites(const String &filename) {
         pVcf->bParseValues = false;
         pVcf->openForRead(filename.c_str());
 
-        VcfMarker *pMarker = new VcfMarker;
+        VcfMarker *pMarker = nullptr;//new VcfMarker;
         StringArray altalleles;
         String markerName;
         int localIdx = 0;
@@ -779,7 +779,7 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
         }
 
         int markerindex = 0;
-        VcfMarker *pMarker = new VcfMarker;
+        VcfMarker *pMarker = nullptr;//new VcfMarker;
         String markerName;
         while (pVcf->iterateMarker()) {//for each marker
 
@@ -867,9 +867,9 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
 //
 //                    printf("phred scores are %f, %f, %f;\tphred11/12/22 %d, %d, %d\n", phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble(),phred11,phred12,phred22);
 
-                    engine.genotypes[personIndices[i]][genoindex] = phred11;
-                    engine.genotypes[personIndices[i]][genoindex + 1] = phred12;
-                    engine.genotypes[personIndices[i]][genoindex + 2] = phred22;
+                    engine.genotypes[personIndices[i]][genoindex] = static_cast<char>(phred11);
+                    engine.genotypes[personIndices[i]][genoindex + 1] = static_cast<char>(phred12);
+                    engine.genotypes[personIndices[i]][genoindex + 2] = static_cast<char>(phred22);
 //                    fprintf(stderr,"marker:%d\t%d\t%d\t%d\n",markerindex,engine.genotypes[personIndices[i]][genoindex],engine.genotypes[personIndices[i]][genoindex + 1],engine.genotypes[personIndices[i]][genoindex + 2] );
                 }
             }
@@ -905,9 +905,9 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
 
         //vector<int> personIndices(ped.count, -1);
         std::unordered_map<int, int> personIndices;
-        StringIntHash originalPeople; // key: famid+subID, value: original order (0 based);
+        StringIntHash originalPeople; // key: famid+subID, value: original order (0 based); in phased file
         int person = 0;
-        for (int i = 0; i < nSamples; i++) {
+        for (int i = 0; i < nSamples; i++) {//add samples in current phased file into originalPeople
             {
                 //std::cerr << "if ordered:" << pVcf->vpVcfInds[i]->sIndID << std::endl;
                 originalPeople.Add(pVcf->vpVcfInds[i]->sIndID + "." + pVcf->vpVcfInds[i]->sIndID, person);
@@ -919,7 +919,7 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
             int idx = originalPeople.Integer(ped[i].famid + "." + ped[i].pid);
             if (idx != -1)//phased in this vcf
             {
-                personIndices[originalPeople.Integer(ped[i].famid + "." + ped[i].pid)] = i;
+                personIndices[idx] = i;
 
             }
         }
@@ -1046,10 +1046,10 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
                             phred12=30;
                             phred22=0;
                         }
-                        engine.haplotypes[personIndices[i] * 2][markerindex] = phred[0].AsInteger();
-                        engine.haplotypes[personIndices[i] * 2 + 1][markerindex] = phred[1].AsInteger();
+                        engine.haplotypes[personIndices[i] * 2][markerindex] = static_cast<char>(phred[0].AsInteger());
+                        engine.haplotypes[personIndices[i] * 2 + 1][markerindex] = static_cast<char>(phred[1].AsInteger());
                     }
-                    if ((phred11 < 0) || (phred11 < 0) || (phred12 < 0)) {
+                    if ((phred11 < 0) || (phred12 < 0) || (phred22 < 0)) {
                         error("Negative PL or Positive GL observed");
                     }
 
@@ -1059,9 +1059,9 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
                     if (phred12 > maxPhred) phred12 = maxPhred;
                     if (phred22 > maxPhred) phred22 = maxPhred;
 
-                    engine.genotypes[personIndices[i]][genoindex] = phred11;
-                    engine.genotypes[personIndices[i]][genoindex + 1] = phred12;
-                    engine.genotypes[personIndices[i]][genoindex + 2] = phred22;
+                    engine.genotypes[personIndices[i]][genoindex] = static_cast<char>(phred11);
+                    engine.genotypes[personIndices[i]][genoindex + 1] = static_cast<char>(phred12);
+                    engine.genotypes[personIndices[i]][genoindex + 2] = static_cast<char>(phred22);
                 }
             }
             //printf("reading vcf 4\n\n");
@@ -1083,7 +1083,7 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
                     int phred12 = 0;// GLflag ? static_cast<int>(-10. * phred[idx12].AsDouble()) : phred[idx12].AsInteger();
                     int phred22 = 0;// GLflag ? static_cast<int>(-10. * phred[idx22].AsDouble()) : phred[idx22].AsInteger();
 
-                    if ((phred11 < 0) || (phred11 < 0) || (phred12 < 0)) {
+                    if ((phred11 < 0) || (phred12 < 0) || (phred22 < 0)) {
                         error("Negative PL or Positive GL observed");
                     }
 
@@ -1093,9 +1093,9 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
                     if (phred12 > maxPhred) phred12 = maxPhred;
                     if (phred22 > maxPhred) phred22 = maxPhred;
 
-                    engine.genotypes[i][genoindex] = phred11;
-                    engine.genotypes[i][genoindex + 1] = phred12;
-                    engine.genotypes[i][genoindex + 2] = phred22;
+                    engine.genotypes[i][genoindex] = static_cast<char>(phred11);
+                    engine.genotypes[i][genoindex + 1] = static_cast<char>(phred12);
+                    engine.genotypes[i][genoindex + 2] = static_cast<char>(phred22);
                 }
             }
         }
@@ -1136,7 +1136,7 @@ int PhasingMain(int argc, char **argv) {
     SetupCrashHandlers();
     SetCrashExplanation("reading command line options");
 
-    printf("Thunder_Glf 1.0.9 -- Markov Chain Haplotyping for Shotgun Sequence Data\n"
+    printf("Pluto 0.01 -- Markov Chain Haplotyping for Shotgun Sequence Data\n"
                    "(c) 2005-2007 Goncalo Abecasis, Yun Li, with thanks to Paul Scheet\n\n");
 
     ParameterList pl;

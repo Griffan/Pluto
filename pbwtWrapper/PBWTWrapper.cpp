@@ -381,7 +381,8 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
  *This function must be called along the sites, no skip permitted;
  *Mask the site you want to skip at the begining if you have to.
  */
-    int rank, i0 = 0;
+    int rank=0;
+    int i0 = 0;
     int group = 0;
 
     clusterMembership.clear();
@@ -404,15 +405,10 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
         }
         //finish the last segment if i0 didn't reach the end
         if (i0 < forwardCursor->M) {
-
             CreateNewCluster(k, forwardCursor->M, i0, group);
-
         }
-
         if (GetNumStates(k - 1) != 1) RegressionMergeAtSite(k - 1, true);//TODO:implement this function
         Graph.NormalizeCurrentSiteTransitionProb(k - 2);
-
-
     }
 
     UpdateAandD(k);
@@ -479,9 +475,10 @@ void PBWTWrapper::CreateLastSiteCluster(int k, int rank, int i0, int group) {
 int PBWTWrapper::CreateNewCluster(int k, int rank, int i0, int group) {
 
     int tmpNumHap = rank - i0;
-    char allele = haplotype[GetHapIDFromFwd(i0)][k - 1];
+    int hapID =GetHapIDFromFwd(i0);
+    char allele = haplotype[hapID][k - 1];
     int prevSiteStateIndex =0;
-    int hapID =0;
+
 
     Graph.StateNodeMat[k - 1].push_back(new StateNode(group, tmpNumHap, allele));
     Graph.StateNodeMat[k - 1][group]->nodeIndex = group;
@@ -971,13 +968,9 @@ int PBWTWrapper::CursorBackwardsTo(int siteBackword, int T) {
 }
 
 int PBWTWrapper::CopyHap(int k, PbwtCursor *Cursor) {//this function has the same effect as forward/backward read
-    for (int i = 0; i != Cursor->M; ++i) {
-        if (haplotype[Cursor->a[i]][k] >= '0')
-            Cursor->sortedY[i] = haplotype[Cursor->a[i]][k] - '0';
-        else //fprintf(stderr,"alert!!!! %d,%d,%d,%d\n",haplotype[Cursor->a[i]][k],k,i,Cursor->a[i]);
+    for (int i = 0; i != Cursor->M; ++i) {//ensure that alleles are 0/1 values not '0'/'1'
             Cursor->sortedY[i] = haplotype[Cursor->a[i]][k];
     }
-
     //PrintVector(Cursor->sortedY,Cursor->M,"fromCopyHap");
     return 0;
 }
@@ -1574,6 +1567,7 @@ void PBWTWrapper::DoMerge(int site, int retainState, int removeState, std::vecto
 int PBWTWrapper::SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampledHaps, int CopyStart2, int CopyEnd2, float* rate) {
 //    phased = nPhase;
 //    nSampledCopy = nCopy;
+    if(rate)
     recomRate.assign(rate,rate+nMarkers-1);
 //    for (int k = 0; k <nMarkers-1 ; ++k) {
 //        std::cerr<<"marker "<<k+1<<":"<<recomRate[k]<<std::endl;
@@ -1583,10 +1577,9 @@ int PBWTWrapper::SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampled
 //    int nonCoppiedIndividuals = unphased + phased;//nSampledCopy additional copies, the original one not included
     int i=0;
     for (int j = CopyStart; i<M && j < CopyEnd; ++i,++j) {
-        //TODO:implement '0' checking
         haplotype[i] = haps[j];
     }
-
+    if(sampledHaps)
     for ( int j = CopyStart2; i < M && j < CopyEnd2; ++i, ++j) {
         haplotype[i] = sampledHaps[j];
     }

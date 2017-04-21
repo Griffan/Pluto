@@ -239,6 +239,7 @@ public:
     //because this StateNoteMatrix is just a copy of new individual's round
     StateNode & operator=(const StateNode& A)
     {
+        fprintf(stderr,"using operator =\n");
         numHap=A.numHap;
         ID=A.ID;
         nodeIndex=A.nodeIndex;
@@ -261,11 +262,12 @@ public:
     }
 
     int AddChildNode(char allele, int *index, float numHaplotype) {//should only be called once
-//        if(index != nullptr) fprintf(stderr,"add %d to allele %d with numHaplotype:%f\n",*index,allele,numHaplotype);
+//        if(childNodeIndex[(size_t)allele] != nullptr)
+//            fprintf(stderr,"add index: %p to child %p with allele %d(%d) with numHaplotype:%f to\n",index,childNodeIndex[(size_t)allele],allele,(size_t)allele,numHaplotype);
 //        else fprintf(stderr,"add nullptr to allele %d with numHaplotype:%f\n",allele,numHaplotype);
         if(childNodeIndex[(size_t)allele]!=index && childNodeIndex[(size_t)allele]!= nullptr)
         {
-            fprintf(stderr,"roar from StateNode AddChildNode!!!!\n");
+            fprintf(stderr,"roar from StateNode AddChildNode!!!!allele:%d\t%p\tto\t%p\n",allele,childNodeIndex[(size_t)allele],index);
             exit(EXIT_FAILURE);
         }
         childNodeIndex[(size_t)allele]=index;
@@ -283,9 +285,6 @@ public:
 
     int writeNode(std::ofstream & fout)
     {
-        fout.write((char*)&ID,sizeof(int64_t));
-        fout.write((char*)&ID,sizeof(int64_t));
-        fout.write((char*)&ID,sizeof(int64_t));
         fout.write((char*)&ID,sizeof(int64_t));
     }
     int readNode(std::ifstream & fin);

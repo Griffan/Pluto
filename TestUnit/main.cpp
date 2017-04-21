@@ -7,7 +7,7 @@
 #include "random"
 #include "gtest/gtest.h"
 
-#define DRAW_PLOT
+#define GTEST
 #ifdef GTEST
 using namespace std;
 char**  HapsInit(int M, int N)
@@ -15,36 +15,66 @@ char**  HapsInit(int M, int N)
     char ** haps = new char* [M];
     for(int i=0;i!=M;++i)
         haps[i]=new char [N];
-    haps[0]                   ="0000";
+//    haps[0]                   = const_cast<char *>("0000");
+    haps[0][0]=0;
+    haps[0][1]=0;
+    haps[0][2]=0;
+    haps[0][3]=0;
     for (int i = 1; i <21 ; ++i) {
-        strncpy(haps[i],haps[0],N);
+        memcpy(haps[i],haps[0],N);
     }
-    haps[21]                  ="0001";
+//    haps[21]                  =const_cast<char *>("0001");
+    haps[21][0]=0;
+    haps[21][1]=0;
+    haps[21][2]=0;
+    haps[21][3]=1;
     for (int i = 21+1; i <79+21 ; ++i) {
-        strncpy(haps[i],haps[21],N);
+        memcpy(haps[i],haps[21],N);
     }
-    haps[79+21]               ="0010";
+//    haps[79+21]               =const_cast<char *>("0010");
+    haps[79+21][0]=0;
+    haps[79+21][1]=0;
+    haps[79+21][2]=1;
+    haps[79+21][3]=0;
     for (int i = 79+21+1; i <95+79+21 ; ++i) {
-        strncpy(haps[i],haps[79+21],N);
+        memcpy(haps[i],haps[79+21],N);
     }
-    haps[95+79+21]            ="0011";
+//    haps[95+79+21]            =const_cast<char *>("0011");
+    haps[95+79+21][0]=0;
+    haps[95+79+21][1]=0;
+    haps[95+79+21][2]=1;
+    haps[95+79+21][3]=1;
     for (int i = 95+79+21+1; i <116+95+79+21 ; ++i) {
-        strncpy(haps[i],haps[95+79+21],N);
+        memcpy(haps[i],haps[95+79+21],N);
     }
-    haps[116+95+79+21]        ="0100";
+//    haps[116+95+79+21]        =const_cast<char *>("0100");
+    haps[116+95+79+21][0]=0;
+    haps[116+95+79+21][1]=1;
+    haps[116+95+79+21][2]=0;
+    haps[116+95+79+21][3]=0;
     for (int i = 116+95+79+21+1; i <25+116+95+79+21 ; ++i) {
-        strncpy(haps[i],haps[116+95+79+21],N);
+        memcpy(haps[i],haps[116+95+79+21],N);
     }
-    haps[25+116+95+79+21]     ="0101";
+//    haps[25+116+95+79+21]     =const_cast<char *>("0101");
+    haps[25+116+95+79+21][0]=0;
+    haps[25+116+95+79+21][1]=1;
+    haps[25+116+95+79+21][2]=0;
+    haps[25+116+95+79+21][3]=1;
     for (int i = 25+116+95+79+21+1; i <112+25+116+95+79+21 ; ++i) {
-        strncpy(haps[i],haps[25+116+95+79+21],N);
+        memcpy(haps[i],haps[25+116+95+79+21],N);
     }
-    haps[112+25+116+95+79+21] ="0111";
+//    haps[112+25+116+95+79+21] =const_cast<char *>("0111");
+    haps[112+25+116+95+79+21][0]=0;
+    haps[112+25+116+95+79+21][1]=1;
+    haps[112+25+116+95+79+21][2]=1;
+    haps[112+25+116+95+79+21][3]=1;
     for (int i = 112+25+116+95+79+21+1; i <152+112+25+116+95+79+21 ; ++i) {
-        strncpy(haps[i],haps[112+25+116+95+79+21],N);
+        memcpy(haps[i],haps[112+25+116+95+79+21],N);
     }
+
     return haps;
 }
+
 
 class PBWTWrapperTest : public ::testing::Test {
 protected:
@@ -54,15 +84,15 @@ protected:
     {
         M=21+79+95+116+25+112+152;
         N=4;
-        Wrapper = new PBWTWrapper(M,N);
+        Wrapper = new PBWTWrapper(M,N,nullptr);
     }
 
     virtual ~PBWTWrapperTest(){}
 
     virtual void SetUp(){
-        cerr << "Hello, World!" << endl;
+        cerr << "Hello, World! From PBWTWrapper" << endl;
         char ** haps=HapsInit(M,N);
-        Wrapper->SetHaps(haps,0,0,0,0);
+        Wrapper->SetHaps(haps,0,2*M,0,0,0,0);
     }
 
     virtual void TearDown(){}
@@ -160,69 +190,6 @@ TEST_F(PBWTWrapperTest, MergeSortedArrayToA)
     EXPECT_EQ(c1,a1);
 }
 
-TEST_F(PBWTWrapperTest, CursorForwards)
-{
-
-    std::vector<int> a(M,0);
-    for (int i = 0; i <21 ; ++i) {
-        a[i]=i;
-    }
-    for (int j = 21; j <21+25 ; ++j) {
-        a[j]=116+95+79+21+j-21;
-    }
-    for (int k = 21+25; k <21+25+95; ++k) {
-        a[k]=79+21+k-(21+25);
-    }
-    for (int l = 21+25+95; l <21+25+95+79 ; ++l) {
-        a[l]=21 + l-(21+25+95);
-    }
-    for (int m = 21+25+95+79; m <21+25+95+79+112 ; ++m) {
-        a[m]=25+116+95+79+21+m-(21+25+95+79);
-    }
-    for (int n = 21+25+95+79+112; n <21+25+95+79+112+116 ; ++n) {
-        a[n]=95+79+21+n-(21+25+95+79+112);
-    }
-    for (int i1 = 21+25+95+79+112+116; i1 <21+25+95+79+112+116+152 ; ++i1) {
-        a[i1]=112+25+116+95+79+21+i1-(21+25+95+79+112+116);
-    }
-
-    std::vector<int> d(M,0);
-    d[0]=4;//0000
-    for (int i = 1; i <21 ; ++i) {
-        d[i]=0;
-    }
-    d[21]=2;//0100
-    for (int j = 21+1; j <21+25 ; ++j) {
-        d[j]=0;
-    }
-    d[21+25]=3;//0010
-    for (int k = 21+25+1; k <21+25+95; ++k) {
-        d[k]=0;
-    }
-    d[21+25+95]=4;//0001
-    for (int l = 21+25+95+1; l <21+25+95+79 ; ++l) {
-        d[l]=0;
-    }
-    d[21+25+95+79]=2;//0101
-    for (int m = 21+25+95+79+1; m <21+25+95+79+112 ; ++m) {
-        d[m]=0;
-    }
-    d[21+25+95+79+112]=3;//0011
-    for (int n = 21+25+95+79+112+1; n <21+25+95+79+112+116 ; ++n) {
-        d[n]=0;
-    }
-    d[21+25+95+79+112+116]=2;//0111
-    for (int i1 = 21+25+95+79+112+116+1; i1 <21+25+95+79+112+116+152 ; ++i1) {
-        d[i1]=0;
-    }
-
-    Wrapper->CursorForwards();
-    EXPECT_EQ(a,Wrapper->a[Wrapper->N-1]);
-//    Wrapper->PrintVector(d,"expected");
-//    Wrapper->PrintVector(Wrapper->d[Wrapper->N-1],"actual");
-    EXPECT_EQ(d,Wrapper->d[Wrapper->N-1]);
-}
-
 TEST_F(PBWTWrapperTest, CursorBackwards)
 {
     std::vector<int> a(M,0);
@@ -261,9 +228,72 @@ TEST_F(PBWTWrapperTest, CursorBackwards)
 
     Wrapper->CursorBackwards();
 
-    EXPECT_EQ(a,Wrapper->alpha[0]);
+    EXPECT_EQ(a,Wrapper->alpha);
 
     EXPECT_EQ(d,Wrapper->delta[0]);
+}
+
+TEST_F(PBWTWrapperTest, CursorForwards)
+{
+
+    std::vector<int> a(M,0);
+    for (int i = 0; i <21 ; ++i) {
+        a[i]=i;
+    }
+    for (int j = 21; j <21+25 ; ++j) {
+        a[j]=116+95+79+21+j-21;
+    }
+    for (int k = 21+25; k <21+25+95; ++k) {
+        a[k]=79+21+k-(21+25);
+    }
+    for (int l = 21+25+95; l <21+25+95+79 ; ++l) {
+        a[l]=21 + l-(21+25+95);
+    }
+    for (int m = 21+25+95+79; m <21+25+95+79+112 ; ++m) {
+        a[m]=25+116+95+79+21+m-(21+25+95+79);
+    }
+    for (int n = 21+25+95+79+112; n <21+25+95+79+112+116 ; ++n) {
+        a[n]=95+79+21+n-(21+25+95+79+112);
+    }
+    for (int i1 = 21+25+95+79+112+116; i1 <21+25+95+79+112+116+152 ; ++i1) {
+        a[i1]=112+25+116+95+79+21+i1-(21+25+95+79+112+116);
+    }
+
+    std::vector<int> d(M,0);
+    d[0]=4;//0000
+    for (int i = 1; i <21 ; ++i) {
+        d[i]=0;
+    }
+    d[21]=2;//0100
+    for (int j = 21+1; j <21+25 ; ++j) {//46
+        d[j]=0;
+    }
+    d[21+25]=3;//0010
+    for (int k = 21+25+1; k <21+25+95; ++k) {//141
+        d[k]=0;
+    }
+    d[21+25+95]=4;//0001
+    for (int l = 21+25+95+1; l <21+25+95+79 ; ++l) {//220
+        d[l]=0;
+    }
+    d[21+25+95+79]=2;//0101
+    for (int m = 21+25+95+79+1; m <21+25+95+79+112 ; ++m) {//332
+        d[m]=0;
+    }
+    d[21+25+95+79+112]=3;//0011
+    for (int n = 21+25+95+79+112+1; n <21+25+95+79+112+116 ; ++n) {//448
+        d[n]=0;
+    }
+    d[21+25+95+79+112+116]=2;//0111
+    for (int i1 = 21+25+95+79+112+116+1; i1 <21+25+95+79+112+116+152 ; ++i1) {//600
+        d[i1]=0;
+    }
+    Wrapper->CursorBackwards();
+    Wrapper->CursorForwards();
+    EXPECT_EQ(a,Wrapper->a);
+//    Wrapper->PrintVector(d,"expected");
+//    Wrapper->PrintVector(Wrapper->d[Wrapper->N-1],"actual");
+    EXPECT_EQ(d,Wrapper->d[Wrapper->N-1]);
 }
 
 TEST_F(PBWTWrapperTest, MoveSegment)
@@ -281,15 +311,15 @@ protected:
     {
         M=21+79+95+116+25+112+152;
         N=4;
-        Wrapper = new PBWTWrapper(M,N);
+        Wrapper = new PBWTWrapper(M,N,0);
     }
 
     virtual ~StateNodeTest(){}
 
     virtual void SetUp(){
-        cerr << "Hello, World!" << endl;
+        cerr << "Hello, World! From StateNodeTest" << endl;
         char ** haps=HapsInit(M,N);
-        Wrapper->SetHaps(haps,0,0,0,0);
+        Wrapper->SetHaps(haps,0,2*M,0,0,0,0);
     }
 
     virtual void TearDown(){}
