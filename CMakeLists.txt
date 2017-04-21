@@ -76,7 +76,7 @@ message(STATUS "LIBSTATGEN_INCLUDE_DIR: " ${LIBSTATGEN_INCLUDE_DIR})
 
 add_subdirectory(pbwtWrapper)
 add_subdirectory(SinglePhasing)
-add_subdirectory(TestUnit)
+#add_subdirectory(TestUnit)
 
 set(SOURCE_FILES main.cpp)
 add_executable(Pluto ${SOURCE_FILES})
