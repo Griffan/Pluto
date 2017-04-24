@@ -1377,7 +1377,7 @@ REENTRY:
                         gl = GetGL(SampleIndex, i, allele1, allele2);//i gl
 //                        fprintf(stderr,"site:%d,prev(%d,%d) to current(%d,%d) : allell1:%d\tallele2:%d\tedgeNumHap1:%g\tedgeNumHap2:%g\tgl:%g\n",
 //                                    i,parentNode1,parentNode2,childNode1,childNode2,allele1,allele2,GetTransitionProb(i-1,parentNode1,childNode1),GetTransitionProb(i-1,parentNode2,childNode2),gl);
-                        if (gl > 1e-1 || brokenList[i]) {//if fwd algorithm broke, relex genotype constraint
+                        if (gl > 1e-1 || i<10) {//if fwd algorithm broke, relex genotype constraint
                             fitPair++;
                             tmpFwdValue = prevFwdValue *
                                           GetTransitionProb(i - 1, parentNode1, childNode1) *
@@ -1434,28 +1434,28 @@ REENTRY:
                                                                                              tmpEdgePair.parentNode2)] = tmpEdgePair.fwd;
             fwdValueSum[i] += tmpEdgePair.fwd;
         }
-        if (fitPair == 0) {
-            fprintf(stderr, "[Warning]marker %d broken! %d totalPair, %d noChildPair\n", i, totalPair, noChildPair);
-//            exit(EXIT_FAILURE);
-            brokenList[i] = true;
-            goto REENTRY;
-            UpdateStateNum(GetStateNumFrom(i));
-            prevFwdValue = 1.f / (states * states);
-            for (int j = 0; j < states; ++j)
-                for (int k = 0; k < states; ++k) {
-                    allele1 = GetAllele(i, j);
-                    allele2 = GetAllele(i, k);
-                    gl = GetGL(SampleIndex, i, allele1, allele2);//i gl
-                    if (gl > 1e-1) {
-                        tmpFwdValue = prevFwdValue * gl;//i fwdValueSum
-                        if (tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0) {
-                            tmpFwdValue = UNDERFLOW_MIN;
-                        }
-                        fwdValueSum[i] += tmpFwdValue;
-                        genuienParents[i][j][k][std::make_pair(0, 0)] = tmpFwdValue;
-                    }
-                }
-        }
+//        if (fitPair == 0) {
+//            fprintf(stderr, "[Warning]marker %d broken! %d totalPair, %d noChildPair\n", i, totalPair, noChildPair);
+////            exit(EXIT_FAILURE);
+//            brokenList[i] = true;
+//            goto REENTRY;
+//            UpdateStateNum(GetStateNumFrom(i));
+//            prevFwdValue = 1.f / (states * states);
+//            for (int j = 0; j < states; ++j)
+//                for (int k = 0; k < states; ++k) {
+//                    allele1 = GetAllele(i, j);
+//                    allele2 = GetAllele(i, k);
+//                    gl = GetGL(SampleIndex, i, allele1, allele2);//i gl
+//                    if (gl > 1e-1) {
+//                        tmpFwdValue = prevFwdValue * gl;//i fwdValueSum
+//                        if (tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0) {
+//                            tmpFwdValue = UNDERFLOW_MIN;
+//                        }
+//                        fwdValueSum[i] += tmpFwdValue;
+//                        genuienParents[i][j][k][std::make_pair(0, 0)] = tmpFwdValue;
+//                    }
+//                }
+//        }
         fprintf(stderr,"Effective rate %f out of totalPair %d at site %d...\n",fitPair/double(totalPair),totalPair,i);
 //        fprintf(stderr,"site:%d report overall fwd:%g\n",i,fwdValueSum[i]);
         for (auto iter = genuienParents[i].begin(); iter != genuienParents[i].end(); ++iter)

@@ -40,10 +40,11 @@ int nthetas = 0;
 
 float *error_rates = NULL;
 int nerror_rates = 0;
-std::unordered_map<std::string, int> unphaseMarkerIdx;
 //record marker name and relative index in unphased vcf
-std::unordered_map<std::string, int> unphaseMarkerUIdx;
+std::unordered_map<std::string, int> unphaseMarkerIdx;
 //record marker name and relative index in phased ref vcf
+std::unordered_map<std::string, int> refMarkerIdx;
+
 std::unordered_map<std::string, bool> unphaseMarkerFlag;//false:only shows in ref vcf; true:also shows in unphased vcf
 
 std::unordered_map<std::string, bool> pidIncludedInUnphasedVcf;
@@ -362,13 +363,15 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
         char sDose[255];
         double freq(0.), maf(0.), avgPost(0.), rsq(0.);
         String markerName;
-
+        int markerIndex(0);
         for (int m = 0; pVcf->iterateMarker(); ++m) {
             pMarker = pVcf->getLastMarker();
             markerName.printf("%s:%d:%s", pMarker->sChrom.c_str(), pMarker->nPos,pMarker->asAlts[0].c_str());//assume tri-alleles was divided into two lines
+            if (unphaseMarkerFlag.find(std::string(markerName.c_str())) != unphaseMarkerFlag.end() &&
+                unphaseMarkerFlag[std::string(markerName.c_str())] == true)
+            {//if unphase also has this marker i.e. shared marker, update content otherwise remains as before
 
-            if (unphaseMarkerFlag[std::string(markerName.c_str())] ==
-                true) {//if unphase also has this marker i.e. shared marker, update content otherwise remains as before
+                markerIndex = refMarkerIdx[std::string(markerName.c_str())];
 
                 doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
 
@@ -455,12 +458,12 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
                     // modify GT values;
                     //fprintf(stderr,"i=%d, tok=%d, pi=%d, GTidx = %d, nFormats = %d, asSampleValues.Length() = %d, haplotypes = %x\n",i, tok,pi,GTidx,nFormats,pMarker->asSampleValues.Length(), engine.haplotypes);
                     if (pMarker->asAlts.Length() == 1) {
-                        pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", engine.haplotypes[pi * 2][m],
-                                                                             engine.haplotypes[pi * 2 + 1][m]);
+                        pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", engine.haplotypes[pi * 2][markerIndex],
+                                                                             engine.haplotypes[pi * 2 + 1][markerIndex]);
                     }
                     else {
-                        pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", engine.haplotypes[pi * 2][m] + 1,
-                                                                             engine.haplotypes[pi * 2 + 1][m] + 1);
+                        pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", engine.haplotypes[pi * 2][markerIndex] + 1,
+                                                                             engine.haplotypes[pi * 2 + 1][markerIndex] + 1);
                     }
                     if(!engine.GetOnlyGT()) {
 //                    // add DS values
@@ -628,7 +631,7 @@ void LoadSamples(Pedigree &ped, const String &filename, std::unordered_map<std::
     printf("Loaded %d individuals from file %s\n\n", ped.count, filename.c_str());
 }
 
-void LoadPolymorphicSites(const String &filename) {
+void LoadRefPanelPolymorphicSites(const String &filename) {
     try {
         VcfFile *pVcf = new VcfFile;
         pVcf->bSiteOnly = true;
@@ -650,7 +653,7 @@ void LoadPolymorphicSites(const String &filename) {
             int marker = Pedigree::GetMarkerID(markerName);// that's where we fill up marker numbers for ped file
             //initialize flag map to allocate memory equals to marker number in ref set
             unphaseMarkerFlag[std::string(markerName.c_str())] = false;
-            unphaseMarkerUIdx[std::string(markerName.c_str())] = marker;
+            refMarkerIdx[std::string(markerName.c_str())] = marker;
             unphaseMarkerIdx[std::string(markerName.c_str())] = -1;
 
             int al1, al2;
@@ -683,7 +686,7 @@ void LoadPolymorphicSites(const String &filename) {
         error(e.what());
     }
 }
-
+// use ref vcf markers as backbone, ignore sites that are not shown in ref vcf
 void LoadUnphasedPolymorphicSites(const String &filename) {
     try {
         VcfFile *pVcf = new VcfFile;
@@ -706,37 +709,13 @@ void LoadUnphasedPolymorphicSites(const String &filename) {
             int idx = Pedigree::markerLookup.Integer(markerName);//only look up, no add in
             if (idx != -1)//shown in ref panel marker set
             {
-                unphaseMarkerFlag[std::string(markerName.c_str())] = true;//only shown in unphased vcf
-                unphaseMarkerIdx[std::string(markerName.c_str())] = localIdx;
+                unphaseMarkerFlag[std::string(markerName.c_str())] = true;//also shown in unphased vcf
+                unphaseMarkerIdx[std::string(markerName.c_str())] = localIdx;//index in unphased vcf
             }
-            else {
+            else {//not shown in ref
                 unphaseMarkerIdx[std::string(markerName.c_str())] = localIdx;
             }
             ++localIdx;
-            //int marker = Pedigree::GetMarkerID(markerName);
-            //int al1, al2;
-
-            ////printf("Re-opening VCF file\n");
-
-            //if (pMarker->asAlts.Length() == 2) {
-            //	al1 = Pedigree::LoadAllele(marker, pMarker->asAlts[0]);
-            //	al2 = Pedigree::LoadAllele(marker, pMarker->asAlts[1]);
-            //}
-            //else {
-            //	al1 = Pedigree::LoadAllele(marker, pMarker->sRef);
-            //	al2 = Pedigree::LoadAllele(marker, pMarker->asAlts[0]);
-            //}
-
-            ////printf("Re-opening VCF file\n");
-
-            //if (markers != marker) {
-            //	error("Each polymorphic site should only occur once, but site %s is duplicated\n", markerName.c_str());
-            //}
-
-
-            //if (al1 != 1 || al2 != 2) {
-            //	error("Allele labels '%s' and '%s' for polymorphic site '%s' are not valid\n", (const char *)altalleles[0], (const char *)altalleles[1], markerName.c_str());
-            //}
         }
         delete pVcf;
         //delete pMarker;
@@ -789,7 +768,7 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
 //            printf("now for marker %s:%d\t", pMarker->sChrom.c_str(), pMarker->nPos);
             if (unphaseMarkerFlag.find(std::string(markerName.c_str())) != unphaseMarkerFlag.end() &&
                 unphaseMarkerFlag[std::string(markerName.c_str())] == true)
-                markerindex = unphaseMarkerUIdx[std::string(markerName.c_str())];
+                markerindex = refMarkerIdx[std::string(markerName.c_str())];
             else
                 continue;
             //int AFidx = pMarker->asInfoKeys.Find("AF");
@@ -929,7 +908,7 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
         while (pVcf->iterateMarker()) {//for each marker
 
             pMarker = pVcf->getLastMarker();
-            markerName.printf("%s:%d:%s", pMarker->sChrom.c_str(), pMarker->nPos,pMarker->asAlts[0].c_str());//assume tri-alleles was divided into two lines
+            //markerName.printf("%s:%d:%s", pMarker->sChrom.c_str(), pMarker->nPos,pMarker->asAlts[0].c_str());//assume tri-alleles was divided into two lines
 
             engine.refalleles[markerindex] = pMarker->sRef[0];
 
@@ -1065,7 +1044,7 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
              iter != unphaseMarkerFlag.end(); ++iter) {
             if (iter->second == false)// if this marker not shown in unphased set but in reference set
             {
-                markerindex = unphaseMarkerUIdx[iter->first];
+                markerindex = refMarkerIdx[iter->first];
                 int genoindex = markerindex * 3;
                 for (int i = 0; i < (engine.individuals - engine.phased); i++)//for each unphased individual
                 {
@@ -1253,12 +1232,12 @@ int PhasingMain(int argc, char **argv) {
 
     if (phasedfile != "Empty")
     {
-    LoadPolymorphicSites(phasedfile);
+        LoadRefPanelPolymorphicSites(phasedfile);
     LoadUnphasedPolymorphicSites(unphasedfile);
     }
     else
     {
-        LoadPolymorphicSites(unphasedfile);
+        LoadRefPanelPolymorphicSites(unphasedfile);
         LoadUnphasedPolymorphicSites(unphasedfile);
     }
 
