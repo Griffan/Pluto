@@ -25,7 +25,7 @@
 #include "Rmath.h"
 
 
-struct max_pair_t
+struct MaxPair
 {
     int clusterA;
     int clusterB;
@@ -33,7 +33,7 @@ struct max_pair_t
     bool exact;
     double pval;
     double f_id;//float id for breaking tie
-    max_pair_t(int a,int b,double c, bool d,double e,double id)
+    MaxPair(int a,int b,double c, bool d,double e,double id)
     {
         clusterA=a;
         clusterB=b;
@@ -43,7 +43,17 @@ struct max_pair_t
         f_id=id;
     }
 };
-bool comparator(const max_pair_t& lhs, const max_pair_t& rhs);
+
+inline bool comparator(const MaxPair &lhs, const MaxPair &rhs) {
+    if(lhs.pval == rhs.pval)
+    {
+        if(lhs.Dmax==rhs.Dmax) {
+            return lhs.f_id<rhs.f_id;
+        }
+        return lhs.Dmax<rhs.Dmax;
+    }
+    return lhs.pval < rhs.pval;
+}
 
 
 template<typename T>
@@ -387,7 +397,7 @@ public:
     //mergeSite function variables
     std::vector<float> recomRate;
     std::vector<std::vector<int> > dist;
-    std::priority_queue<max_pair_t,std::vector<max_pair_t>, std::function<bool(const max_pair_t&,const max_pair_t&)> >mergePairList;
+    std::priority_queue<MaxPair,std::vector<MaxPair>, std::function<bool(const MaxPair&,const MaxPair&)> >mergePairList;
 
     std::unordered_map<int, int> stateOrder;//mapping oldState to newOrder
     int tmpOrder;

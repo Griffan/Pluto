@@ -1312,6 +1312,28 @@ void PBWTHaplotyper::RandomSetup(Random *rand) {
 
 
 //without recombination
+struct EdgePair
+{
+    int childNode1;
+    int childNode2;
+    int parentNode1;
+    int parentNode2;
+    float fwd;
+    EdgePair(int a, int b, int c, int d, float e)
+    {
+        childNode1 = a;
+        childNode2 = b;
+        parentNode1 = c;
+        parentNode2 = d;
+        fwd = e;
+    }
+};
+inline bool EdgePaircomparator(const EdgePair& lhs, const EdgePair& rhs){
+    return lhs.fwd > rhs.fwd;
+}
+std::priority_queue<EdgePair,std::vector<EdgePair>, std::function<bool(const EdgePair&,const EdgePair&)> >EdgePairList(EdgePaircomparator);
+
+
 int PBWTHaplotyper::ForwardAlgorithm() {
     int SampleIndex = individuals - 1;
     UpdateStateNum(GetStateNumFrom(0));
@@ -1319,6 +1341,8 @@ int PBWTHaplotyper::ForwardAlgorithm() {
     float prevFwdValue(0.f);
     float tmpFwdValue(0.f);
     float gl(0.f);
+    float lowestFwd(0.f);//100th smallest fwd value
+    int numCrediablePair(0);
 
     int fitPair = 0;
     int totalPair = 0;
@@ -1330,7 +1354,9 @@ int PBWTHaplotyper::ForwardAlgorithm() {
         fitPair = 0;
         totalPair = 0;
         noChildPair = 0;
-        fwdValueSum[i] = 0;
+        fwdValueSum[i] = 0.f;
+        lowestFwd=0.f;
+        numCrediablePair=0;
 REENTRY:
         for (auto iter = genuienParents[i - 1].begin();
              iter != genuienParents[i - 1].end(); ++iter)//all states at site i-1, parentNode1: hap1
@@ -1368,13 +1394,47 @@ REENTRY:
                             fwdValueSum[i] += tmpFwdValue;
                             genuienParents[i][childNode1][childNode2][std::make_pair(parentNode1,
                                                                                      parentNode2)] = tmpFwdValue;
+//                            numCrediablePair++;
+                        }
+                        else
+                        {
+                            tmpFwdValue = prevFwdValue *
+                                          GetTransitionProb(i - 1, parentNode1, childNode1) *
+                                          GetTransitionProb(i - 1, parentNode2, childNode2) *
+                                          gl;//i fwdValueSum
+                            if (tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0) {
+                                tmpFwdValue = UNDERFLOW_MIN;
+                            }
+
+                            if(numCrediablePair<100) {
+                                EdgePairList.push(
+                                        EdgePair(childNode1, childNode2, parentNode1, parentNode2, tmpFwdValue));
+                                numCrediablePair++;
+                                if(tmpFwdValue < lowestFwd)
+                                {
+                                    lowestFwd=tmpFwdValue;
+                                }
+                            }else if(tmpFwdValue > lowestFwd)// EdgePairList full and should be added into List, pop out lowest
+                            {
+                                EdgePairList.pop();
+                                EdgePairList.push(EdgePair(childNode1,childNode2,parentNode1,parentNode2,tmpFwdValue));
+                                lowestFwd = EdgePairList.top().fwd;
+                            }
                         }
                     }
                 }
             }
         }
-        if (fitPair == 0) {
 
+        while(not EdgePairList.empty())
+        {
+            EdgePair tmpEdgePair = EdgePairList.top();
+            EdgePairList.pop();
+            genuienParents[i][tmpEdgePair.childNode1][tmpEdgePair.childNode2][std::make_pair(tmpEdgePair.parentNode1,
+                                                                                             tmpEdgePair.parentNode2)] = tmpEdgePair.fwd;
+            fwdValueSum[i] += tmpEdgePair.fwd;
+        }
+        if (fitPair == 0) {
             fprintf(stderr, "[Warning]marker %d broken! %d totalPair, %d noChildPair\n", i, totalPair, noChildPair);
 //            exit(EXIT_FAILURE);
             brokenList[i] = true;

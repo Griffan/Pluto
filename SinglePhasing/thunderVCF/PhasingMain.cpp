@@ -597,7 +597,8 @@ void LoadSamples(Pedigree &ped, const String &filename, std::unordered_map<std::
             if ((pidIncluded.size() == 0 ||
                  pidIncluded.find(std::string(pVcf->vpVcfInds[i]->sIndID.c_str())) != pidIncluded.end()) &&
                 (pidExcluded.size() == 0 ||
-                 pidExcluded.find(std::string(pVcf->vpVcfInds[i]->sIndID.c_str())) == pidExcluded.end())) {
+                 pidExcluded.find(std::string(pVcf->vpVcfInds[i]->sIndID.c_str())) == pidExcluded.end()))
+            {
                 if (DuplicatedIndividualPair.find(std::string(pVcf->vpVcfInds[i]->sIndID.c_str())) ==
                     DuplicatedIndividualPair.end())//never showed before
                 {
@@ -771,9 +772,9 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
             person++;
         }
 
-        for (int i = 0; i < (engine.individuals - engine.phased);/* ped.count;*/ i++) {
-            if (originalPeople.Integer(ped[i].famid + "." + ped[i].pid) != -1) {
-                personIndices[originalPeople.Integer(ped[i].famid + "." + ped[i].pid)] = i;
+        for (int i = 0; i < (engine.individuals - engine.phased);/* ped.count;*/ i++) {//first N samples in ped, not necessary the unphased sample
+            if (originalPeople.Integer(ped[i].famid + "." + ped[i].pid) != -1) {//find index of this sample in current vcf
+                personIndices[originalPeople.Integer(ped[i].famid + "." + ped[i].pid)] = i;//map index in current vcf to index in ped file
             }
 
         }
@@ -794,16 +795,11 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
             //int AFidx = pMarker->asInfoKeys.Find("AF");
 
             int PLidx = pMarker->asFormatKeys.Find("PL");
-            int PLGLGTflag = 0;//0 for PL, 1 for GL, 2 for GT
-            if (PLidx < 0) {
-                PLidx = pMarker->asFormatKeys.Find("GL");
-                if (PLidx >= 0) PLGLGTflag = 1;//found GL
-                else {
-                    PLidx = pMarker->asFormatKeys.Find("GT");
-                    if(PLidx >= 0) PLGLGTflag = 2;//found GT
-                    else throw VcfFileException("Cannot recognize GT, GL or PL key in FORMAT field");
-                    engine.SetOnlyGT(true);
-                }
+            int GLidx = pMarker->asFormatKeys.Find("GL");
+            int GTidx = pMarker->asFormatKeys.Find("GT");
+
+            if (PLidx < 0 && GLidx < 0 && GTidx <0) {
+                    throw VcfFileException("Cannot recognize GT, GL or PL key in FORMAT field");
             }
             //printf("reading vcf 1\n\n");
             int formatLength = pMarker->asFormatKeys.Length();
@@ -812,30 +808,28 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxP
             StringArray phred;
             int genoindex = markerindex * 3;
 
-            long phred11;
-            long phred12;
-            long phred22;
-            for (int i = 0; i < nSamples; i++)//for each individual
+            long phred11(-1), phred12(-1), phred22(-1);
+            for (int i = 0; i < nSamples; i++)//for each individual in current vcf
             {
-                if (personIndices.find(i) != personIndices.end()) {
+                if (personIndices.find(i) != personIndices.end()) {//not in index mapping relations, which is impossible
 
-                    if(PLGLGTflag==0)//found PL
+                    if(PLidx >=0)//found PL
                     {
                         phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
                         phred11=phred[idx11].AsInteger();
                         phred12=phred[idx12].AsInteger();
                         phred22=phred[idx22].AsInteger();
                     }
-                    else if(PLGLGTflag == 1)//found GL
+                    else if(GLidx >=0)//found GL
                     {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
+                        phred.ReplaceTokens(pMarker->asSampleValues[GLidx + i * formatLength], ",");
                         phred11=static_cast<int>(-10. * phred[idx11].AsDouble());
                         phred12=static_cast<int>(-10. * phred[idx12].AsDouble());
                         phred22=static_cast<int>(-10. * phred[idx22].AsDouble());
                     }
-                    else//found GT
+                    if(GTidx >=0)//found GT
                     {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], "|/");
+                        phred.ReplaceTokens(pMarker->asSampleValues[GTidx + i * formatLength], "|/");
                         long geno=phred[0].AsInteger()+phred[1].AsInteger();
                         if(geno==0)
                         {
@@ -900,26 +894,29 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
             throw VcfFileException("No individual genotype information exist in the input VCF file %s",
                                    filename.c_str());
         }
-        std::vector<int> phaseIdx(ped.count, -1);//initially assume all the individuals are phased
+//        std::vector<int> phaseIdx(ped.count, -1);//initially assume all the individuals are phased
         int nSamples = pVcf->getSampleCount();
 
         //vector<int> personIndices(ped.count, -1);
         std::unordered_map<int, int> personIndices;
-        StringIntHash originalPeople; // key: famid+subID, value: original order (0 based); in phased file
+        StringIntHash sampleOrderInCurrentVcf; // key: famid+subID, value: original order (0 based); in phased file
         int person = 0;
-        for (int i = 0; i < nSamples; i++) {//add samples in current phased file into originalPeople
+        for (int i = 0; i < nSamples; i++) {//add samples in current phased file into sampleOrderInCurrentVcf
             {
                 //std::cerr << "if ordered:" << pVcf->vpVcfInds[i]->sIndID << std::endl;
-                originalPeople.Add(pVcf->vpVcfInds[i]->sIndID + "." + pVcf->vpVcfInds[i]->sIndID, person);
+                sampleOrderInCurrentVcf.Add(pVcf->vpVcfInds[i]->sIndID + "." + pVcf->vpVcfInds[i]->sIndID, person);
                 person++;
             }
         }
+//        for (int j = 0; j <engine.individuals; ++j) {
+//            std::cerr<<ped[j].famid + "." + ped[j].pid<<std::endl;
+//        }
 
         for (int i = (engine.individuals - engine.phased); i < engine.individuals; i++) {
-            int idx = originalPeople.Integer(ped[i].famid + "." + ped[i].pid);
+            int idx = sampleOrderInCurrentVcf.Integer(ped[i].famid + "." + ped[i].pid);//this requires assumption indivisuals in ped stored as unphased individuals + phased individuals
             if (idx != -1)//phased in this vcf
             {
-                personIndices[idx] = i;
+                personIndices[idx] = i;//put idx sample in this vcf into i th position in engine
 
             }
         }
@@ -941,7 +938,6 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
                 pMarker->asInfoKeys.PrintLine();
                 pMarker->asInfoValues.PrintLine();
             }
-            int PLidx = pMarker->asFormatKeys.Find("PL");
             /*setting error rate*/
 //            int ERidx = pMarker->asInfoKeys.Find("ERATE");
 //            int THidx = pMarker->asInfoKeys.Find("THETA");
@@ -969,15 +965,11 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
                     engine.thetas[markerindex] = defaultTransRate;
             }
 
-            int PLGLGTflag = 0;//0 for PL, 1 for GL, 2 for GT
-            if (PLidx < 0) {
-                PLidx = pMarker->asFormatKeys.Find("GL");
-                if (PLidx >= 0) PLGLGTflag = 1;//found GL
-                else {
-                    PLidx = pMarker->asFormatKeys.Find("GT");
-                    if(PLidx >= 0) PLGLGTflag = 2;//found GT
-                    else throw VcfFileException("Cannot recognize GT, GL or PL key in FORMAT field");
-                }
+            int PLidx = pMarker->asFormatKeys.Find("PL");
+            int GLidx = pMarker->asFormatKeys.Find("GL");
+            int GTidx = pMarker->asFormatKeys.Find("GT");
+            if (GTidx <0) {
+                throw VcfFileException("Cannot recognize GT key in FORMAT field");
             }
             //printf("reading vcf 2\n\n");
             int formatLength = pMarker->asFormatKeys.Length();
@@ -1004,30 +996,30 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
 
             StringArray phred;
             int genoindex = markerindex * 3;
-            int phred11,phred12,phred22;
+            long phred11(-1),phred12(-1),phred22(-1);
             for (int i = 0; i < nSamples; i++)//for each phased individual
             {
                 //printf("phred scores are   %d, %d\n", i, ped.count);
                 if (personIndices.find(i) != personIndices.end())
                 {
-                    if(PLGLGTflag==0)//found PL
+                    if(PLidx>=0)//found PL
                     {
                         phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
                         phred11=phred[idx11].AsInteger();
                         phred12=phred[idx12].AsInteger();
                         phred22=phred[idx22].AsInteger();
                     }
-                    else if(PLGLGTflag == 1)//found GL
+                    else if(GLidx >= 0)//found GL
                     {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
+                        phred.ReplaceTokens(pMarker->asSampleValues[GLidx + i * formatLength], ",");
                         phred11=static_cast<int>(-10. * phred[idx11].AsDouble());
                         phred12=static_cast<int>(-10. * phred[idx12].AsDouble());
                         phred22=static_cast<int>(-10. * phred[idx22].AsDouble());
                     }
-                    else//found GT
+                    if(GTidx >= 0)//found GT
                     {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], "|/");
-                        int geno=phred[0].AsInteger()+phred[1].AsInteger();
+                        phred.ReplaceTokens(pMarker->asSampleValues[GTidx + i * formatLength], "|/");
+                        long geno=phred[0].AsInteger()+phred[1].AsInteger();
                         if(geno==0)
                         {
                             phred11=0;
