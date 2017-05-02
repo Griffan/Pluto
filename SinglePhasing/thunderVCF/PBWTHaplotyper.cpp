@@ -1343,6 +1343,7 @@ int PBWTHaplotyper::ForwardAlgorithm() {
     float gl(0.f);
     float lowestFwd(0.f);//100th smallest fwd value
     int numCrediablePair(0);
+    int numInitialHetSite(0);
 
     int fitPair = 0;
     int totalPair = 0;
@@ -1357,7 +1358,7 @@ int PBWTHaplotyper::ForwardAlgorithm() {
         fwdValueSum[i] = 0.f;
         lowestFwd=0.f;
         numCrediablePair=0;
-REENTRY:
+
         for (auto iter = genuienParents[i - 1].begin();
              iter != genuienParents[i - 1].end(); ++iter)//all states at site i-1, parentNode1: hap1
         {
@@ -1377,7 +1378,7 @@ REENTRY:
                         gl = GetGL(SampleIndex, i, allele1, allele2);//i gl
 //                        fprintf(stderr,"site:%d,prev(%d,%d) to current(%d,%d) : allell1:%d\tallele2:%d\tedgeNumHap1:%g\tedgeNumHap2:%g\tgl:%g\n",
 //                                    i,parentNode1,parentNode2,childNode1,childNode2,allele1,allele2,GetTransitionProb(i-1,parentNode1,childNode1),GetTransitionProb(i-1,parentNode2,childNode2),gl);
-                        if (gl > 1e-1 || i<10) {//if fwd algorithm broke, relex genotype constraint
+                        if (gl > 1e-1 || i<20) {//if fwd algorithm broke, relex genotype constraint
                             fitPair++;
                             tmpFwdValue = prevFwdValue *
                                           GetTransitionProb(i - 1, parentNode1, childNode1) *
@@ -1394,7 +1395,6 @@ REENTRY:
                             fwdValueSum[i] += tmpFwdValue;
                             genuienParents[i][childNode1][childNode2][std::make_pair(parentNode1,
                                                                                      parentNode2)] = tmpFwdValue;
-//                            numCrediablePair++;
                         }
                         else
                         {
@@ -1406,7 +1406,7 @@ REENTRY:
                                 tmpFwdValue = UNDERFLOW_MIN;
                             }
 
-                            if(numCrediablePair<100) {
+                            if(numCrediablePair<200) {
                                 EdgePairList.push(
                                         EdgePair(childNode1, childNode2, parentNode1, parentNode2, tmpFwdValue));
                                 numCrediablePair++;

@@ -23,7 +23,7 @@ const float T_CRITICAL_VALUE[] =
          1.97,/*200*/ 1.97,/*500*/ 1.96/*infinity*/
         };
 
-float P_thresh=0.5;
+float P_thresh=0.6;
 
 PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float *** t_PvalueMatrix) : prefixLength(1200),Graph(nsnps),
                                                  a( nhaps, 0), alpha(a), alphaMap(nsnps, std::vector<int>(nhaps, 0)),
@@ -396,7 +396,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
         if (i0 < forwardCursor->M) {
             CreateNewCluster(k, forwardCursor->M, i0, group);
         }
-        if (GetNumStates(k - 1) != 1) RegressionMergeAtSite(k - 1, true);//TODO:implement this function
+        if (GetNumStates(k - 1) != 1 && k < N-20) RegressionMergeAtSite(k - 1, true);//TODO:implement this function
         Graph.NormalizeCurrentSiteTransitionProb(k - 2);
     }
 
@@ -453,8 +453,8 @@ void PBWTWrapper::CreateLastSiteCluster(int k, int rank, int i0, int group) {
                                                                                         hapID <= M ? 1.f : 1e-6f);
 
                     }
-    Graph.StateNodeMat[k][group]->SetID(prevSiteStateIndex, Graph.StateNodeMat[k - 1][prevSiteStateIndex]->ID);
-    Graph.RegisterState(k, Graph.StateNodeMat[k][group]->ID, &(Graph.StateNodeMat[k][group]->nodeIndex));
+//    Graph.StateNodeMat[k][group]->SetID(prevSiteStateIndex, Graph.StateNodeMat[k - 1][prevSiteStateIndex]->ID);
+//    Graph.RegisterState(k, Graph.StateNodeMat[k][group]->ID, &(Graph.StateNodeMat[k][group]->nodeIndex));
     Graph.StateNodeMat[k][group]->AddChildNode(0, nullptr, 0);//end of the chain
     sort(dist[group].begin(), dist[group].end());
 //                    clusterAllele[k].push_back(allele);
@@ -492,12 +492,12 @@ int PBWTWrapper::CreateNewCluster(int k, int rank, int i0, int group) {
     }
     if (k == 1) {
         Graph.StateNodeMat[0][group]->AddParentNode(0, nullptr);//site 1
-        Graph.StateNodeMat[0][group]->SetID(0, 0);
+//        Graph.StateNodeMat[0][group]->SetID(0, 0);
     }
     else
-        Graph.StateNodeMat[k - 1][group]->SetID(prevSiteStateIndex, Graph.StateNodeMat[k - 2][prevSiteStateIndex]->ID);
+//        Graph.StateNodeMat[k - 1][group]->SetID(prevSiteStateIndex, Graph.StateNodeMat[k - 2][prevSiteStateIndex]->ID);
 
-    Graph.RegisterState(k - 1, Graph.StateNodeMat[k - 1][group]->ID, &(Graph.StateNodeMat[k - 1][group]->nodeIndex));
+//    Graph.RegisterState(k - 1, Graph.StateNodeMat[k - 1][group]->ID, &(Graph.StateNodeMat[k - 1][group]->nodeIndex));
 
     rightCoordinateStat.push_back(rightCoordinate[group]);
     sort(dist[group].begin(),
@@ -1472,7 +1472,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
             DoMerge(site, retainState, removeState, dist, removeIndicator, retainIndicator, removeMembership);
             rightCoordinateStat[retainState] = rightCoordinateStat[retainState] + rightCoordinateStat[removeState];
             Graph.StateNodeMat[site][retainState]->operator+=(*Graph.StateNodeMat[site][removeState]);
-            if(isBaseWrapper)Graph.RegisterState(site,Graph.StateNodeMat[site][removeState]->ID,&(Graph.StateNodeMat[site][removeState]->nodeIndex));
+//            if(isBaseWrapper)Graph.RegisterState(site,Graph.StateNodeMat[site][removeState]->ID,&(Graph.StateNodeMat[site][removeState]->nodeIndex));
             //finish merge, look for next candidate pair
         }
 //        else// if(clusterMembership[clusterA].size()<=2 && clusterMembership[clusterA].size()<=2)

@@ -437,7 +437,7 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
                 }
 
                 int DSidx = 0;
-                int PLidx = GTidx + 2;
+                //int PLidx = GTidx + 2;
                 if(!engine.GetOnlyGT()) {
                     DSidx = pMarker->asFormatKeys.Find("DS");
                     if (DSidx < 0) {

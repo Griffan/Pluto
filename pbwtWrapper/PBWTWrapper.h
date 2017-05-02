@@ -175,13 +175,13 @@ private:
         numHapChild[0]=0;
         numHapChild[1]=0;
         allele=0;
-        ID=0;
+//        ID=0;
 //        needMergeUpdate=false;
     }
 
 public:
 //    bool needMergeUpdate;
-    int64_t ID;
+//    int64_t ID;
     int nodeIndex;
     float numHap;
     char allele;
@@ -204,7 +204,7 @@ public:
         numHapChild[0]=0;
         numHapChild[1]=0;
         allele=tAllele;
-        ID=0;
+//        ID=0;
 //        needMergeUpdate=false;
     }
 
@@ -213,10 +213,10 @@ public:
         parentNodeIndex2Address.clear();
     }
 
-    void SetID(int parentNodeIndex,int64_t parentID)
-    {
-            ID=(parentID<<1)|int64_t(allele);
-    }
+//    void SetID(int parentNodeIndex,int64_t parentID)
+//    {
+//            ID=(parentID<<1)|int64_t(allele);
+//    }
 
     bool IsStateIdentical(StateNode& A)
     {
@@ -251,7 +251,7 @@ public:
     {
         fprintf(stderr,"using operator =\n");
         numHap=A.numHap;
-        ID=A.ID;
+//        ID=A.ID;
         nodeIndex=A.nodeIndex;
         allele=A.allele;
         parentNodeIndex2Address=A.parentNodeIndex2Address;
@@ -295,7 +295,6 @@ public:
 
     int writeNode(std::ofstream & fout)
     {
-        fout.write((char*)&ID,sizeof(int64_t));
     }
     int readNode(std::ifstream & fin);
 };
@@ -305,7 +304,7 @@ class StateNodeContainer//actual graph
 public:
     int nsnps;
     std::vector<std::vector<StateNode*> > StateNodeMat;
-    std::vector<std::unordered_multimap<int64_t, int*> > StateNodeID2IndexPtr;
+//    std::vector<std::unordered_multimap<int64_t, int*> > StateNodeID2IndexPtr;
     std::vector<StateNode*> tmpNodeVec;
 
 
@@ -328,7 +327,9 @@ public:
         StateNodeMat=A.StateNodeMat;
         tmpNodeVec=A.tmpNodeVec;
     }
-    StateNodeContainer(int nmarkers):nsnps(nmarkers),StateNodeMat(nmarkers,std::vector<StateNode*>(0,new StateNode(0,0,0))),StateNodeID2IndexPtr(nmarkers,std::unordered_multimap<int64_t, int*>())
+    StateNodeContainer(int nmarkers):nsnps(nmarkers),
+                                     StateNodeMat(nmarkers,std::vector<StateNode*>(0,new StateNode(0,0,0)))
+    /*,StateNodeID2IndexPtr(nmarkers,std::unordered_multimap<int64_t, int*>())*/
     {
     }
     void NormalizeCurrentSiteTransitionProb(int index)
@@ -341,10 +342,10 @@ public:
 //            fprintf(stderr,"marker:%d\t0:%f\t1:%f\t%f\n",index,StateNodeMat[index][i]->numHapChild[0],StateNodeMat[index][i]->numHapChild[1],StateNodeMat[index][i]->numHap);
         }
     }
-    void RegisterState(int site, int64_t ID, int* indexPtr)
-    {
-        StateNodeID2IndexPtr[site].insert({ID,indexPtr});
-    }
+//    void RegisterState(int site, int64_t ID, int* indexPtr)
+//    {
+//        StateNodeID2IndexPtr[site].insert({ID,indexPtr});
+//    }
 
     int writeContainer(const std::string& fileName);
     int readContainer(const std::string& fileName);
