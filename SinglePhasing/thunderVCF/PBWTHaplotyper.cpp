@@ -790,11 +790,11 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 //                }
 //                for (auto kvi:Wrapper->inEdges[toWhere][k]) {
 //                    for(auto kvj:Wrapper->inEdges[toWhere][l]){
-            for (auto kvi:Wrapper->Graph.StateNodeMat[toWhere][k]->parentNodeIndex2Address) {
-                for (auto kvj:Wrapper->Graph.StateNodeMat[toWhere][l]->parentNodeIndex2Address) {
-                    sum = (*GetProbability(source, kvi.first, kvj.first))
-                          * GetTransitionProb(fromWhere, kvi.first, k)
-                          * GetTransitionProb(fromWhere, kvj.first, l);
+            for (auto kvi:Wrapper->Graph.StateNodeMat[toWhere][k]->parentNodeIndex) {
+                for (auto kvj:Wrapper->Graph.StateNodeMat[toWhere][l]->parentNodeIndex) {
+                    sum = (*GetProbability(source, kvi, kvj))
+                          * GetTransitionProb(fromWhere, kvi, k)
+                          * GetTransitionProb(fromWhere, kvj, l);
 
                     if (kvi == kvj) sum *= 2;//compensate for 2 combinations
 //                        if((site==8355||site==8356)&&*GetProbability(source,kvi.first,kvj.first)>0)
@@ -803,7 +803,7 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 //                                    GetTransitionProb(fromWhere, k, kvi.first), GetTransitionProb(fromWhere, l, kvj.first),GetTransitionProb(fromWhere, k, kvj.first) , GetTransitionProb(fromWhere, l, kvi.first));
 //                        }
                     if ((sum < std::numeric_limits<float>::min()) &&
-                        (*GetProbability(source, kvi.first, kvj.first) > 0.))
+                        (*GetProbability(source, kvi, kvj) > 0.))
                         sum = std::numeric_limits<float>::min();
                     *output += sum;
                 }
@@ -843,28 +843,28 @@ void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indic
 //                fprintf(stderr,"site:%d:(from state %d to state %d) %f\t\n",site,m,k,GetTransitionProb(fromWhere, m, k));
 //            }
 
-        for (auto iter = Wrapper->Graph.StateNodeMat[toWhere][k]->parentNodeIndex2Address.begin();
-             iter != Wrapper->Graph.StateNodeMat[toWhere][k]->parentNodeIndex2Address.end(); ++iter) {
-            for (auto iter2 = Wrapper->Graph.StateNodeMat[toWhere][k]->parentNodeIndex2Address.begin();
+        for (auto iter = Wrapper->Graph.StateNodeMat[toWhere][k]->parentNodeIndex.begin();
+             iter != Wrapper->Graph.StateNodeMat[toWhere][k]->parentNodeIndex.end(); ++iter) {
+            for (auto iter2 = Wrapper->Graph.StateNodeMat[toWhere][k]->parentNodeIndex.begin();
                  iter2 != iter; ++iter2) {
-                sum = (*GetProbability(source, iter->first, iter2->first))
-                      * GetTransitionProb(fromWhere, iter->first, k)
-                      * GetTransitionProb(fromWhere, iter2->first, k);
+                sum = (*GetProbability(source, *iter, *iter2))
+                      * GetTransitionProb(fromWhere, *iter, k)
+                      * GetTransitionProb(fromWhere, *iter2, k);
 
                 if ((sum < std::numeric_limits<float>::min()) &&
-                    (*GetProbability(source, iter->first, iter2->first) > 0.))
+                    (*GetProbability(source, *iter, *iter2) > 0.))
                     sum = std::numeric_limits<float>::min();
                 *output += sum;
             }
-            sum = (*GetProbability(source, iter->first, iter->first)) * GetTransitionProb(fromWhere, iter->first, k) *
-                  GetTransitionProb(fromWhere, iter->first, k);
+            sum = (*GetProbability(source, *iter, *iter)) * GetTransitionProb(fromWhere, *iter, k) *
+                  GetTransitionProb(fromWhere, *iter, k);
 //                if((site==8355||site==8356)&&*GetProbability(source,iter->first,iter->first)>0)
 //                {
 //                    fprintf(stderr,"(%d,%d)to (%d,%d):probability:%g\tk-first:%g\tl-second:%g\tk-second:%g\tl-first:%g\t\n",k,k,iter->first,iter->first,*GetProbability(source,iter->first,iter->first),
 //                            GetTransitionProb(fromWhere, k, iter->first), GetTransitionProb(fromWhere, k, iter->first),GetTransitionProb(fromWhere, k, iter->first) , GetTransitionProb(fromWhere, k, iter->first));
 //                }
             if ((sum < std::numeric_limits<float>::min()) &&
-                (*GetProbability(source, iter->first, iter->first) > 0.))
+                (*GetProbability(source, *iter, *iter) > 0.))
                 sum = std::numeric_limits<float>::min();
             *output += sum;
         }

@@ -91,9 +91,10 @@ public:
 //		return Wrapper->transVector[site][from][to];
 		if((int)Wrapper->Graph.StateNodeMat.size()<= site) {fprintf(stderr,"site %d doesn't exist!\n",site);abort();}
 		if((int)Wrapper->Graph.StateNodeMat[site].size()<=from) {fprintf(stderr,"site:%d, from:%d states too large!\n",site,from);abort();}
-        if(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[GetAllele(site+1,to)]== nullptr||*(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[GetAllele(site+1,to)])!=to)
+        if(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[GetAllele(site+1,to)]== -1||Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[GetAllele(site+1,to)]!=to)
 		{fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
-		return Wrapper->Graph.StateNodeMat[site][from]->numHapChild[GetAllele(site+1,to)];
+//		return Wrapper->Graph.StateNodeMat[site][from]->numHapChild[GetAllele(site+1,to)];
+        return Wrapper->Graph.GetProbToCurrentNodeConditionalOnParentNode(site, from, to);//site is for parent
 	}
     inline float GetHapProbAt(int site,int index)
     {
@@ -157,9 +158,9 @@ public:
     float GetRecombRate(int marker);
     int GetChildNode(int site, int stateIndex, char allele)
     {
-        if(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[(size_t)allele]== nullptr)
+        if(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[(size_t)allele]== -1)
             return -1;
-        else return *(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[(size_t)allele]);
+        else return Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[(size_t)allele];
     }
 
 

@@ -24,11 +24,12 @@
 #include <fstream>
 #include "Rmath.h"
 
+typedef int16_t StateIndex;
 
 struct MaxPair
 {
-    int clusterA;
-    int clusterB;
+    StateIndex clusterA;
+    StateIndex clusterB;
     double Dmax;
     bool exact;
     double pval;
@@ -168,134 +169,68 @@ class StateNode
 private:
     StateNode(const StateNode&);
     StateNode() {
-        nodeIndex=0;
         numHap=0;
-        childNodeIndex[0]= nullptr;
-        childNodeIndex[1]= nullptr;
-        numHapChild[0]=0;
-        numHapChild[1]=0;
+        childNodeIndex[0]= -1;
+        childNodeIndex[1]= -1;
         allele=0;
-//        ID=0;
-//        needMergeUpdate=false;
     }
 
 public:
-//    bool needMergeUpdate;
-//    int64_t ID;
-    int nodeIndex;
+
     float numHap;
     char allele;
-//    std::vector<int> parentNodeIndex;
-//    std::vector<int> numHapFromParentNode;
-//    std::vector<int> childNodeIndex;
-//    std::vector<float> numHapToChildNode;
-    std::unordered_map<int,StateNode* > parentNodeIndex2Address;
-//    std::unordered_map<int,float > childNodeIndex2NumHap;
-    int* childNodeIndex[2];
-    float numHapChild[2];
+    std::vector<StateIndex> parentNodeIndex;
+    StateIndex childNodeIndex[2];
 
 
-
-    StateNode(int tIndex, float tNumHap, char tAllele) {
-        nodeIndex=tIndex;
+    StateNode(float tNumHap, char tAllele) {
         numHap=tNumHap;
-        childNodeIndex[0]= nullptr;
-        childNodeIndex[1]= nullptr;
-        numHapChild[0]=0;
-        numHapChild[1]=0;
+        childNodeIndex[0]= -1;
+        childNodeIndex[1]= -1;
         allele=tAllele;
-//        ID=0;
-//        needMergeUpdate=false;
     }
 
     ~StateNode()
     {
-        parentNodeIndex2Address.clear();
+        parentNodeIndex.clear();
     }
 
-//    void SetID(int parentNodeIndex,int64_t parentID)
-//    {
-//            ID=(parentID<<1)|int64_t(allele);
-//    }
-
-    bool IsStateIdentical(StateNode& A)
-    {
-//        if(fabsf(numHap-A.numHap)>0.01) std::cerr<<"comparing:"<<nodeIndex<<" and "<<A.nodeIndex<<"numHap:"<<numHap<<" and "<<A.numHap<<" ratio "<<fabsf(numHap-A.numHap)/(float)std::min(numHap,A.numHap) <<"\tID:"<<ID<<"\tA.ID:"<<A.ID<<std::endl;
-        return /*(ID==A.ID) and*/ fabsf(numHap-A.numHap)/(float)std::min(numHap,A.numHap) < 0.1;
-    }
-
-    StateNode& operator+=(const StateNode& A)
-    {
-        numHap+=A.numHap;
-        for (auto kv:A.parentNodeIndex2Address) {
-            AddParentNode(kv.first,kv.second);
-//            fprintf(stderr,"allele 0:%x, allele 1:%x, address:%x\n",kv.second->childNodeIndex[0],kv.second->childNodeIndex[1],&(A.nodeIndex));
-            if(kv.second->childNodeIndex[0]==&(A.nodeIndex))//A has 0 allele
-            {
-                kv.second->childNodeIndex[0]=&(this->nodeIndex);
-            }
-            else if (kv.second->childNodeIndex[1]==&(A.nodeIndex))//A has 1 allele
-            {
-                kv.second->childNodeIndex[1]=&(this->nodeIndex);
-            }
-            else{
-                fprintf(stderr,"roar from StateNode operator+=!!!!\n%p and %p: %p\n",kv.second->childNodeIndex[0],kv.second->childNodeIndex[1],&(A.nodeIndex));
-                exit(EXIT_FAILURE);
-            }
-        }
-        return *this;
-    }
-    //whenver try to update old state, remember don't update register table
-    //because this StateNoteMatrix is just a copy of new individual's round
     StateNode & operator=(const StateNode& A)
     {
         fprintf(stderr,"using operator =\n");
         numHap=A.numHap;
-//        ID=A.ID;
-        nodeIndex=A.nodeIndex;
         allele=A.allele;
-        parentNodeIndex2Address=A.parentNodeIndex2Address;
+        parentNodeIndex=A.parentNodeIndex;
         childNodeIndex[0]=A.childNodeIndex[0];
         childNodeIndex[1]=A.childNodeIndex[1];
-        numHapChild[0]=A.numHapChild[0];
-        numHapChild[1]=A.numHapChild[1];
         return *this;
     }
 
-    int AddParentNode(int parentIndex, StateNode *parentAddress) {
-        parentNodeIndex2Address[parentIndex]=parentAddress;
-//        if(parentAddress!= nullptr)
-//            SetID(index,parentAddress->ID,allele);
-//        else
-//            SetID(index,0,allele);
+    int AddParentNode(StateIndex parentIndex) {
+        parentNodeIndex.push_back(parentIndex);
         return 0;
     }
 
-    int AddChildNode(char allele, int *index, float numHaplotype) {//should only be called once
+    int AddChildNode(char allele, StateIndex index) {//should only be called once
 //        if(childNodeIndex[(size_t)allele] != nullptr)
 //            fprintf(stderr,"add index: %p to child %p with allele %d(%d) with numHaplotype:%f to\n",index,childNodeIndex[(size_t)allele],allele,(size_t)allele,numHaplotype);
 //        else fprintf(stderr,"add nullptr to allele %d with numHaplotype:%f\n",allele,numHaplotype);
-        if(childNodeIndex[(size_t)allele]!=index && childNodeIndex[(size_t)allele]!= nullptr)
+        if(childNodeIndex[(size_t)allele]!=index && childNodeIndex[(size_t)allele]!= -1)
         {
             fprintf(stderr,"roar from StateNode AddChildNode!!!!allele:%d\t%p\tto\t%p\n",allele,childNodeIndex[(size_t)allele],index);
             exit(EXIT_FAILURE);
         }
         childNodeIndex[(size_t)allele]=index;
-        numHapChild[(size_t)allele]+=numHaplotype;
         return 0;
     }
 
-    float GetTransitionProbToChildNode(char allele) {
-        return numHapChild[(size_t)allele];
-    }
-
-//    float GetTransitionProbFromParentNode(int index) {
-//        return parentNodeIndex2Address[index];
-//    }
-
-    int writeNode(std::ofstream & fout)
+    std::vector<StateIndex>& GetParentIndexVector()
     {
+        return parentNodeIndex;
     }
+
+
+    int writeNode(std::ofstream & fout);
     int readNode(std::ifstream & fin);
 };
 
@@ -304,7 +239,6 @@ class StateNodeContainer//actual graph
 public:
     int nsnps;
     std::vector<std::vector<StateNode*> > StateNodeMat;
-//    std::vector<std::unordered_multimap<int64_t, int*> > StateNodeID2IndexPtr;
     std::vector<StateNode*> tmpNodeVec;
 
 
@@ -328,24 +262,40 @@ public:
         tmpNodeVec=A.tmpNodeVec;
     }
     StateNodeContainer(int nmarkers):nsnps(nmarkers),
-                                     StateNodeMat(nmarkers,std::vector<StateNode*>(0,new StateNode(0,0,0)))
-    /*,StateNodeID2IndexPtr(nmarkers,std::unordered_multimap<int64_t, int*>())*/
+                                     StateNodeMat(nmarkers,std::vector<StateNode*>(0, new StateNode(0, 0)))
     {
     }
-    void NormalizeCurrentSiteTransitionProb(int index)
-    {
-        if(index>=0)
-        for (auto & node: StateNodeMat[index]) {
 
-            node->numHapChild[0]/= node->numHap;
-            node->numHapChild[1]/= node->numHap;
-//            fprintf(stderr,"marker:%d\t0:%f\t1:%f\t%f\n",index,StateNodeMat[index][i]->numHapChild[0],StateNodeMat[index][i]->numHapChild[1],StateNodeMat[index][i]->numHap);
+    int JoinNodes(int marker, StateIndex indexRetain, StateIndex indexRemove)
+    {
+        StateNodeMat[marker][indexRetain]->numHap+=StateNodeMat[marker][indexRemove]->numHap;
+        for (auto kv:StateNodeMat[marker][indexRemove]->parentNodeIndex) {
+            StateNodeMat[marker][indexRetain]->AddParentNode(kv);
+//            fprintf(stderr,"allele 0:%x, allele 1:%x, address:%x\n",kv.second->childNodeIndex[0],kv.second->childNodeIndex[1],&(A.nodeIndex));
+            if(StateNodeMat[marker][indexRemove]->allele==0)//Remove has 0 allele
+            {
+                StateNodeMat[marker-1][kv]->childNodeIndex[0]=indexRetain;
+            }
+            else if (StateNodeMat[marker][indexRemove]->allele==1)//Remove has 1 allele
+            {
+                StateNodeMat[marker-1][kv]->childNodeIndex[1]=indexRetain;
+            }
+            else{
+                fprintf(stderr,"roar from StateNode operator+=!!!!\n%d and %d: %d\n",StateNodeMat[marker-1][kv]->childNodeIndex[0],StateNodeMat[marker-1][kv]->childNodeIndex[1],indexRemove);
+                exit(EXIT_FAILURE);
+            }
         }
+        return 0;
     }
-//    void RegisterState(int site, int64_t ID, int* indexPtr)
-//    {
-//        StateNodeID2IndexPtr[site].insert({ID,indexPtr});
-//    }
+
+    int UpdateChildNodeIndex(int marker, StateIndex parentIndex, StateIndex newChildIndex, char allele)
+    {
+        StateNodeMat[marker][parentIndex]->childNodeIndex[allele]=newChildIndex;
+    }
+
+    float GetProbToCurrentNodeConditionalOnParentNode(int marker, StateIndex parentIndex, StateIndex childIndex) {
+        return StateNodeMat[marker+1][childIndex]->numHap/StateNodeMat[marker][parentIndex]->numHap;
+    }
 
     int writeContainer(const std::string& fileName);
     int readContainer(const std::string& fileName);
@@ -375,18 +325,20 @@ public:
 
     StateNodeContainer Graph;
 
-    PBWT* pbwtCore;
-    PbwtCursor* forwardCursor,*reverseCursor;
+//    PBWT* pbwtCore;
+//    PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<int> a,alpha/*reverse*/;//stores array a status after process current column haps;
     //std::vector<std::vector<int> > alpha/*reverse*/;//stores array a status after process current column haps
     std::vector<std::vector<int> > alphaMap;
-    std::vector<std::vector<int> > d,delta;
+    std::vector<int> d,delta;
+    std::vector<std::vector<int> > allDelta;
     std::vector<std::vector<float> > bkDistance;/*reverse*/;
     //std::vector<std::vector<uchar> > sortedY/*only for test*/;
+    std::vector<int> sortedY;
     std::vector<int> c,celta;/*number of zero at each site*/
     //std::vector<std::vector<int> > u,ultra;/*relative rank within zeros*/
 
-    std::vector<std::vector<int> > haplotypeCluster;//site, hapID
+    std::vector<std::vector<StateIndex> > haplotypeCluster;//site, hapID
     //std::vector<std::vector<int> > bkHaplotypeCluster;//site, hapID
 
 
@@ -400,8 +352,8 @@ public:
     std::vector<std::vector<int> > dist;
     std::priority_queue<MaxPair,std::vector<MaxPair>, std::function<bool(const MaxPair&,const MaxPair&)> >mergePairList;
 
-    std::unordered_map<int, int> stateOrder;//mapping oldState to newOrder
-    int tmpOrder;
+    std::unordered_map<StateIndex, StateIndex> stateOrder;//mapping oldState to newOrder
+    StateIndex tmpOrder;
     std::vector<uchar> tmpAllele;
     double pval;
     bool EXACT;
@@ -420,21 +372,21 @@ public:
 
     PBWTWrapper(){}
     ~PBWTWrapper() {
-        if(pbwtCore)
-        {
-            pbwtDestroy(pbwtCore);
-
-        }
-        if(forwardCursor)
-        {
-            //delete forwardCursor;
-            pbwtCursorDestroy(forwardCursor);
-        }
-        if(reverseCursor)
-        {
-            //delete forwardCursor;
-            pbwtCursorDestroy(reverseCursor);
-        }
+//        if(pbwtCore)
+//        {
+//            pbwtDestroy(pbwtCore);
+//
+//        }
+//        if(forwardCursor)
+//        {
+//            //delete forwardCursor;
+//            pbwtCursorDestroy(forwardCursor);
+//        }
+//        if(reverseCursor)
+//        {
+//            //delete forwardCursor;
+//            pbwtCursorDestroy(reverseCursor);
+//        }
         //TODO:REVERSE
         //Cannot delete haplotype because haplotype is obtained via SetHap()
         if(haplotype)
@@ -456,23 +408,23 @@ public:
     void ResetWrapper()
     {
 
-        if(pbwtCore)
-        {
-            pbwtDestroy(pbwtCore);
-            pbwtCore = pbwtCreate(M, N);
-
-        }
-        if(forwardCursor)
-        {
-            //delete forwardCursor;
-            pbwtCursorDestroy(forwardCursor);
-            forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
-        }
-        if(reverseCursor)
-        {
-            pbwtCursorDestroy(reverseCursor);
-            reverseCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
-        }
+//        if(pbwtCore)
+//        {
+//            pbwtDestroy(pbwtCore);
+//            pbwtCore = pbwtCreate(M, N);
+//
+//        }
+//        if(forwardCursor)
+//        {
+//            //delete forwardCursor;
+//            pbwtCursorDestroy(forwardCursor);
+//            forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
+//        }
+//        if(reverseCursor)
+//        {
+//            pbwtCursorDestroy(reverseCursor);
+//            reverseCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
+//        }
         //TODO:REVERSE
 
         for (auto & col:Graph.StateNodeMat) {
@@ -482,9 +434,11 @@ public:
             col.clear();
         }
         a=std::vector<int>(N,0);
-        alpha=a;
-        alphaMap=d=haplotypeCluster=std::vector<std::vector<int> >(N,std::vector<int>(M,0));
+        delta=d=alpha=a;
+        alphaMap=std::vector<std::vector<int> >(N,std::vector<int>(M,0));
+        haplotypeCluster=std::vector<std::vector<StateIndex > >(N,std::vector<StateIndex>(M,0));
         c=celta=std::vector<int>(N,0);
+        sortedY=std::vector<int>(M,0);
 //        clusterAllele=std::vector<std::vector<uchar> >(N,std::vector<uchar>());
     }
 
@@ -501,14 +455,14 @@ public:
 
     int CursorBackwardsTo(int siteBackword, int T=5);
 
-    int CopyHap(int k, PbwtCursor* Cursor);
+    int CopyHap(int k,std::vector<int>& tmpA);
 
-    bool HasSiblings(int site, int state) {
+    bool HasSiblings(int site, StateIndex state) {
         if(site ==0) return true;
-        for(auto kv:Graph.StateNodeMat[site][state]->parentNodeIndex2Address)
+        for(auto kv:Graph.StateNodeMat[site][state]->parentNodeIndex)
         {
-//            if(Graph.StateNodeMat[site-1][kv.first].childNodeIndex2NumHap.size()>1) return true;
-            if(Graph.StateNodeMat[site-1][kv.first]->childNodeIndex[0]!= nullptr&&Graph.StateNodeMat[site-1][kv.first]->childNodeIndex[1]!= nullptr) return true;
+            if(Graph.StateNodeMat[site-1][kv]->childNodeIndex[0]!= -1 && Graph.StateNodeMat[site-1][kv]->childNodeIndex[0]!=state) return true;
+            if(Graph.StateNodeMat[site-1][kv]->childNodeIndex[1]!= -1 && Graph.StateNodeMat[site-1][kv]->childNodeIndex[1]!=state) return true;
         }
         return false;
     }
@@ -552,7 +506,7 @@ public:
     inline int GetRankFromBack(int site, int hapID) {return alphaMap[site][hapID];}
     //inline int GetRankFromFwd(int site, int hapID) {return aMap[site][hapID];}
 
-    inline int GetHapStateFromFwd(int site, int hapID) { return haplotypeCluster[site][hapID]; }
+    inline StateIndex GetHapStateFromFwd(int site, int hapID) { return haplotypeCluster[site][hapID]; }
     //inline int GetHapStateFromBack(int site, int hapID) { return bkHaplotypeCluster[site][hapID]; }
 
     inline float GetHapProbAt(int site,int index)
@@ -606,7 +560,7 @@ public:
 
     int PrintSummary();
 
-    void DoMerge(int site, int retainState, int removeState, std::vector<std::vector<int>> &dist,
+    void DoMerge(int site, StateIndex retainState, StateIndex removeState, std::vector<std::vector<int>> &dist,
                  std::vector<bool, std::allocator<bool>> &removeIndicator,
                  std::vector<bool, std::allocator<bool>> &retainIndicator, std::unordered_map<int, int> &removeMembership);
     int HowManyChildlessState(std::vector<StateNode*> & a)
@@ -614,7 +568,7 @@ public:
         int sum=0;
         std::cerr<<sum<<" enter childless state out of "<<a.size()<<" total states"<<std::endl;
         for (auto & node:a) {
-            if(node->childNodeIndex[0]== nullptr || node->childNodeIndex[1]== nullptr)
+            if(node->childNodeIndex[0]== -1 || node->childNodeIndex[1]== -1)
                 sum++;
         }
         std::cerr<<sum<<" leave childless state out of "<<a.size()<<" total states"<<std::endl;
@@ -627,19 +581,17 @@ public:
         int index=0;
         std::unordered_map<int,bool> bag;
         for (auto & node:currentNodes) {
-            if(node->childNodeIndex[0]!= nullptr )
+            if(node->childNodeIndex[0]!= -1 )
             {
-                index=*(node->childNodeIndex[0]);
-                sum2+=node->numHapChild[0];
+                index=node->childNodeIndex[0];
                 if(bag.find(index) ==bag.end()) bag[index]=true;
                 else continue;
                 sum1+=Graph.StateNodeMat[childSite][index]->numHap;
 
             }
-            if(node->childNodeIndex[1]!= nullptr)
+            if(node->childNodeIndex[1]!= -1)
             {
-                sum2+=node->numHapChild[1];
-                index=*(node->childNodeIndex[1]);
+                index=node->childNodeIndex[1];
                 if(bag.find(index) ==bag.end()) bag[index]=true;
                 else continue;
                 sum1+=Graph.StateNodeMat[childSite][index]->numHap;
@@ -647,7 +599,6 @@ public:
             }
 
         }
-        if(sum1 != sum2) exit(EXIT_FAILURE);
         std::cerr<<sum1<<" leave child haps from sum1 and  "<<sum2<<" child haps from sum2 out of "<<currentNodes.size()<<" total states"<<std::endl;
         return sum1;
     }
@@ -657,9 +608,9 @@ private:
 
     void UpdateAandD(int k);
 
-    int CreateNewCluster(int k, int rank, int i0, int group);
+    int CreateNewCluster(int k, int rank, int i0, StateIndex group);
 
-    void CreateLastSiteCluster(int k, int rank, int i0, int group);
+    void CreateLastSiteCluster(int k, int rank, int i0, StateIndex group);
 };
 
 #endif //PLUTO_PBWTWRAPPER_H
