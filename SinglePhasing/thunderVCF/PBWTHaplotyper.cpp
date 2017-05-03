@@ -1224,8 +1224,8 @@ int PBWTHaplotyper::InitialFwdValues() {
     float prior = 1.f / (states * states);
     float tmpFwdValue(0.f), gl(0.f);
 
-    for (int i = 0; i < states; ++i) {
-        for (int j = 0; j < states; ++j) {
+    for (StateIndex i = 0; i < states; ++i) {
+        for (StateIndex j = 0; j < states; ++j) {
             int allele1 = GetAllele(0, i);
             int allele2 = GetAllele(0, j);
             gl = GetGL(SampleIndex, 0, allele1, allele2);
@@ -1350,7 +1350,7 @@ int PBWTHaplotyper::ForwardAlgorithm() {
     int noChildPair = 0;
 
     char allele1, allele2;
-    int childNode1, childNode2, parentNode1, parentNode2;
+    StateIndex childNode1, childNode2, parentNode1, parentNode2;
     for (int i = 1; i < markers; i++) {
         fitPair = 0;
         totalPair = 0;
@@ -1473,10 +1473,10 @@ int PBWTHaplotyper::BackwardSampling(Random *rand, int SampleIndex, char **sampl
     double gl0(0.f);
     float transProb0(0.f), transProb1(0.f);
     float prevFwdValue(0.f);
-    int first0(0), second0(0);
+    StateIndex first0(0), second0(0);
 
-    int sampledFirst(0);
-    int sampledSecond(0);
+    StateIndex sampledFirst(0);
+    StateIndex sampledSecond(0);
     double sampledFwd(0.f);
 
     choice = rand->Uniform(0, 1);
@@ -1594,7 +1594,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
     int noChildPair = 0;
 
     char allele1(0), allele2(0);
-    int childNode1(0), childNode2(0), parentNode1(0), parentNode2(0);
+    StateIndex childNode1(0), childNode2(0), parentNode1(0), parentNode2(0);
 
     float recRate(0.f);
     float baseProb(0.f);
@@ -1658,8 +1658,8 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
             //brokenList[i] = true;
             UpdateStateNum(GetStateNumFrom(i));
             prevFwdValue = 1.f / (states * states);
-            for (int j = 0; j < states; ++j)
-                for (int k = 0; k < states; ++k) {
+            for (StateIndex j = 0; j < states; ++j)
+                for (StateIndex k = 0; k < states; ++k) {
                     allele1 = GetAllele(i, j);
                     allele2 = GetAllele(i, k);
                     gl = GetGL(SampleIndex, i, allele1, allele2);//i gl

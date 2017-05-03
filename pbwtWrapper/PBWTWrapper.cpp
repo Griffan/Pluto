@@ -30,10 +30,10 @@ PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix) : prefix
                                                                           alphaMap(nsnps, std::vector<int>(nhaps, 0)),
                                                                           d(a),
                                                                           delta(a),
-                                                                          sortedY(a),
                                                                           allDelta(alphaMap),
                                                                           bkDistance(nsnps, std::vector<float>(nhaps,
-                                                                                                               (float) 0.)), /*sortedY(nsnps,std::vector<uchar>(nhaps,0)),*/
+                                                                                                               (float) 0.)),
+                                                                          sortedY(a),
                                                                           c(nsnps, 0), celta(c),
                                                                           haplotypeCluster(nsnps,
                                                                                            std::vector<StateIndex>(
@@ -77,10 +77,6 @@ int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
 
 //    pbwtCursorToAFend(forwardCursor,pbwtCore);
 
-//    for (int i=0;i != pbwtCore->N; i++) {
-//
-//        UpdateTransVector(i);
-//    }
     PrintSummary();
     //update crossover rate?
     return 0;

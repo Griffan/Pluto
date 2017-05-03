@@ -84,7 +84,7 @@ public:
     virtual bool ForceMemoryAllocation();
 
     //inline section
-	inline float GetTransitionProb(int site, int from, int to) {
+	inline float GetTransitionProb(int site, StateIndex from, StateIndex to) {
 //		if(Wrapper->transVector.size()<= site) {fprintf(stderr,"%d doesn't exist!\n",site);abort();}
 //		if(Wrapper->transVector[site].size()<=from) {fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);abort();}
 //		if(Wrapper->transVector[site][from].size()<=to) {fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
@@ -100,7 +100,7 @@ public:
     {
         return Wrapper->GetHapProbAt(site,index);
     }
-	inline uchar GetAllele(int site, int state)
+	inline char GetAllele(int site, StateIndex state)
 	{
 		return Wrapper->GetAllele(site,state);
 	}
@@ -137,7 +137,7 @@ public:
     };
     typedef std::unordered_map<std::pair<int32_t,int32_t>,float,pairhash> Source;//(nodeA,nodeB)->fwd
     typedef std::unordered_set<std::pair<int32_t,int32_t>,pairhash> NodePair;//(nodeA,nodeB)
-    typedef std::unordered_map<int,std::unordered_map<int,Source> > ChildToSource;
+    typedef std::unordered_map<StateIndex,std::unordered_map<StateIndex,Source> > ChildToSource;
     std::vector<ChildToSource> genuienParents;
 
     float* fwdValueSum;
@@ -156,7 +156,7 @@ public:
     int ResetFwdValues();
     double GetGL(int individual, int marker, char allele1, char allele2);
     float GetRecombRate(int marker);
-    int GetChildNode(int site, int stateIndex, char allele)
+    StateIndex GetChildNode(int site, int stateIndex, char allele)
     {
         if(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[(size_t)allele]== -1)
             return -1;

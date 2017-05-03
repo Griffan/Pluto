@@ -217,7 +217,7 @@ public:
 //        else fprintf(stderr,"add nullptr to allele %d with numHaplotype:%f\n",allele,numHaplotype);
         if(childNodeIndex[(size_t)allele]!=index && childNodeIndex[(size_t)allele]!= -1)
         {
-            fprintf(stderr,"roar from StateNode AddChildNode!!!!allele:%d\t%p\tto\t%p\n",allele,childNodeIndex[(size_t)allele],index);
+            fprintf(stderr,"roar from StateNode AddChildNode!!!!allele:%d\t%d\tto\t%d\n",allele,childNodeIndex[(size_t)allele],index);
             exit(EXIT_FAILURE);
         }
         childNodeIndex[(size_t)allele]=index;
@@ -288,7 +288,7 @@ public:
         return 0;
     }
 
-    int UpdateChildNodeIndex(int marker, StateIndex parentIndex, StateIndex newChildIndex, char allele)
+    void UpdateChildNodeIndex(int marker, StateIndex parentIndex, StateIndex newChildIndex, char allele)
     {
         StateNodeMat[marker][parentIndex]->childNodeIndex[allele]=newChildIndex;
     }
@@ -491,7 +491,7 @@ public:
 //        return clusterAllele[k].size();
         return Graph.StateNodeMat[k].size();
     }
-    inline uchar GetAllele(int site, int state)
+    inline char GetAllele(int site, StateIndex state)
     {
         return Graph.StateNodeMat[site][state]->allele;
     }
