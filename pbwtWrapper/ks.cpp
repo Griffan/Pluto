@@ -12,7 +12,7 @@
 #include <cstdlib>
 #include <string>
 #include <iostream>
-#include <limits>
+#include <climits>
 #include <algorithm>
 #define NA_INTEGER INT_MIN
 double KS_PosInf = INFINITY;

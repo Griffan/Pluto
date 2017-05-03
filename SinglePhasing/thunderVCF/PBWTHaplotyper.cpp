@@ -569,6 +569,7 @@ int PBWTHaplotyper::LoopThroughChromosomesSingleRound() {
                      thetas);//only copy phased haps into pbwt
     Wrapper->CursorBackwards();//calculate backwards order of suffix
     Wrapper->CursorForwards();
+    Wrapper->ReleaseWrapperMemory();
     clock_t t1 = clock();
     fprintf(stderr,"[SingleRound]build model time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     for (int i = individuals - 1; i >= 0; i--) {

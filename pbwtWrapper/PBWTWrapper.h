@@ -440,6 +440,19 @@ public:
 //        clusterAllele=std::vector<std::vector<uchar> >(N,std::vector<uchar>());
     }
 
+    void ReleaseWrapperMemory()
+    {
+        a.clear();
+        delta=d=alpha=a;
+        alphaMap.clear();
+        haplotypeCluster.clear();
+        c.clear();
+        celta.clear();
+        sortedY.clear();
+        bkDistance.clear();
+        allDelta.clear();
+    }
+
 //    PBWTWrapper(const char ** haps, int nhaps, int nsnps);
     PBWTWrapper(int nhaps,int nsnps, float *** _PvalueMatrix);
 

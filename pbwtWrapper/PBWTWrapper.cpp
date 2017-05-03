@@ -8,6 +8,7 @@
 #include "iostream"
 #include <fstream>
 #include <functional>
+#include <cstring>
 
 const float T_CRITICAL_VALUE[] =
         {12.71, 4.3, 3.18, 2.78, 2.57,
@@ -28,7 +29,7 @@ PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix) : prefix
                                                                           a(nhaps, 0), alpha(a),
                                                                           alphaMap(nsnps, std::vector<int>(nhaps, 0)),
                                                                           d(nhaps+1, 0),
-                                                                          delta(a),
+                                                                          delta(d),
                                                                           allDelta(alphaMap),
                                                                           bkDistance(nsnps, std::vector<float>(nhaps,
                                                                                                                (float) 0.)),
