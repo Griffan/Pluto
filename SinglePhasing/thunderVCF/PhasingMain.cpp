@@ -231,14 +231,14 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
 
                 int DSidx = 0;
                 int PLidx = GTidx + 2;
-                if(!engine.GetOnlyGT()) {
-                    DSidx = pMarker->asFormatKeys.Find("DS");
-                    if (DSidx < 0) {
-                        //throw VcfFileException("Cannot recognize DS key in FORMAT field");
-                        pMarker->asFormatKeys.InsertAt(GTidx + 1, "DS");
-                        DSidx = GTidx+1;
-                    }
-                }
+//                if(!engine.GetOnlyGT()) {
+//                    DSidx = pMarker->asFormatKeys.Find("DS");
+//                    if (DSidx < 0) {
+//                        //throw VcfFileException("Cannot recognize DS key in FORMAT field");
+//                        pMarker->asFormatKeys.InsertAt(GTidx + 1, "DS");
+//                        DSidx = GTidx+1;
+//                    }
+//                }
 
                 int nFormats = pMarker->asFormatKeys.Length();
 
@@ -258,15 +258,15 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][m] + 1,
                                                                              haplotypes[pi * 2 + 1][m] + 1);
                     }
-                    if(!engine.GetOnlyGT()) {
-                        // add DS values
-                        sprintf(sDose, "%.3f", 2 - doses.GetDosage(pi, m));
-                        if (DSidx < 0) {
-                            pMarker->asSampleValues.InsertAt(nFormats * i + DSidx, sDose);
-                        }
-                        else
-                            pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3f", sDose);
-                    }
+//                    if(!engine.GetOnlyGT()) {
+//                        // add DS values
+//                        sprintf(sDose, "%.3f", 2 - doses.GetDosage(pi, m));
+//                        if (DSidx < 0) {
+//                            pMarker->asSampleValues.InsertAt(nFormats * i + DSidx, sDose);
+//                        }
+//                        else
+//                            pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3f", sDose);
+//                    }
                 }
             }
             pMarker->printVCFMarker(outVCF, false); // print marker to output file
@@ -438,14 +438,14 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
 
                 int DSidx = 0;
                 //int PLidx = GTidx + 2;
-                if(!engine.GetOnlyGT()) {
-                    DSidx = pMarker->asFormatKeys.Find("DS");
-                    if (DSidx < 0) {
-                        //throw VcfFileException("Cannot recognize DS key in FORMAT field");
-                        pMarker->asFormatKeys.InsertAt(GTidx + 1, "DS");
-                        DSidx = GTidx + 1;
-                    }
-                }
+//                if(!engine.GetOnlyGT()) {
+//                    DSidx = pMarker->asFormatKeys.Find("DS");
+//                    if (DSidx < 0) {
+//                        //throw VcfFileException("Cannot recognize DS key in FORMAT field");
+//                        pMarker->asFormatKeys.InsertAt(GTidx + 1, "DS");
+//                        DSidx = GTidx + 1;
+//                    }
+//                }
 
                 int nFormats = pMarker->asFormatKeys.Length();
 
@@ -465,18 +465,18 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", engine.haplotypes[pi * 2][markerIndex] + 1,
                                                                              engine.haplotypes[pi * 2 + 1][markerIndex] + 1);
                     }
-                    if(!engine.GetOnlyGT()) {
-//                    // add DS values
-                        sprintf(sDose, "%.3f", 2 - doses.GetDosage(pi, m));
-                        if (DSidx < 0) {
-                            // fprintf(stderr,"cant find DS filed\n");
-                            pMarker->asSampleValues.InsertAt(nFormats * i + DSidx, sDose);
-                        }
-                        else {
-                            //fprintf(stderr,"pMarker->asSampleValues.size:%s nFormtas:%d\tDSidx:%d\tsDose:%s\n",pMarker->asSampleValues[nFormats * i + DSidx].c_str(),nFormats,DSidx,sDose);
-                            pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3f", sDose);
-                        }
-                    }
+//                    if(!engine.GetOnlyGT()) {
+////                    // add DS values
+//                        sprintf(sDose, "%.3f", 2 - doses.GetDosage(pi, m));
+//                        if (DSidx < 0) {
+//                            // fprintf(stderr,"cant find DS filed\n");
+//                            pMarker->asSampleValues.InsertAt(nFormats * i + DSidx, sDose);
+//                        }
+//                        else {
+//                            //fprintf(stderr,"pMarker->asSampleValues.size:%s nFormtas:%d\tDSidx:%d\tsDose:%s\n",pMarker->asSampleValues[nFormats * i + DSidx].c_str(),nFormats,DSidx,sDose);
+//                            pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3f", sDose);
+//                        }
+//                    }
                 }
             }
             pMarker->printVCFMarker(outVCF, false); // print marker to output file
@@ -901,7 +901,7 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
         }
 
         int markerindex = 0;
-        VcfMarker *pMarker = new VcfMarker;
+        VcfMarker *pMarker = nullptr;
         String markerName;
         float prevGeneticDistance=0.f;
         float currentGeneticDistance=0.f;

@@ -2,7 +2,6 @@
 // Created by Fan Zhang on 8/6/15.
 //
 
-#include <pbwt/pbwt.h>
 #include "PBWTHaplotyper.h"
 #include "MemoryAllocators.h"
 
@@ -21,7 +20,6 @@ static void printLeftMatrix(float *probability, int numStates) {
 
 //initiation
 PBWTHaplotyper::PBWTHaplotyper(int nhaps, int nsnps) : availablePair(nsnps) {
-
     onlyHeterSite = false;
     max_num = 1;
     nSampleCopy = 0;//additional, the original haps not included
@@ -250,7 +248,6 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
 
 
         for (int i = 0; i < individuals - phased; i++) {
-            int observed = (unsigned char) (genotypes[i][j]);
 
             double posterior_11 = prior_11 * phred2prob[(size_t) genotypes[i][markerindex]];
             double posterior_12 = prior_12 * phred2prob[(size_t) genotypes[i][markerindex + 1]];
@@ -294,9 +291,9 @@ void PBWTHaplotyper::ConditionOnData(float *matrix, int marker, char phred11, ch
     float *source = matrix;
     double sum = 0.;
     double conditional_probs[3];
-    uchar ph11 = (unsigned char) phred11;
-    uchar ph12 = (unsigned char) phred12;
-    uchar ph22 = (unsigned char) phred22;
+    unsigned char ph11 = (unsigned char) phred11;
+    unsigned char ph12 = (unsigned char) phred12;
+    unsigned char ph22 = (unsigned char) phred22;
 //    uchar ph11 = 0;
 //    uchar ph12 = 0;
 //    uchar ph22 = 0;
@@ -742,15 +739,15 @@ bool PBWTHaplotyper::ReverseInput() {
 
 void PBWTHaplotyper::Transpose(int site, float *source, float *dest)//site indicate dest marker index
 {
-    bool passOnce = false;
+//    bool passOnce = false;
     float sum = 0.0;
     float factor = 1.0;
-    float *probability = source;
+//    float *probability = source;
     float *output = dest;
     *output = 0.0;
     int fromWhere = site - 1;//used by transvector, because vector start from 0
     int toWhere = site;
-    int numFromStates = GetStateNumFrom(fromWhere);
+//    int numFromStates = GetStateNumFrom(fromWhere);
     int numToStates = GetStateNumFrom(toWhere);//number of cluster
 //    fprintf(stderr,"site:%d\tstates:%d\tfromwhere:%d\ttowhere:%d\n",site,states,GetStateNumFrom(fromWhere),GetStateNumFrom(toWhere));
     //int currentIndividualOriginalState1 = GetCurrentIndividualState(fromWhere, 0);
@@ -1059,7 +1056,7 @@ void PBWTHaplotyper::SampleChromosomes(Random *rand) {
         }
 
 
-        float max_prob(0), tmp_sum(0);
+//        float max_prob(0), tmp_sum(0);
         float last_sum(sum);
         int j0;
         for (int j = markers - 2; j >= 0; j--) {
@@ -1343,7 +1340,7 @@ int PBWTHaplotyper::ForwardAlgorithm() {
     float gl(0.f);
     float lowestFwd(0.f);//100th smallest fwd value
     int numCrediablePair(0);
-    int numInitialHetSite(0);
+//    int numInitialHetSite(0);
 
     int fitPair = 0;
     int totalPair = 0;
@@ -1472,7 +1469,7 @@ int PBWTHaplotyper::BackwardSampling(Random *rand, int SampleIndex, char **sampl
     double sum(0.);
     double gl0(0.f);
     float transProb0(0.f), transProb1(0.f);
-    float prevFwdValue(0.f);
+//    float prevFwdValue(0.f);
     StateIndex first0(0), second0(0);
 
     StateIndex sampledFirst(0);
@@ -1687,7 +1684,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
 }
 
 int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sampledHaps) {
-    int seflSwitch(0);
+//    int seflSwitch(0);
 
     double choice(0.);
     double sum(0.);
@@ -1702,7 +1699,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
     bool noRecomb1(false), noRecomb2(false);
 
     float recRate(0.f);
-    float baseProb(0.f);
+//    float baseProb(0.f);
 
     int parentNode1(0),parentNode2(0);
 

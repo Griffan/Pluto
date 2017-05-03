@@ -9,7 +9,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include "ks.h"
-#include "pbwt/utils.h"
 #include <cstdlib>
 #include <string>
 #include <iostream>
@@ -71,7 +70,7 @@ static double R_pow_di(double x, int n)
     if (n != 0) {
         if (!R_finite(x)) return pow(x, (double)n);
 
-        BOOL is_neg = (n < 0);
+        bool is_neg = (n < 0);
         if(is_neg) n = -n;
         for(;;) {
             if(n & 01) xn *= x;
@@ -382,7 +381,7 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
         }
 
         std::string METHOD("Two-sample Kolmogorov-Smirnov test");
-        bool TIES = FALSE;
+        bool TIES = false;
         n = nx * ny / (nx + ny);
 
         std::vector<int> w(x);
@@ -479,7 +478,7 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
             tmp.push_back(z[nx+ny-1]);
             z=tmp;
 
-            TIES =TRUE;
+            TIES =true;
         }
 
         /*STATISTIC < -

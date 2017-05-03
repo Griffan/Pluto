@@ -12,7 +12,6 @@
 //#define DEBUG 1
 
 
-#include "pbwt/pbwt.h"
 #include "ks.h"
 #include <vector>
 #include <unordered_map>
@@ -354,7 +353,6 @@ public:
 
     std::unordered_map<StateIndex, StateIndex> stateOrder;//mapping oldState to newOrder
     StateIndex tmpOrder;
-    std::vector<uchar> tmpAllele;
     double pval;
     bool EXACT;
     std::unordered_map<int, int> removeMembership;//rankID,state

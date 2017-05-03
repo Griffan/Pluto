@@ -6,7 +6,6 @@
 #include <cmath>
 #include "PBWTWrapper.h"
 #include "iostream"
-#include "pbwt/pbwt.h"
 #include <fstream>
 #include <functional>
 
@@ -28,7 +27,7 @@ float P_thresh=0.6;
 PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix) : prefixLength(1200), Graph(nsnps),
                                                                           a(nhaps, 0), alpha(a),
                                                                           alphaMap(nsnps, std::vector<int>(nhaps, 0)),
-                                                                          d(a),
+                                                                          d(nhaps+1, 0),
                                                                           delta(a),
                                                                           allDelta(alphaMap),
                                                                           bkDistance(nsnps, std::vector<float>(nhaps,
@@ -1449,7 +1448,12 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
     if (ret) {
         for (int stateM = 0; stateM < (int)dist.size(); ++stateM)//loop through all remained states with the help of mergeIndicator
         {
-            if (removeIndicator[stateM]) continue;
+            if (removeIndicator[stateM])
+            {
+                delete Graph.StateNodeMat[site][stateM];
+                Graph.StateNodeMat[site][stateM]= nullptr;
+                continue;
+            }
 //            tmpAllele.push_back(GetAllele(site,stateM));
 //            Graph.StateNodeMat[site][stateM]->nodeIndex = tmpOrder;
             for (auto kv:Graph.StateNodeMat[site][stateM]->GetParentIndexVector()) {
