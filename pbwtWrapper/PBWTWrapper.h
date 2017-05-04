@@ -161,14 +161,15 @@ struct r_stat_t
     }
 };
 
-
+typedef unsigned char uchar;
 //define NODE structure which represents cluster or state in HMM model
 class StateNode
 {
 private:
     StateNode(const StateNode&);
     StateNode() {
-        numHap=0;
+        numHap[0]=0;
+        numHap[1]=0;
         childNodeIndex[0]= -1;
         childNodeIndex[1]= -1;
         allele=0;
@@ -176,14 +177,16 @@ private:
 
 public:
 
-    float numHap;
-    char allele;
+    //float numHap;
+    uchar allele;
     std::vector<StateIndex> parentNodeIndex;
     StateIndex childNodeIndex[2];
+    float numHap[2];
 
 
-    StateNode(float tNumHap, char tAllele) {
-        numHap=tNumHap;
+    StateNode(uchar tAllele) {
+        numHap[0]=0;
+        numHap[1]=0;
         childNodeIndex[0]= -1;
         childNodeIndex[1]= -1;
         allele=tAllele;
@@ -197,7 +200,8 @@ public:
     StateNode & operator=(const StateNode& A)
     {
         fprintf(stderr,"using operator =\n");
-        numHap=A.numHap;
+        numHap[0]=A.numHap[0];
+        numHap[1]=A.numHap[1];
         allele=A.allele;
         parentNodeIndex=A.parentNodeIndex;
         childNodeIndex[0]=A.childNodeIndex[0];
@@ -210,16 +214,17 @@ public:
         return 0;
     }
 
-    int AddChildNode(char allele, StateIndex index) {//should only be called once
+    int AddChildNode(uchar allele, StateIndex index) {//should only be called once
 //        if(childNodeIndex[(size_t)allele] != nullptr)
 //            fprintf(stderr,"add index: %p to child %p with allele %d(%d) with numHaplotype:%f to\n",index,childNodeIndex[(size_t)allele],allele,(size_t)allele,numHaplotype);
 //        else fprintf(stderr,"add nullptr to allele %d with numHaplotype:%f\n",allele,numHaplotype);
-        if(childNodeIndex[(size_t)allele]!=index && childNodeIndex[(size_t)allele]!= -1)
+        if(childNodeIndex[allele]!=index && childNodeIndex[allele]!= -1)
         {
-            fprintf(stderr,"roar from StateNode AddChildNode!!!!allele:%d\t%d\tto\t%d\n",allele,childNodeIndex[(size_t)allele],index);
+            fprintf(stderr,"roar from StateNode AddChildNode!!!!allele:%d\t%d\tto\t%d\n",allele,childNodeIndex[allele],index);
             exit(EXIT_FAILURE);
         }
-        childNodeIndex[(size_t)allele]=index;
+        childNodeIndex[allele]=index;
+        numHap[allele]+=1.;
         return 0;
     }
 
@@ -235,6 +240,14 @@ public:
 
 class StateNodeContainer//actual graph
 {
+private:
+    StateNodeContainer(StateNodeContainer& A)
+    {
+        nsnps=A.nsnps;
+        StateNodeMat=A.StateNodeMat;
+        tmpNodeVec=A.tmpNodeVec;
+    }
+    StateNodeContainer& operator=(StateNodeContainer& A);
 public:
     int nsnps;
     std::vector<std::vector<StateNode*> > StateNodeMat;
@@ -254,20 +267,16 @@ public:
             vec.clear();
         }
     }
-    StateNodeContainer(StateNodeContainer& A)
-    {
-        nsnps=A.nsnps;
-        StateNodeMat=A.StateNodeMat;
-        tmpNodeVec=A.tmpNodeVec;
-    }
+
     StateNodeContainer(int nmarkers):nsnps(nmarkers),
-                                     StateNodeMat(nmarkers,std::vector<StateNode*>(0, new StateNode(0, 0)))
+                                     StateNodeMat(nmarkers,std::vector<StateNode*>(0, new StateNode(0)))
     {
     }
 
     int JoinNodes(int marker, StateIndex indexRetain, StateIndex indexRemove)
     {
-        StateNodeMat[marker][indexRetain]->numHap+=StateNodeMat[marker][indexRemove]->numHap;
+        StateNodeMat[marker][indexRetain]->numHap[0]+=StateNodeMat[marker][indexRemove]->numHap[0];
+        StateNodeMat[marker][indexRetain]->numHap[1]+=StateNodeMat[marker][indexRemove]->numHap[1];
         for (auto kv:StateNodeMat[marker][indexRemove]->parentNodeIndex) {
             StateNodeMat[marker][indexRetain]->AddParentNode(kv);
 //            fprintf(stderr,"allele 0:%x, allele 1:%x, address:%x\n",kv.second->childNodeIndex[0],kv.second->childNodeIndex[1],&(A.nodeIndex));
@@ -287,13 +296,13 @@ public:
         return 0;
     }
 
-    void UpdateChildNodeIndex(int marker, StateIndex parentIndex, StateIndex newChildIndex, char allele)
+    void UpdateChildNodeIndex(int marker, StateIndex parentIndex, StateIndex newChildIndex, uchar allele)
     {
         StateNodeMat[marker][parentIndex]->childNodeIndex[allele]=newChildIndex;
     }
 
-    float GetProbToCurrentNodeConditionalOnParentNode(int marker, StateIndex parentIndex, StateIndex childIndex) {
-        return StateNodeMat[marker+1][childIndex]->numHap/StateNodeMat[marker][parentIndex]->numHap;
+    float GetProbToCurrentNodeConditionalOnParentNode(int marker, StateIndex parentIndex, uchar allele) {
+        return StateNodeMat[marker][parentIndex]->numHap[allele]/(StateNodeMat[marker][parentIndex]->numHap[0]+StateNodeMat[marker][parentIndex]->numHap[1]);
     }
 
     int writeContainer(const std::string& fileName);
@@ -327,12 +336,10 @@ public:
 //    PBWT* pbwtCore;
 //    PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<int> a,alpha/*reverse*/;//stores array a status after process current column haps;
-    //std::vector<std::vector<int> > alpha/*reverse*/;//stores array a status after process current column haps
     std::vector<std::vector<int> > alphaMap;
     std::vector<int> d,delta;
     std::vector<std::vector<int> > allDelta;
     std::vector<std::vector<float> > bkDistance;/*reverse*/;
-    //std::vector<std::vector<uchar> > sortedY/*only for test*/;
     std::vector<int> sortedY;
     std::vector<int> c,celta;/*number of zero at each site*/
     //std::vector<std::vector<int> > u,ultra;/*relative rank within zeros*/
@@ -502,7 +509,7 @@ public:
 //        return clusterAllele[k].size();
         return Graph.StateNodeMat[k].size();
     }
-    inline char GetAllele(int site, StateIndex state)
+    inline uchar GetAllele(int site, StateIndex state)
     {
         return Graph.StateNodeMat[site][state]->allele;
     }
@@ -522,7 +529,7 @@ public:
 
     inline float GetHapProbAt(int site,int index)
     {
-        return Graph.StateNodeMat[site][index]->numHap/M;
+        return (Graph.StateNodeMat[site][index]->numHap[0]+Graph.StateNodeMat[site][index]->numHap[1])/M;
     }
 
     //fast update pbwt

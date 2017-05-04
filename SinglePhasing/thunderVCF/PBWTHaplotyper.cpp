@@ -6,7 +6,7 @@
 #include "MemoryAllocators.h"
 
 //debug related
-static const float UNDERFLOW_MIN = std::numeric_limits<double>::min() * 100;
+static const float UNDERFLOW_MIN = std::numeric_limits<float>::min() * 100;
 
 static void printLeftMatrix(float *probability, int numStates) {
     for (int i = 0; i < numStates; ++i) {
@@ -281,6 +281,7 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
 }
 
 //phasing
+
 void PBWTHaplotyper::ConditionOnData(float *matrix, int marker, char phred11, char phred12, char phred22) {
     // We treat missing genotypes as uninformative about the mosaic's
     // underlying state. If we were to allow for deletions and the like,
@@ -1262,7 +1263,7 @@ int PBWTHaplotyper::ResetFwdValues() {
     return 0;
 }
 
-double PBWTHaplotyper::GetGL(int individual, int marker, char allele1, char allele2) {
+double PBWTHaplotyper::GetGL(int individual, int marker, uchar allele1, uchar allele2) {
 //    std::cerr<<individual<<"\t"<<marker<<"\t"<<(int)allele1<<"\t"<<(int)allele2<<std::endl;
 
     return phred2prob[(size_t) genotypes[individual][3 * marker + allele1 + allele2]];
@@ -1347,7 +1348,7 @@ int PBWTHaplotyper::ForwardAlgorithm() {
     int totalPair = 0;
     int noChildPair = 0;
 
-    char allele1, allele2;
+    uchar allele1, allele2;
     StateIndex childNode1, childNode2, parentNode1, parentNode2;
     for (int i = 1; i < markers; i++) {
         fitPair = 0;

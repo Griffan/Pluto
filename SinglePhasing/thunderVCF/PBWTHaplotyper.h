@@ -89,18 +89,19 @@ public:
 //		if(Wrapper->transVector[site].size()<=from) {fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);abort();}
 //		if(Wrapper->transVector[site][from].size()<=to) {fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
 //		return Wrapper->transVector[site][from][to];
+        uchar allele=GetAllele(site+1,to);
 		if((int)Wrapper->Graph.StateNodeMat.size()<= site) {fprintf(stderr,"site %d doesn't exist!\n",site);abort();}
 		if((int)Wrapper->Graph.StateNodeMat[site].size()<=from) {fprintf(stderr,"site:%d, from:%d states too large!\n",site,from);abort();}
-        if(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[GetAllele(site+1,to)]== -1||Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[GetAllele(site+1,to)]!=to)
+        if(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[allele]== -1||Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[allele]!=to)
 		{fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
 //		return Wrapper->Graph.StateNodeMat[site][from]->numHapChild[GetAllele(site+1,to)];
-        return Wrapper->Graph.GetProbToCurrentNodeConditionalOnParentNode(site, from, to);//site is for parent
+        return Wrapper->Graph.GetProbToCurrentNodeConditionalOnParentNode(site, from, allele);//site is for parent
 	}
     inline float GetHapProbAt(int site,int index)
     {
         return Wrapper->GetHapProbAt(site,index);
     }
-	inline char GetAllele(int site, StateIndex state)
+	inline uchar GetAllele(int site, StateIndex state)
 	{
 		return Wrapper->GetAllele(site,state);
 	}
@@ -154,13 +155,13 @@ public:
 
     int InitialFwdValues();
     int ResetFwdValues();
-    double GetGL(int individual, int marker, char allele1, char allele2);
+    double GetGL(int individual, int marker, uchar allele1, uchar allele2);
     float GetRecombRate(int marker);
-    StateIndex GetChildNode(int site, int stateIndex, char allele)
+    StateIndex GetChildNode(int site, int stateIndex, uchar allele)
     {
-        if(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[(size_t)allele]== -1)
+        if(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[allele]== -1)
             return -1;
-        else return Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[(size_t)allele];
+        else return Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[allele];
     }
 
 
