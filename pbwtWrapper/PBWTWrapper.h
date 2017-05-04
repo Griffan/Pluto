@@ -604,7 +604,7 @@ public:
                 index=node->childNodeIndex[0];
                 if(bag.find(index) ==bag.end()) bag[index]=true;
                 else continue;
-                sum1+=Graph.StateNodeMat[childSite][index]->numHap;
+                sum1+=Graph.StateNodeMat[childSite][index]->numHap[0];
 
             }
             if(node->childNodeIndex[1]!= -1)
@@ -612,7 +612,7 @@ public:
                 index=node->childNodeIndex[1];
                 if(bag.find(index) ==bag.end()) bag[index]=true;
                 else continue;
-                sum1+=Graph.StateNodeMat[childSite][index]->numHap;
+                sum1+=Graph.StateNodeMat[childSite][index]->numHap[1];
 
             }
 

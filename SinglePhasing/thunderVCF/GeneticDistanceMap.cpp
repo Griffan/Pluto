@@ -7,6 +7,7 @@
 #include <sstream>
 #include <cmath>
 #include "GeneticDistanceMap.h"
+#include <algorithm>
 
 void GeneticDistanceMap::InputGeneticDistanceMap(const std::string &inputFile) {
     std::cerr<<inputFile<<" opening"<<std::endl;
@@ -57,8 +58,7 @@ float GeneticDistanceMap::InferGeneticDistance(std::string chr, int start) {
 
 float GeneticDistanceMap::CalculateRecombinationRate(float prev, float current) {
     const float factor=2.0f;
-    float deltaD=current-prev;
-    return std::max(1.f-expf(-deltaD/factor),1e-6f);
+    return std::max(1.f/powf((1.f+prev/factor),2.f)-1.f/powf((1.f+current/factor),2.f),10e-6f);
 }
 
 

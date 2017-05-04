@@ -1389,6 +1389,7 @@ int PhasingMain(int argc, char **argv) {
 //        engine.orderedGenotypes=true;
         if(isSingleRound)
             engine.LoopThroughChromosomesSingleRound();
+//            engine.LoopThroughChromosomesRecomb();
         else
             engine.LoopThroughChromosomesHighPrecision();
 //        engine.LoopThroughChromosomesLeaveOneOut();

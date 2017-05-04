@@ -1366,7 +1366,7 @@ int PBWTHaplotyper::ForwardAlgorithm() {
                                                     iter->second.end(); ++iter2)// parentNode2:hap2; iter2->second:all the source states to current state
             {
                 parentNode2 = iter2->first;
-                prevFwdValue = SumFwdValueFromOriginVec(iter2->second);//all the parents that lead to current child pair
+                prevFwdValue = SumFwdValueFromOriginVec(iter2->second);//sum over all the parents of current parents that lead to a child pair
                 totalPair++;
                 for (allele1 = 0; allele1 < 2; ++allele1) {
                     childNode1 = GetChildNode(i - 1, parentNode1, allele1);//i child of i-1 child state
@@ -1614,7 +1614,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
             {
                 parentNode2 = iter2->first;
 
-                prevFwdValue = SumFwdValueFromOriginVec(iter2->second);//all the parents that lead to current child pair
+                prevFwdValue = SumFwdValueFromOriginVec(iter2->second);//sum over all the parents of current parents that lead to a child pair
                 totalPair++;
                 for (allele1 = 0; allele1 < 2; ++allele1) {
                     childNode1 = GetChildNode(i - 1, parentNode1, allele1);//i child of i-1 child state
