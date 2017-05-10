@@ -244,12 +244,14 @@ private:
     StateNodeContainer(StateNodeContainer& A)
     {
         nsnps=A.nsnps;
+        nhaps=A.nhaps;
         StateNodeMat=A.StateNodeMat;
         tmpNodeVec=A.tmpNodeVec;
     }
     StateNodeContainer& operator=(StateNodeContainer& A);
 public:
     int nsnps;
+    int nhaps;
     std::vector<std::vector<StateNode*> > StateNodeMat;
     std::vector<StateNode*> tmpNodeVec;
 
@@ -268,7 +270,7 @@ public:
         }
     }
 
-    StateNodeContainer(int nmarkers):nsnps(nmarkers),
+    StateNodeContainer(int nmarkers, int nHaps):nsnps(nmarkers),nhaps(nHaps),
                                      StateNodeMat(nmarkers,std::vector<StateNode*>(0, new StateNode(0)))
     {
     }
@@ -303,6 +305,10 @@ public:
 
     float GetProbToCurrentNodeConditionalOnParentNode(int marker, StateIndex parentIndex, uchar allele) {
         return StateNodeMat[marker][parentIndex]->numHap[allele]/(StateNodeMat[marker][parentIndex]->numHap[0]+StateNodeMat[marker][parentIndex]->numHap[1]);
+    }
+
+    float GetEdgeProbFromParentNode(int marker, StateIndex parentIndex, uchar allele) {
+        return StateNodeMat[marker][parentIndex]->numHap[allele]/nhaps;
     }
 
     int writeContainer(const std::string& fileName);

@@ -91,9 +91,16 @@ public:
 //		return Wrapper->transVector[site][from][to];
         uchar allele=GetAllele(site+1,to);
 		if((int)Wrapper->Graph.StateNodeMat.size()<= site) {fprintf(stderr,"site %d doesn't exist!\n",site);abort();}
-		if((int)Wrapper->Graph.StateNodeMat[site].size()<=from) {fprintf(stderr,"site:%d, from:%d states too large!\n",site,from);abort();}
+		if((int)Wrapper->Graph.StateNodeMat[site].size()<=from)
+        {
+//            fprintf(stderr,"site:%d, from:%d states too large!\n",site,from);
+            return 0.f;
+        }
         if(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[allele]== -1||Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[allele]!=to)
-		{fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
+		{
+//            fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);
+            return 0.f;
+        }
 //		return Wrapper->Graph.StateNodeMat[site][from]->numHapChild[GetAllele(site+1,to)];
         return Wrapper->Graph.GetProbToCurrentNodeConditionalOnParentNode(site, from, allele);//site is for parent
 	}
@@ -101,10 +108,18 @@ public:
     {
         return Wrapper->GetHapProbAt(site,index);
     }
+    inline float GetEdgeProbAt(int site, StateIndex from, uchar allele)
+    {
+        return Wrapper->Graph.GetEdgeProbFromParentNode(site,from,allele);//
+    }
 	inline uchar GetAllele(int site, StateIndex state)
 	{
 		return Wrapper->GetAllele(site,state);
 	}
+    inline StateIndex GetChildNode(int site, StateIndex state, uchar allele)
+    {
+        return Wrapper->Graph.StateNodeMat[site][state]->childNodeIndex[allele];
+    }
 	inline int GetStateNumFrom(int site)
 	{
 		return Wrapper->GetNumStates(site);
@@ -206,7 +221,7 @@ public:
             MarkerIndex--;
             nextAvailableStatePairIter=nextAvailableStatePair[MarkerIndex].begin();}
     };
-    AvailableParentStatePair availablePair;
+    AvailableParentStatePair availablePair;//available parents at each site
     /*!ForwadAlgorithmRec()
      * forward algorithm with recombination model added
      * @return

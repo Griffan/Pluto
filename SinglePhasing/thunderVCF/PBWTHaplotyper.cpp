@@ -1587,6 +1587,8 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
     float prevFwdValue(0.f);
     float tmpFwdValue(0.f);
     float gl(0.f);
+    float lowestFwd(0.f);//100th smallest fwd value
+    int numCrediablePair(0);
 
     int fitPair = 0;
     int totalPair = 0;
@@ -1604,6 +1606,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
         totalPair = 0;
         noChildPair = 0;
         fwdValueSum[i] = 0;
+        recRate = GetRecombRate(i - 1);//start from marker 1 but store at index 0
 
         for (auto iter = genuienParents[i - 1].begin();
              iter != genuienParents[i - 1].end(); ++iter)//all states at site i-1, parentNode1: hap1
@@ -1625,6 +1628,32 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
                         gl = GetGL(SampleIndex, i, allele1, allele2);
                         if (gl > 1e-1) {
                             fitPair++;
+                            baseProb = GetTransitionProb(i - 1, parentNode1, childNode1) *
+                                       GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
+
+                            tmpFwdValue = prevFwdValue * baseProb * (1 - recRate) * (1 - recRate);
+
+                            tmpFwdValue += fwdValueNode1Sum[i - 1][parentNode1] * GetHapProbAt(i - 1, parentNode2) *
+                                           baseProb * (1 - recRate) * recRate;
+
+                            tmpFwdValue += fwdValueNode2Sum[i - 1][parentNode2] * GetHapProbAt(i - 1, parentNode1) *
+                                           baseProb * (1 - recRate) * recRate;
+
+                            tmpFwdValue += GetHapProbAt(i - 1, parentNode2) *
+                                           GetHapProbAt(i - 1, parentNode1) * baseProb * recRate * recRate;
+
+                            if (tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0) {
+                                tmpFwdValue = UNDERFLOW_MIN;
+                            }
+
+                            fwdValueSum[i] += tmpFwdValue;
+                            genuienParents[i][childNode1][childNode2][std::make_pair(parentNode1,
+                                                                                         parentNode2)] = tmpFwdValue;
+                            availablePair.FillNextAvailableStatePair(std::make_pair(parentNode1, parentNode2));
+
+                        }
+                        else if(0)
+                        {
                             recRate = GetRecombRate(i - 1);//start from marker 1 but store at index 0
                             baseProb = GetTransitionProb(i - 1, parentNode1, childNode1) *
                                        GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
@@ -1637,49 +1666,59 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
                             tmpFwdValue += fwdValueNode2Sum[i - 1][parentNode2] * GetHapProbAt(i - 1, parentNode1) *
                                            baseProb * (1 - recRate) * recRate;
 
-                            tmpFwdValue += fwdValueSum[i - 1] * GetHapProbAt(i - 1, parentNode2) *
+                            tmpFwdValue += GetHapProbAt(i - 1, parentNode2) *
                                            GetHapProbAt(i - 1, parentNode1) * baseProb * recRate * recRate;
 
-                            if (tmpFwdValue > 0.f) {
-                                fwdValueSum[i] += tmpFwdValue;
-                                genuienParents[i][childNode1][childNode2][std::make_pair(parentNode1,
-                                                                                         parentNode2)] = tmpFwdValue;
-                                availablePair.FillNextAvailableStatePair(std::make_pair(parentNode1, parentNode2));
+                            if (tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0) {
+                                tmpFwdValue = UNDERFLOW_MIN;
+                            }
+
+                            if(numCrediablePair<200) {
+                                EdgePairList.push(
+                                        EdgePair(childNode1, childNode2, parentNode1, parentNode2, tmpFwdValue));
+                                numCrediablePair++;
+                                if(tmpFwdValue < lowestFwd)
+                                {
+                                    lowestFwd=tmpFwdValue;
+                                }
+                            }else if(tmpFwdValue > lowestFwd)// EdgePairList full and should be added into List, pop out lowest
+                            {
+                                EdgePairList.pop();
+                                EdgePairList.push(EdgePair(childNode1,childNode2,parentNode1,parentNode2,tmpFwdValue));
+                                lowestFwd = EdgePairList.top().fwd;
                             }
                         }
                     }
                 }
             }
         }
-        if (fitPair == 0) {
-            fprintf(stderr, "[Warning]marker %d broken! %d totalPair, %d noChildPair\n", i, totalPair, noChildPair);
-            exit(EXIT_FAILURE);
-            //brokenList[i] = true;
-            UpdateStateNum(GetStateNumFrom(i));
-            prevFwdValue = 1.f / (states * states);
-            for (StateIndex j = 0; j < states; ++j)
-                for (StateIndex k = 0; k < states; ++k) {
-                    allele1 = GetAllele(i, j);
-                    allele2 = GetAllele(i, k);
-                    gl = GetGL(SampleIndex, i, allele1, allele2);//i gl
-                    if (gl > 1e-1) {
-                        tmpFwdValue = prevFwdValue * gl;//i fwdValueSum
-                        if (tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0) {
-                            tmpFwdValue = UNDERFLOW_MIN;
-                        }
-                        fwdValueSum[i] += tmpFwdValue;
-                        genuienParents[i][j][k][std::make_pair(0, 0)] = tmpFwdValue;
-                    }
-                }
+
+        while(not EdgePairList.empty())
+        {
+            EdgePair tmpEdgePair = EdgePairList.top();
+            EdgePairList.pop();
+            if(tmpEdgePair.fwd> 0.f) {
+                genuienParents[i][tmpEdgePair.childNode1][tmpEdgePair.childNode2][std::make_pair(
+                        tmpEdgePair.parentNode1,
+                        tmpEdgePair.parentNode2)] = tmpEdgePair.fwd;
+                fwdValueSum[i] += tmpEdgePair.fwd;
+                availablePair.FillNextAvailableStatePair(
+                        std::make_pair(tmpEdgePair.parentNode1, tmpEdgePair.parentNode2));
+            }
         }
+
 //        fprintf(stderr,"site:%d report overall fwd:%g\n",i,fwdValueSum[i]);
         for (auto iter = genuienParents[i].begin(); iter != genuienParents[i].end(); ++iter)
-            for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); ++iter2)
+            for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); ++iter2) {
+                float tmp(0.f);
                 for (auto iter3 = iter2->second.begin(); iter3 != iter2->second.end(); ++iter3) {
                     iter3->second /= fwdValueSum[i];
                     fwdValueNode1Sum[i][iter->first] += iter3->second;
                     fwdValueNode2Sum[i][iter2->first] += iter3->second;
+                    tmp+=iter3->second;
                 }
+//                if(i%7420<10)fprintf(stderr,"lalala marker:%d\tprevFwdValue:%g\tnode pair:(%d,%d)\t fwdValueSum:%g\n",i,tmp,iter->first,iter2->first,fwdValueSum[i]);
+            }
         availablePair.NextMarker();//last one is empty
     }
     return 0;
@@ -1689,8 +1728,10 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
 //    int seflSwitch(0);
 
     double choice(0.);
-    double sum(0.);
+    double sum(0.),subSum(0.);
     float gl0(0.f);
+    float baseProb(0.f);
+    float np1(0.f),np2(0.f);
 
     int first0(0), second0(0);
 
@@ -1698,12 +1739,9 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
     int sampledSecond(0);
     double sampledFwd(0.f);
 
-    bool noRecomb1(false), noRecomb2(false);
-
     float recRate(0.f);
-//    float baseProb(0.f);
 
-    int parentNode1(0),parentNode2(0);
+    int sampled = 0;
 
     choice = rand->Uniform(0, 1);
     availablePair.ResetMarkerIndexAt(markers-1);//rewind to last actual point
@@ -1721,14 +1759,13 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
 
     for (int i = markers - 1; i > 0; --i) {
 
- //       fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\ttotalValue:%g\t",i,sum,choice,sampledFirst,sampledSecond,sampledFwd);
-//        fprintf(stderr,"marker:%d\tsum:%g\n",i,sum);
+//        fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\ttotalValue:%g\tsampled:%d\trecRate:%g\n",i,sum,choice,sampledFirst,sampledSecond,sampledFwd,sampled,recRate);
         sum = 0.;
         first0 = sampledFirst;
         second0 = sampledSecond;
 
         ImputeAlleles(i, first0, second0, rand, SampleIndex, sampledHaps);
-
+        sampled = 0;
         choice = rand->Uniform(0, sampledFwd);
 
         if (genuienParents[i].find(first0) == genuienParents[i].end() ||
@@ -1740,105 +1777,55 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
 
         gl0 = GetGL(individuals - 1, i, GetAllele(i, first0), GetAllele(i, second0));
         recRate = GetRecombRate(i-1);//start from marker 1 but store at index 0
-//        fprintf(stderr,"recombRate:%g\n",recRate);
-//
-//        fprintf(stderr,"marker:%d and avaIndex:%d\t",i,availablePair.MarkerIndex);
-//        for (auto kv:availablePair.nextAvailableStatePair[availablePair.MarkerIndex]) {
-//            std::cerr<<"("<<kv.first<<","<<kv.second<<")\t";
-//        }
-//        std::cerr<<std::endl;
-//        for (auto kv: genuienParents[i][first0][second0]) //loop through each possible parent node pair
-//        {
-//            parentNode1 = kv.first.first;
-//            parentNode2 = kv.first.second;
-//            std::cerr << "parentNode1:" << parentNode1 << "\tparentNode2:" << parentNode2 << "\tfwd:"
-//                      << genuienParents[i][first0][second0][std::make_pair(parentNode1, parentNode2)] << std::endl;
-//        }
         while (!availablePair.IsEnd()) {
+//            fprintf(stderr,"[normalBang] marker:%d choice:%g and tmpSum:%g\t (%d,%d) \tgl:%g\ttp1:%g\ttp2:%g\thp1:%g\thp2:%g\tfwd:%g\tfwdnode1:%g\tfwdnode2:%g\tfwdsum:%g\n", i,choice, sum,parentNodePair.first,parentNodePair.second,
+//  gl0,GetTransitionProb(i-1, parentNodePair.first, first0),GetTransitionProb(i-1, parentNodePair.second, second0),GetHapProbAt(i-1, parentNodePair.first),GetHapProbAt(i-1, parentNodePair.second),
+//                                genuienParents[i][first0][second0][std::make_pair(parentNodePair.first,parentNodePair.second)],
+//                                fwdValueNode1Sum[i][parentNodePair.first],fwdValueNode2Sum[i][parentNodePair.second],fwdValueSum[i]);
+            std::pair<int, int> parentNodePair = availablePair.GetNextAvailableStatePair();
 
-            std::pair<int, int> NodePair = availablePair.GetNextAvailableStatePair();
+            baseProb = GetEdgeProbAt(i-1,parentNodePair.first,GetAllele(i,first0)) * GetEdgeProbAt(i-1,parentNodePair.second,GetAllele(i,second0))* gl0;
+            subSum = 0.;
 
-            if (genuienParents[i][first0][second0].find(std::make_pair(NodePair.first,NodePair.second)) !=
-                genuienParents[i][first0][second0].end())//no recomb
-            {
-//                fprintf(stderr,"[normalBang] 2 noRecomb marker:%d and tmpSum:%g\t (%d,%d) \tgl:%g\ttp1:%g\ttp2:%g\thp1:%g\thp2:%g\tfwd:%g\tfwdnode1:%g\tfwdnode2:%g\tfwdsum:%g\n", i,sum,NodePair.first,NodePair.second,
-//  gl0,GetTransitionProb(i-1, NodePair.first, first0),GetTransitionProb(i-1, NodePair.second, second0),GetHapProbAt(i-1, NodePair.first),GetHapProbAt(i-1, NodePair.second),
-//                                genuienParents[i][first0][second0][std::make_pair(NodePair.first,NodePair.second)],
-//                                fwdValueNode1Sum[i][NodePair.first],fwdValueNode2Sum[i][NodePair.second],fwdValueSum[i]);
+                sampled++;
+                np1 = GetHapProbAt(i - 1, parentNodePair.first);
+                np2 = GetHapProbAt(i - 1, parentNodePair.second);
 
-                sum += (1 - recRate) * (1 - recRate) * GetTransitionProb(i-1, NodePair.first, first0) *
-                       GetTransitionProb(i-1, NodePair.second, second0) * gl0 * SumFwdValueFromOriginVec(genuienParents[i-1][NodePair.first][NodePair.second]);
+                sampledFwd = SumFwdValueFromOriginVec(
+                        genuienParents[i - 1][parentNodePair.first][parentNodePair.second]);
 
-//                fprintf(stderr,"2 noRecomb marker:%d and tmpSum:%g\t (%d,%d)\n",i,sum,NodePair.first,NodePair.second);
-                sum += (1 - recRate) * recRate * GetTransitionProb(i-1, NodePair.first, first0) *
-                       GetTransitionProb(i-1, NodePair.second, second0) * gl0 * GetHapProbAt(i-1, NodePair.second) *
-                       fwdValueNode1Sum[i-1][NodePair.first];
+                if (genuienParents[i][first0][second0].find(
+                        std::make_pair(parentNodePair.first, parentNodePair.second)) !=
+                    genuienParents[i][first0][second0].end())//no recomb
+                {
+                    subSum += (1 - recRate) * (1 - recRate) * baseProb/(np1 * np2);
+                }
+                if (GetChildNode(i - 1, parentNodePair.first, GetAllele(i, first0)) == first0)//noJump for first
+                {
+                    subSum += (1 - recRate) * recRate * baseProb / np1;
+                }
+                if (GetChildNode(i - 1, parentNodePair.second, GetAllele(i, second0)) == second0)//noJump for second
+                {
+                    subSum += (1 - recRate) * recRate * baseProb / np2;
+                }
+                subSum += recRate * recRate * baseProb;
+                sum += subSum * sampledFwd;
 
-//                fprintf(stderr,"2 noRecomb marker:%d and tmpSum:%g\t (%d,%d)\n",i,sum,NodePair.first,NodePair.second);
-                sum += (1 - recRate) * recRate * GetTransitionProb(i-1, NodePair.first, first0) *
-                       GetTransitionProb(i-1, NodePair.second, second0) * gl0 * GetHapProbAt(i-1, NodePair.first) *
-                       fwdValueNode2Sum[i-1][NodePair.second];
-//                fprintf(stderr,"2 noRecomb marker:%d and tmpSum:%g\t (%d,%d)\n",i,sum,NodePair.first,NodePair.second);
-                sum += recRate * recRate * GetTransitionProb(i-1, NodePair.first, first0) *
-                       GetTransitionProb(i-1, NodePair.second, second0) * gl0 * GetHapProbAt(i-1, NodePair.second) * GetHapProbAt(i-1, NodePair.first) /** fwdValueSum[i]*/;
-//                fprintf(stderr,"2 noRecomb marker:%d and tmpSum:%g\t (%d,%d)\n",i,sum,NodePair.first,NodePair.second);
-                if (sum > choice) {
-                    sampledFirst = NodePair.first;
-                    sampledSecond = NodePair.second;
-                    sampledFwd = SumFwdValueFromOriginVec(genuienParents[i - 1][sampledFirst][sampledSecond])*fwdValueSum[i-1];
+
+            sampledFirst = parentNodePair.first;
+            sampledSecond = parentNodePair.second;
+            if (sum > choice) {
+//                    sampledFirst = parentNodePair.first;
+//                    sampledSecond = parentNodePair.second;
+//                if(parentNode1== parentNodePair.second and parentNode2==parentNodePair.first) std::swap(sampledFirst,sampledSecond);
+//                        fprintf(stderr,"[bigBang] %d %d noRecomb marker:%d and tmpSum:%g\t parent:(%d,%d) uncle:(%d,%d)\n",noRecomb1,noRecomb2,i,sum,parentNode1,parentNode2,parentNodePair.first,parentNodePair.second);
+                    sampledFwd = sampledFwd * fwdValueSum[i - 1];
                     break;
                 }
-            } else {
-                for (auto kv: genuienParents[i][first0][second0]) //loop through each possible parent node pair
-                {
-                    noRecomb1 = false;
-                    noRecomb2 = false;
-                    parentNode1 = kv.first.first;
-                    parentNode2 = kv.first.second;
-//                    std::cerr<<"parentNode1:"<<parentNode1<<"\tparentNode2:"<<parentNode2<<"\tfwd:"<<genuienParents[i][first0][second0][std::make_pair(parentNode1,parentNode2)]<<std::endl;
-                    if (parentNode1 == NodePair.first) {
-                        noRecomb1 = true;break;
-                    }
-                    if (parentNode2 == NodePair.second) {
-                        noRecomb2 = true;break;
-                    }
-                }
-                    if (noRecomb1 && noRecomb2) {//not possible path
-                        std::cerr<<"Not possible path!"<<std::endl;
-                        exit(EXIT_FAILURE);
-                        sum += (1 - recRate) * (1 - recRate) * GetTransitionProb(i-1, parentNode1, first0) *
-                               GetTransitionProb(i-1, parentNode2, second0) * gl0 * SumFwdValueFromOriginVec(genuienParents[i-1][NodePair.first][NodePair.second]);
-                    }
-//                fprintf(stderr,"%d %d noRecomb marker:%d and tmpSum:%g\t parent:(%d,%d) uncle:(%d,%d)\n",noRecomb1,noRecomb2,i,sum,parentNode1,parentNode2,NodePair.first,NodePair.second);
-
-                if (noRecomb1) {
-                        sum += (1 - recRate) * recRate * GetTransitionProb(i-1, parentNode1, first0) *
-                               GetHapProbAt(i, second0)/*probability of randomly choose second0 after recombine*/ * gl0 *
-                               fwdValueNode1Sum[i-1][parentNode1];
-                    }
-//                fprintf(stderr,"%d %d noRecomb marker:%d and tmpSum:%g\t parent:(%d,%d) uncle:(%d,%d)\n",noRecomb1,noRecomb2,i,sum,parentNode1,parentNode2,NodePair.first,NodePair.second);
-
-                if (noRecomb2) {
-                        sum += (1 - recRate) * recRate * GetHapProbAt(i, first0) *
-                               GetTransitionProb(i-1, parentNode2, second0) * gl0 *
-                               fwdValueNode2Sum[i-1][parentNode2];
-                    }
-//                fprintf(stderr,"%d %d noRecomb marker:%d and tmpSum:%g\t parent:(%d,%d) uncle:(%d,%d)\n",noRecomb1,noRecomb2,i,sum,parentNode1,parentNode2,NodePair.first,NodePair.second);
-
-                    sum += recRate * recRate * gl0 * GetHapProbAt(i, first0) * GetHapProbAt(i, second0) /** fwdValueSum[i]*/;
-//                    fprintf(stderr,"%d %d noRecomb marker:%d and tmpSum:%g\t parent:(%d,%d) uncle:(%d,%d)\n",noRecomb1,noRecomb2,i,sum,parentNode1,parentNode2,NodePair.first,NodePair.second);
-                    if (sum > choice) {
-                        sampledFirst = NodePair.first;
-                        sampledSecond = NodePair.second;
-                        if(parentNode1== NodePair.second and parentNode2==NodePair.first) std::swap(sampledFirst,sampledSecond);
-//                        fprintf(stderr,"[bigBang] %d %d noRecomb marker:%d and tmpSum:%g\t parent:(%d,%d) uncle:(%d,%d)\n",noRecomb1,noRecomb2,i,sum,parentNode1,parentNode2,NodePair.first,NodePair.second);
-                        sampledFwd = SumFwdValueFromOriginVec(genuienParents[i - 1][sampledFirst][sampledSecond])*fwdValueSum[i-1];
-                        break;
-                    }
-
-            }
 
         }
+        if(sum < choice)         fprintf(stderr,"inside marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\ttotalValue:%g\tsampled:%d\tsubSum:%g\trecRate:%g\tHapProb1:%g\tHapProb2:%g\tbaseProb:%g\n",
+                                      i,sum,choice,sampledFirst,sampledSecond,sampledFwd,sampled,subSum,recRate,np1,np2,baseProb);
         availablePair.LastMarker();
     }
 
