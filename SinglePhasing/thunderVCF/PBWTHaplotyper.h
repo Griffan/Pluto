@@ -220,6 +220,10 @@ public:
 //            nextAvailableStatePair[MarkerIndex].clear();
             MarkerIndex--;
             nextAvailableStatePairIter=nextAvailableStatePair[MarkerIndex].begin();}
+        int Size()
+        {
+            return nextAvailableStatePair[MarkerIndex].size();
+        }
     };
     AvailableParentStatePair availablePair;//available parents at each site
     /*!ForwadAlgorithmRec()

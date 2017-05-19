@@ -25,7 +25,7 @@ const float T_CRITICAL_VALUE[] =
 
 float P_thresh=0.6;
 
-PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix) : prefixLength(1200), Graph(nsnps,nhaps),
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix) : prefixLength(120), Graph(nsnps,nhaps),
                                                                           a(nhaps, 0), alpha(a),
                                                                           alphaMap(nsnps, a),
                                                                           d(nhaps, 0),
@@ -398,8 +398,12 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
         if (i0 < M) {
             CreateNewCluster(k, M, i0, group);
         }
-        if (GetNumStates(k - 1) != 1 && k < (N-20)) RegressionMergeAtSite(k - 1, true);//TODO:implement this function
-//        Graph.NormalizeCurrentSiteTransitionProb(k - 2);
+        int numState = GetNumStates(k-1);
+//        fprintf(stderr,"At marker %d, before enter RegressionMergeAtSite, we have %d states\n",k-1,numState);
+        if (numState != 1 && k < (N-20)) RegressionMergeAtSite(k - 1, true);//TODO:implement this function
+//        numState = GetNumStates(k-1);
+//        fprintf(stderr,"At marker %d, after enter RegressionMergeAtSite, we have %d states\n",k-1,numState);
+
     }
 
     UpdateAandD(k);
@@ -1191,7 +1195,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
 //    if(recomRate[site-1]>1e-4) return 1;
     int ret(0);
     int currentNumCluster = GetNumStates(site);
-    std::cerr<<"Enter Site:"<<site<<" has "<< currentNumCluster<<" state and P_thresh:"<<P_thresh<<std::endl;
+//    std::cerr<<"Enter Site:"<<site<<" has "<< currentNumCluster<<" state and P_thresh:"<<P_thresh<<std::endl;
 
 //    unsigned long numHaps = haplotypeCluster[site].size();
 
@@ -1474,7 +1478,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
         //adjust d array and a array
         MoveSegment(removeMembership, site);
     }
-    std::cerr<<"Exit Site:"<<site<<" has "<< GetNumStates(site)<<" state"<<std::endl;
+//    std::cerr<<"Exit Site:"<<site<<" has "<< GetNumStates(site)<<" state"<<std::endl;
 
 //    if(site>12) exit(EXIT_FAILURE);
     return ret;
