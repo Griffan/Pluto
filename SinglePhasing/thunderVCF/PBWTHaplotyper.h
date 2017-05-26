@@ -120,6 +120,11 @@ public:
     {
         return Wrapper->Graph.StateNodeMat[site][state]->childNodeIndex[allele];
     }
+    inline std::unordered_set<StateIndex>& GetParentNodes(int site, StateIndex state)
+    {
+        return Wrapper->Graph.StateNodeMat[site][state]->GetParentIndexSet();
+    }
+
 	inline int GetStateNumFrom(int site)
 	{
 		return Wrapper->GetNumStates(site);
@@ -161,6 +166,7 @@ public:
     std::vector<std::unordered_map<int,float> > fwdValueNode2Sum;
     float SumFwdValueFromOriginVec(const Source& a)
     {
+        if (a.size() ==0) return 0.f;
         float sum(0.f);
         for (auto kv:a) {
             sum+=kv.second;
@@ -182,7 +188,6 @@ public:
 
 
     //without recombination
-    std::vector<bool> brokenList;
     int ForwardAlgorithm();
     int BackwardSampling(Random *rand, int SampleIndex, char** sampledHaps);
     //with recombination
@@ -216,7 +221,7 @@ public:
             return nextAvailableStatePairIter == nextAvailableStatePair[MarkerIndex].end();
         }
         void NextMarker(){MarkerIndex++;}
-        void LastMarker(){
+        void PrevMarker(){
 //            nextAvailableStatePair[MarkerIndex].clear();
             MarkerIndex--;
             nextAvailableStatePairIter=nextAvailableStatePair[MarkerIndex].begin();}
@@ -240,6 +245,15 @@ public:
      */
     int BackwardSamplingRec(Random *rand, int SampleIndex, char** sampledHaps);
 
+    int ForwardAlgorithmRecNew();
+    /*!BackwardSamplingRec()
+     * sampling haplotype while backward algorithm with recombination model added
+     * @param rand random number generator
+     * @param SampleIndex index of sample about to sample for
+     * @param sampledHaps char[][] array to store sampled haplotype
+     * @return
+     */
+    int BackwardSamplingRecNew(Random *rand, int SampleIndex, char** sampledHaps);
 
 	char ** sampledHaps;
 	int nSampleCopy;

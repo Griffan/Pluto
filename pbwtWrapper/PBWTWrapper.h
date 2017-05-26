@@ -15,6 +15,7 @@
 #include "ks.h"
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <iostream>
 #include <algorithm>
 #include <queue>
@@ -179,7 +180,7 @@ public:
 
     //float numHap;
     uchar allele;
-    std::vector<StateIndex> parentNodeIndex;
+    std::unordered_set<StateIndex> parentNodeIndex;
     StateIndex childNodeIndex[2];
     float numHap[2];
 
@@ -210,7 +211,7 @@ public:
     }
 
     int AddParentNode(StateIndex parentIndex) {
-        parentNodeIndex.push_back(parentIndex);
+        parentNodeIndex.insert(parentIndex);
         return 0;
     }
 
@@ -228,7 +229,7 @@ public:
         return 0;
     }
 
-    std::vector<StateIndex>& GetParentIndexVector()
+    std::unordered_set<StateIndex>& GetParentIndexSet()
     {
         return parentNodeIndex;
     }

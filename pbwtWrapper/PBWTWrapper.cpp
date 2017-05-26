@@ -25,7 +25,7 @@ const float T_CRITICAL_VALUE[] =
 
 float P_thresh=0.6;
 
-PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix) : prefixLength(120), Graph(nsnps,nhaps),
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix) : prefixLength(40), Graph(nsnps,nhaps),
                                                                           a(nhaps, 0), alpha(a),
                                                                           alphaMap(nsnps, a),
                                                                           d(nhaps, 0),
@@ -1458,7 +1458,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
             }
 //            tmpAllele.push_back(GetAllele(site,stateM));
 //            Graph.StateNodeMat[site][stateM]->nodeIndex = tmpOrder;
-            for (auto kv:Graph.StateNodeMat[site][stateM]->GetParentIndexVector()) {
+            for (auto kv:Graph.StateNodeMat[site][stateM]->GetParentIndexSet()) {
                 Graph.UpdateChildNodeIndex(site-1,kv,tmpOrder,GetAllele(site,stateM));
             }
 
