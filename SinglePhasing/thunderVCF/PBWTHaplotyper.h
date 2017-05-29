@@ -93,12 +93,12 @@ public:
 		if((int)Wrapper->Graph.StateNodeMat.size()<= site) {fprintf(stderr,"site %d doesn't exist!\n",site);abort();}
 		if((int)Wrapper->Graph.StateNodeMat[site].size()<=from)
         {
-//            fprintf(stderr,"site:%d, from:%d states too large!\n",site,from);
+            fprintf(stderr,"site:%d, from:%d states too large!\n",site,from);
             return 0.f;
         }
         if(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[allele]== -1||Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[allele]!=to)
 		{
-//            fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);
+            fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);
             return 0.f;
         }
 //		return Wrapper->Graph.StateNodeMat[site][from]->numHapChild[GetAllele(site+1,to)];
@@ -156,14 +156,19 @@ public:
             return a < 0 && b < 0 || a >= 0 && b >= 0 ? C : -C - 1;
         }
     };
-    typedef std::unordered_map<std::pair<int32_t,int32_t>,float,pairhash> Source;//(nodeA,nodeB)->fwd
-    typedef std::unordered_set<std::pair<int32_t,int32_t>,pairhash> NodePair;//(nodeA,nodeB)
+    typedef std::unordered_map<std::pair<StateIndex ,StateIndex>,float,pairhash> Source;//(nodeA,nodeB)->fwd
+    typedef std::unordered_set<std::pair<StateIndex,StateIndex>,pairhash> NodePair;//(nodeA,nodeB)
     typedef std::unordered_map<StateIndex,std::unordered_map<StateIndex,Source> > ChildToSource;
-    std::vector<ChildToSource> genuienParents;
+    typedef std::unordered_map<std::pair<StateIndex,StateIndex>,Source,pairhash> DestToSource;
 
-    float* fwdValueSum;
+    std::vector<ChildToSource> genuienParents;
+    //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
+    std::vector<DestToSource> parentsNodeVec;
+
+    std::vector<float> fwdValueSum;
     std::vector<std::unordered_map<int,float> > fwdValueNode1Sum;
     std::vector<std::unordered_map<int,float> > fwdValueNode2Sum;
+    std::vector<bool> isRec;
     float SumFwdValueFromOriginVec(const Source& a)
     {
         if (a.size() ==0) return 0.f;
@@ -229,12 +234,26 @@ public:
         {
             return nextAvailableStatePair[MarkerIndex].size();
         }
+        int Assign(NodePair & PairHash)
+        {
+            nextAvailableStatePair[MarkerIndex] = PairHash;
+        }
     };
     AvailableParentStatePair availablePair;//available parents at each site
     /*!ForwadAlgorithmRec()
      * forward algorithm with recombination model added
      * @return
      */
+    int ForwardAlgorithmRecBeagle();
+    /*!BackwardSamplingRec()
+     * sampling haplotype while backward algorithm with recombination model added
+     * @param rand random number generator
+     * @param SampleIndex index of sample about to sample for
+     * @param sampledHaps char[][] array to store sampled haplotype
+     * @return
+     */
+    int BackwardSamplingRecBeagle(Random *rand, int SampleIndex, char **sampledHaps);
+
     int ForwardAlgorithmRec();
     /*!BackwardSamplingRec()
      * sampling haplotype while backward algorithm with recombination model added
@@ -243,7 +262,7 @@ public:
      * @param sampledHaps char[][] array to store sampled haplotype
      * @return
      */
-    int BackwardSamplingRec(Random *rand, int SampleIndex, char** sampledHaps);
+    int BackwardSamplingRec(Random *rand, int SampleIndex, char **sampledHaps);
 
     int ForwardAlgorithmRecNew();
     /*!BackwardSamplingRec()
