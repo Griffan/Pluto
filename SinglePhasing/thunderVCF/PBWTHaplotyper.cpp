@@ -504,8 +504,10 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb() {
         delete Wrapper;
         Wrapper = nullptr;
     }
-    Wrapper = new PBWTWrapper(2 * individuals + (individuals - phased) * nSampleCopy * 2, markers, PvalueMatrix);
-    Wrapper->SetHaps(haplotypes, 0, 2 * individuals, sampledHaps, 0, (individuals - phased) * nSampleCopy * 2, thetas);
+//    Wrapper = new PBWTWrapper(2 * individuals + (individuals - phased) * nSampleCopy * 2, markers, PvalueMatrix);
+//    Wrapper->SetHaps(haplotypes, 0, 2 * individuals, sampledHaps, 0, (individuals - phased) * nSampleCopy * 2, thetas);
+    Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix);
+    Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
     Wrapper->CursorBackwards();//calculate backwards order of suffix
     Wrapper->CursorForwards();
     clock_t t1 = clock();
@@ -1265,6 +1267,7 @@ int PBWTHaplotyper::ResetFwdValues() {
 
     for (int k = 0; k < markers; ++k) {
         genuienParents[k].clear();
+        parentsNodeVec[k].clear();
     }
     return 0;
 }
@@ -2273,7 +2276,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
             }
         }
 
-        if (0)//fitPair == 0)//process orphan nodes
+        if (fitPair == 0)//process orphan nodes
         {
             fprintf(stderr,"at marker %d no viable fitPair\n",i);
             recRate = GetRecombRate(i - 1);//start from marker 1 but store at index 0
@@ -2347,13 +2350,13 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
             StateIndex tmpNode2 = kv.first.second;
             float tmp(0.f), tmp2(0.f);
             for (Source::iterator iter3 = kv.second.begin(); iter3 != kv.second.end(); ++iter3) {
-                tmp2 += iter3->second;
+//                tmp2 += iter3->second;
                 iter3->second /= fwdValueSum[i];
                 tmp += iter3->second;
-                fprintf(stderr, "foward marker:%d\tfwdValueSum:%g\tpair:(%d,%d)=(%d,%d)\tcurrentFwd:%g\tnormalized currentFwd:%g\tfrom:(%d,%d)\n",
-                        i, fwdValueSum[i], tmpNode1, tmpNode2,
-                        GetAllele(i, tmpNode1), GetAllele(i, tmpNode2), tmp2, tmp, iter3->first.first,
-                        iter3->first.second);
+//                fprintf(stderr, "foward marker:%d\tfwdValueSum:%g\tpair:(%d,%d)=(%d,%d)\tcurrentFwd:%g\tnormalized currentFwd:%g\tfrom:(%d,%d)\n",
+//                        i, fwdValueSum[i], tmpNode1, tmpNode2,
+//                        GetAllele(i, tmpNode1), GetAllele(i, tmpNode2), tmp2, tmp, iter3->first.first,
+//                        iter3->first.second);
             }
             fwdValueNode1Sum[i][tmpNode1] += tmp;
             fwdValueNode2Sum[i][tmpNode2] += tmp;
