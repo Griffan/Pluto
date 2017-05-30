@@ -58,6 +58,8 @@ float GeneticDistanceMap::InferGeneticDistance(std::string chr, int start) {
 
 float GeneticDistanceMap::CalculateRecombinationRate(float prev, float current) {
     const float factor=2.0f;
+    prev/=100;
+    current/=100;
     return std::max(1.f/powf((1.f+prev/factor),2.f)-1.f/powf((1.f+current/factor),2.f),10e-6f);
 }
 

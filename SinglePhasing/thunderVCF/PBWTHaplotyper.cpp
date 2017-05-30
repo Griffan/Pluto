@@ -2280,7 +2280,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
         {
             fprintf(stderr,"at marker %d no viable fitPair\n",i);
             recRate = GetRecombRate(i - 1);//start from marker 1 but store at index 0
-            isRec[i] = true;
+            isRec[i-1] = true;
             UpdateStateNum(GetStateNumFrom(i));
             for (childNode1 = 0; childNode1 < states; ++childNode1) {//dest nodeA
                 for (childNode2 = 0; childNode2 < states; ++childNode2) {//dest nodeB
@@ -2391,8 +2391,8 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
     for (auto kv: parentsNodeVec[markers - 1]) {
         for (auto parent : kv.second) {
             sum += parent.second;
-            fprintf(stderr, "sampling last marker:(%d,%d) with sum:%g, recRate:%g\n",
-                    kv.first.first, kv.first.second, sum, recRate);
+//            fprintf(stderr, "sampling last marker:(%d,%d) with sum:%g, recRate:%g\n",
+//                    kv.first.first, kv.first.second, sum, recRate);
             if (sum > choice) {
                 sampledChild0 = kv.first.first;
                 sampledChild1 = kv.first.second;
@@ -2420,16 +2420,16 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
     for (int i = markers - 2; i > 0; --i) {
 
 //        if (i == 4102 || i == 4103 || i == 4104) {
-        fprintf(stderr,
-                "marker:%d\ttestSum:%g\tsum:%g\tchoice:%g\tprev(%d,%d) to (%d,%d)\tsampledFwd:%g\tavailablePair.Size:%d\trecRate:%g\tgl:%g\tprobEdge0:%g\tprobEdge1:%g\tfwdValueSum:%g\n",
-                i, testSum, sum,
-                choice, sampledParent0, sampledParent1, sampledChild0, sampledChild1,  sampledFwd,
-                availablePair.Size(),
-                recRate, gl0, edgeProb0, edgeProb1, fwdValueSum[i]);
-
-        for (auto kv:parentsNodeVec[i][std::make_pair(sampledParent0, sampledParent1)]) {
-            fprintf(stderr, "marker:%d\tpair:(%d,%d)\ttestSum:%g\n", i, kv.first.first, kv.first.second, kv.second);
-        }
+//        fprintf(stderr,
+//                "marker:%d\ttestSum:%g\tsum:%g\tchoice:%g\tprev(%d,%d) to (%d,%d)\tsampledFwd:%g\tavailablePair.Size:%d\trecRate:%g\tgl:%g\tprobEdge0:%g\tprobEdge1:%g\tfwdValueSum:%g\n",
+//                i, testSum, sum,
+//                choice, sampledParent0, sampledParent1, sampledChild0, sampledChild1,  sampledFwd,
+//                availablePair.Size(),
+//                recRate, gl0, edgeProb0, edgeProb1, fwdValueSum[i]);
+//
+//        for (auto kv:parentsNodeVec[i][std::make_pair(sampledParent0, sampledParent1)]) {
+//            fprintf(stderr, "marker:%d\tpair:(%d,%d)\ttestSum:%g\n", i, kv.first.first, kv.first.second, kv.second);
+//        }
 //        }
         sum = 0.f;
         testSum = 0.f;

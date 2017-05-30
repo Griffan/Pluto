@@ -25,7 +25,7 @@ const float T_CRITICAL_VALUE[] =
 
 float P_thresh=0.8;
 
-PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix) : prefixLength(1200), Graph(nsnps,nhaps),
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix) : prefixLength(120), Graph(nsnps,nhaps),
                                                                           a(nhaps, 0), alpha(a),
                                                                           alphaMap(nsnps, a),
                                                                           d(nhaps, 0),
