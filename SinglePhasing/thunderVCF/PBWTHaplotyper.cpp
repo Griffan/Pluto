@@ -2288,6 +2288,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
                     if (gl < 1e-1) continue;
                     for ( auto tmpParentNode1:GetParentNodes(i, childNode1)) {
                         for ( auto tmpParentNode2:GetParentNodes(i, childNode2)) {
+                            if( GetGL(SampleIndex, i-1, GetAllele(i-1, tmpParentNode1), GetAllele(i-1, tmpParentNode2)) < 1e-1) continue;
                             if (parentsNodeVec[i - 1].find(std::make_pair(tmpParentNode1, tmpParentNode2)) !=
                                 parentsNodeVec[i - 1].end())
                                 prevFwdValue = SumFwdValueFromOriginVec(
@@ -2313,7 +2314,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
                                            GetHapProbAt(i - 1, tmpParentNode1) * baseProb * recRate * recRate;
 //                        fprintf(stderr,"tmp output4 tmpFwdValue:%g\n",tmpFwdValue);
 
-                            if (numCrediablePair < 100) {
+                            if (numCrediablePair < 200) {
                                 EdgePairList.push(
                                         EdgePair(childNode1, childNode2, tmpParentNode1, tmpParentNode2, tmpFwdValue));
                                 numCrediablePair++;
@@ -2442,28 +2443,24 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
         if (!isRec[i]) {//normal hap match without rec
             double choice0=choice/(GetTransitionProb(i , sampledParent0, sampledChild0) *
                     GetTransitionProb(i , sampledParent1, sampledChild1) * gl0);
-            for (auto kv:parentsNodeVec[i][std::make_pair(sampledParent0, sampledParent1)])//we are actually sampling i-1's states
+            for (auto grandParents:parentsNodeVec[i][std::make_pair(sampledParent0, sampledParent1)])//we are actually sampling i-1's states
             {
-                sum += kv.second;//kv.second is normalized
+                sum += grandParents.second;//kv.second is normalized
                 if (sum > choice0) {
                     sampledChild0 = sampledParent0;
                     sampledChild1 = sampledParent1;
-                    sampledParent0 = kv.first.first;
-                    sampledParent1 = kv.first.second;
+                    sampledParent0 = grandParents.first.first;
+                    sampledParent1 = grandParents.first.second;
                     edgeProb0 = GetEdgeProbAt(i - 1, sampledParent0, GetAllele(i, sampledChild0));
                     edgeProb1 = GetEdgeProbAt(i - 1, sampledParent1, GetAllele(i, sampledChild1));
-                    sampledFwd = kv.second * fwdValueSum[i];
+                    sampledFwd = grandParents.second * fwdValueSum[i];
                     break;
                 }
             }
         } else {
-            /* TODO: reimplement this part tomorrow, this part is not finished!!!!
-             * Pay attention that when sampling states for site i, we also need to sample
-             * its parents, i.e. we are actually sampling the edges not nodes
-             */
+
             baseProb = edgeProb0 * edgeProb1 * gl0;//site i
             recRate = GetRecombRate(i);//start from marker 1 but store at index 0
-//            while (!availablePair.IsEnd())
             for (auto kv:parentsNodeVec[i]) {// node pair at site i - 1, sampled (first0,second0) for i
 
                 std::pair<int, int> parentNodePair = kv.first;

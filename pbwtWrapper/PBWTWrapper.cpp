@@ -1579,9 +1579,9 @@ int PBWTWrapper::PrintSummary() {
 //    }
     meanEdges = (float) totalEdges / (N - 1);
 
-    printf("mean nodes/level = %f\tmax nodes/level = %d\tnodes = %d\n", meanNodes, maxNodes, totalNodes);
-    printf("mean edges/level = %f\tmax edges/level = %d\tedges = %d\n", meanEdges, maxEdges, totalEdges);
-    printf("mean edges/node = %f\tmean count/node = %f\n", (float) totalEdges / totalNodes,
+    fprintf(stderr,"mean nodes/level = %f\tmax nodes/level = %d\tnodes = %d\n", meanNodes, maxNodes, totalNodes);
+    fprintf(stderr,"mean edges/level = %f\tmax edges/level = %d\tedges = %d\n", meanEdges, maxEdges, totalEdges);
+    fprintf(stderr,"mean edges/node = %f\tmean count/node = %f\n", (float) totalEdges / totalNodes,
            (float) (M) * (N) / totalNodes);
 
     return 0;

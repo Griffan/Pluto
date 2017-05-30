@@ -1195,7 +1195,7 @@ int PhasingMain(int argc, char **argv) {
     engine.nSampleCopy = samplingRounds;
     engine.onlyHeterSite = onlyHeterSite;
     engine.geneticMapAvailable = false;
-    engine.SetPrefixLength(prefixLength);
+    engine.prefixLength = prefixLength;
 
 
     if(PMatrix.IsEmpty() and calPMatrix.IsEmpty()) {

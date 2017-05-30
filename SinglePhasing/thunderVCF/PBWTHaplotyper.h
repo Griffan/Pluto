@@ -18,6 +18,7 @@ class PBWTHaplotyper : public ShotgunHaplotyper{
 public:
 	bool onlyHeterSite;
     bool geneticMapAvailable;
+    int prefixLength;
 
     GeneticDistanceMap GDMap;
 
@@ -366,11 +367,6 @@ public:
     }
 
 
-    //Graph Builder Parameters
-    inline int SetPrefixLength(int len)
-    {
-        prefixLength = len;
-    }
 protected:
 
     PBWTWrapper* Wrapper;
@@ -382,8 +378,6 @@ protected:
     float* tmpPenetrance;
 	int tmpMarkers;
 	double max_num;
-
-    int prefixLength;
 
 
 //    double * phred2prob;
