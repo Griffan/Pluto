@@ -1132,7 +1132,7 @@ int PhasingMain(int argc, char **argv) {
                     LONG_STRINGPARAMETER("geneticDistance", &GDFile)
                     LONG_STRINGPARAMETER("physicalMap", &mapfile)
                     LONG_PARAMETER_GROUP("Graph Builder")
-                    LONG_INTPARAMETER("prefixLength", &prefixLength)
+                    LONG_INTPARAMETER("graphComplexity", &prefixLength)
                     LONG_PARAMETER_GROUP("Markov Sampler")
                     LONG_INTPARAMETER("seed", &seed)
                     LONG_INTPARAMETER("burnin", &burnin)
