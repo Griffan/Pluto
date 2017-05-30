@@ -1087,6 +1087,7 @@ int PhasingMain(int argc, char **argv) {
             ""), pidExcludeFromUnphased(""), pidExcludeFromPhased(""), PMatrix(""),calPMatrix("");
     String crossFile, errorFile;
     String GDFile;
+
     clock_t t;
     t = clock();
     double errorRate = 0.01;
@@ -1094,8 +1095,12 @@ int PhasingMain(int argc, char **argv) {
     int seed = 123456, warmup = 0, states = 0, weightedStates = 0;
     int burnin = 5, rounds = 10, polling = 0, samples = 0, samplingRounds = 1;
     int maxPhred = 255;
+
+    int prefixLength = 120;
+
     bool compact = false;
     bool mle = false, mledetails = false, uncompressed = false;
+
     bool inputPhased = false;
     bool phaseByRef = false;
     bool randomPhase = false;
@@ -1126,6 +1131,8 @@ int PhasingMain(int argc, char **argv) {
                     LONG_STRINGPARAMETER("errorMap", &errorFile)
                     LONG_STRINGPARAMETER("geneticDistance", &GDFile)
                     LONG_STRINGPARAMETER("physicalMap", &mapfile)
+                    LONG_PARAMETER_GROUP("Graph Builder")
+                    LONG_INTPARAMETER("prefixLength", &prefixLength)
                     LONG_PARAMETER_GROUP("Markov Sampler")
                     LONG_INTPARAMETER("seed", &seed)
                     LONG_INTPARAMETER("burnin", &burnin)
@@ -1188,6 +1195,7 @@ int PhasingMain(int argc, char **argv) {
     engine.nSampleCopy = samplingRounds;
     engine.onlyHeterSite = onlyHeterSite;
     engine.geneticMapAvailable = false;
+    engine.SetPrefixLength(prefixLength);
 
 
     if(PMatrix.IsEmpty() and calPMatrix.IsEmpty()) {

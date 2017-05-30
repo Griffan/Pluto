@@ -420,7 +420,7 @@ void PBWTHaplotyper::PrepareRefSetPBWTWrapper() {
         delete Wrapper;
         Wrapper = nullptr;
     }
-    Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix);
+    Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, 0);
     Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
     Wrapper->CursorBackwards();//calculate backwards order of suffix
     Wrapper->CursorForwards();
@@ -437,7 +437,7 @@ int PBWTHaplotyper::LoopThroughChromosomesHighPrecision() {
         Wrapper = nullptr;
     }
     printf("[HighPrecision]build model start...\n");
-    Wrapper = new PBWTWrapper(2 * individuals + (individuals - phased) * nSampleCopy * 2, markers, PvalueMatrix);
+    Wrapper = new PBWTWrapper(2 * individuals + (individuals - phased) * nSampleCopy * 2, markers, PvalueMatrix, prefixLength);
     Wrapper->SetHaps(haplotypes, 0, 2 * individuals, sampledHaps, 0, (individuals - phased) * nSampleCopy * 2, thetas);
     Wrapper->CursorBackwards();//calculate backwards order of suffix
     Wrapper->CursorForwards();
@@ -506,7 +506,7 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb() {
     }
 //    Wrapper = new PBWTWrapper(2 * individuals + (individuals - phased) * nSampleCopy * 2, markers, PvalueMatrix);
 //    Wrapper->SetHaps(haplotypes, 0, 2 * individuals, sampledHaps, 0, (individuals - phased) * nSampleCopy * 2, thetas);
-    Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix);
+    Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, prefixLength);
     Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
     Wrapper->CursorBackwards();//calculate backwards order of suffix
     Wrapper->CursorForwards();
@@ -570,7 +570,7 @@ int PBWTHaplotyper::LoopThroughChromosomesSingleRound() {
         Wrapper = nullptr;
     }
     fprintf(stderr, "[SingleRound]build model start...\n");
-    Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix);
+    Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, prefixLength);
     Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0,
                      thetas);//only copy phased haps into pbwt
     Wrapper->CursorBackwards();//calculate backwards order of suffix
@@ -2572,7 +2572,7 @@ int PBWTHaplotyper::ExtractHeterSites(int individualToProcess) {//apply after sw
         fprintf(stderr, "found 0 markers available...abort!\n");
         abort();
     }
-    Wrapper = new PBWTWrapper(2 * individuals + (individuals - phased) * nSampleCopy * 2, tmpMarkers, PvalueMatrix);
+    Wrapper = new PBWTWrapper(2 * individuals + (individuals - phased) * nSampleCopy * 2, tmpMarkers, PvalueMatrix, 0);
 
     return 0;
 }

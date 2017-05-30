@@ -364,6 +364,13 @@ public:
         }
         delete [] PvalueMatrix;
     }
+
+
+    //Graph Builder Parameters
+    inline int SetPrefixLength(int len)
+    {
+        prefixLength = len;
+    }
 protected:
 
     PBWTWrapper* Wrapper;
@@ -376,6 +383,7 @@ protected:
 	int tmpMarkers;
 	double max_num;
 
+    int prefixLength;
 
 
 //    double * phred2prob;

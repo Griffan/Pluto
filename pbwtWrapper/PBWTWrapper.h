@@ -468,7 +468,7 @@ public:
     }
 
 //    PBWTWrapper(const char ** haps, int nhaps, int nsnps);
-    PBWTWrapper(int nhaps,int nsnps, float *** _PvalueMatrix);
+    PBWTWrapper(int nhaps, int nsnps, float ***_PvalueMatrix, int prefixLen);
 
 
     int CursorForwards();

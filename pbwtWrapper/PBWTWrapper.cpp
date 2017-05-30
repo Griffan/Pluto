@@ -25,20 +25,21 @@ const float T_CRITICAL_VALUE[] =
 
 float P_thresh=0.8;
 
-PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix) : prefixLength(120), Graph(nsnps,nhaps),
-                                                                          a(nhaps, 0), alpha(a),
-                                                                          alphaMap(nsnps, a),
-                                                                          d(nhaps, 0),
-                                                                          delta(d),
-                                                                          allDelta(alphaMap),
-                                                                          bkDistance(nsnps, std::vector<float>(nhaps,
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix, int prefixLen)
+        : prefixLength(prefixLen), Graph(nsnps, nhaps),
+          a(nhaps, 0), alpha(a),
+          alphaMap(nsnps, a),
+          d(nhaps, 0),
+          delta(d),
+          allDelta(alphaMap),
+          bkDistance(nsnps, std::vector<float>(nhaps,
                                                                                                                (float) 0.)),
-                                                                          sortedY(a),
-                                                                          c(nsnps, 0), celta(c),
-                                                                          haplotypeCluster(nsnps,
+          sortedY(a),
+          c(nsnps, 0), celta(c),
+          haplotypeCluster(nsnps,
                                                                                            std::vector<StateIndex>(
                                                                                                    nhaps, 0)),
-                                                                          mergePairList(
+          mergePairList(
                                                                                   std::function<bool(const MaxPair &,
                                                                                                      const MaxPair &)>(
                                                                                           comparator)) {
