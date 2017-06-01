@@ -23,7 +23,7 @@ const float T_CRITICAL_VALUE[] =
          1.97,/*200*/ 1.97,/*500*/ 1.96/*infinity*/
         };
 
-float P_thresh=0.8;
+float P_thresh=0.6;
 
 PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix, int prefixLen)
         : prefixLength(prefixLen), Graph(nsnps, nhaps),

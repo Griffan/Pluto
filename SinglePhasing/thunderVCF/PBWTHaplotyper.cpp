@@ -1530,7 +1530,7 @@ int PBWTHaplotyper::BackwardSampling(Random *rand, int SampleIndex, char **sampl
 
 
     for (int i = markers - 1; i > 0; --i) {
-//        fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\n",i,sum,choice,sampledFirst,sampledSecond,sampledFwd);
+        fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\n",i,sum,choice,sampledFirst,sampledSecond,sampledFwd);
 //        fprintf(stderr,"marker:%d\tsum:%g\n",i,sum);
 
         sum = 0.;
@@ -2262,7 +2262,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
                     childNode2 = GetChildNode(i - 1, parentNode2, allele2);
                     if (childNode2 == -1) continue;
                     gl = GetGL(SampleIndex, i, allele1, allele2);
-                    if (gl > 1e-1) {
+                    if (gl > 1e-1 || i< 20) {
                         fitPair++;
                         tmpFwdValue = prevFwdValue * GetTransitionProb(i - 1, parentNode1, childNode1) *
                                       GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
@@ -2432,6 +2432,9 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
 //            fprintf(stderr, "marker:%d\tpair:(%d,%d)\ttestSum:%g\n", i, kv.first.first, kv.first.second, kv.second);
 //        }
 //        }
+
+        fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\n",i,sum,choice,sampledParent0,sampledParent1,sampledFwd);
+
         sum = 0.f;
         testSum = 0.f;
 
