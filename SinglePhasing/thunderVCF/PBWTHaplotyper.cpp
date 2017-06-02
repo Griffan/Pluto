@@ -1488,13 +1488,16 @@ int PBWTHaplotyper::BackwardSampling(Random *rand, int SampleIndex, char **sampl
     double sampledFwd(0.f);
 
     choice = rand->Uniform(0, 1);
-//    for(auto iter=genuienParents[markers-1].begin();iter!=genuienParents[markers-1].end();++iter)
-//        for(auto iter2=iter->second.begin();iter2!=iter->second.end();++iter2)
-//        {
-//            prevFwdValue = SumFwdValueFromOriginVec(iter2->second);
-//            fprintf(stderr,"(%d,%d)\tvalue:%g\n",iter->first,iter2->first,prevFwdValue);
-//
-//        }
+    int count=0;
+    for(auto iter=genuienParents[markers-1].begin();iter!=genuienParents[markers-1].end();++iter)
+        for(auto iter2=iter->second.begin();iter2!=iter->second.end();++iter2)
+        {
+            count++;
+            sampledFwd = SumFwdValueFromOriginVec(iter2->second);
+            fprintf(stderr,"(%d,%d)\tvalue:%g\tcount:%d\n",iter->first,iter2->first,sampledFwd,count);
+
+
+        }
     for (auto iter = genuienParents[markers - 1].begin(); iter != genuienParents[markers - 1].end(); ++iter)
         for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); ++iter2) {
             sampledFwd = SumFwdValueFromOriginVec(iter2->second);
@@ -2241,6 +2244,8 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
 
     float recRate(0.f);
     float baseProb(0.f);
+
+    bool reenter(false);
 //    availablePair.ResetMarkerIndexAt(0);//TODO: use improved ibs methods maybe
 //    availablePair.NextMarker();//marker 0 doesn't have parents
     for (int i = 1; i < markers; i++) {
@@ -2248,6 +2253,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
         numCrediablePair = 0;
         fitPair = 0;
         //all states at site i-1, parentNode1: hap1
+        REENTRY:
         for (auto kv: parentsNodeVec[i - 1]) {
             parentNode1 = kv.first.first;
             parentNode2 = kv.first.second;
@@ -2272,11 +2278,37 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
                         parentsNodeVec[i][std::make_pair(childNode1, childNode2)][std::make_pair(parentNode1,
                                                                                                  parentNode2)] = tmpFwdValue;
                     }
+                    else if (reenter)
+                    {
+                        tmpFwdValue = prevFwdValue *
+                                      GetTransitionProb(i - 1, parentNode1, childNode1) *
+                                      GetTransitionProb(i - 1, parentNode2, childNode2) *
+                                      gl;//i fwdValueSum
+                        if (tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0) {
+                            tmpFwdValue = UNDERFLOW_MIN;
+                        }
+
+                        if (numCrediablePair < 200) {
+                            EdgePairList.push(
+                                    EdgePair(childNode1, childNode2, parentNode1, parentNode2, tmpFwdValue));
+                            numCrediablePair++;
+                            if (tmpFwdValue < lowestFwd) {
+                                lowestFwd = tmpFwdValue;
+                            }
+                        } else if (tmpFwdValue >
+                                   lowestFwd)// EdgePairList full and should be added into List, pop out lowest
+                        {
+                            EdgePairList.pop();
+                            EdgePairList.push(
+                                    EdgePair(childNode1, childNode2, parentNode1, parentNode2, tmpFwdValue));
+                            lowestFwd = EdgePairList.top().fwd;
+                        }
+                    }
                 }
             }
         }
 
-        if (fitPair == 0)//process orphan nodes
+        if (fitPair == 0 && !reenter)//process orphan nodes
         {
             fprintf(stderr,"at marker %d no viable fitPair\n",i);
             recRate = GetRecombRate(i - 1);//start from marker 1 but store at index 0
@@ -2289,6 +2321,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
                     for ( auto tmpParentNode1:GetParentNodes(i, childNode1)) {
                         for ( auto tmpParentNode2:GetParentNodes(i, childNode2)) {
                             if( GetGL(SampleIndex, i-1, GetAllele(i-1, tmpParentNode1), GetAllele(i-1, tmpParentNode2)) < 1e-1) continue;
+                            fitPair++;
                             if (parentsNodeVec[i - 1].find(std::make_pair(tmpParentNode1, tmpParentNode2)) !=
                                 parentsNodeVec[i - 1].end())
                                 prevFwdValue = SumFwdValueFromOriginVec(
@@ -2333,15 +2366,26 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
                     }
                 }
             }
-            while (not EdgePairList.empty()) {
-                EdgePair tmpEdgePair = EdgePairList.top();
-                EdgePairList.pop();
-                if (tmpEdgePair.fwd > 0.f) {
-                    parentsNodeVec[i][std::make_pair(tmpEdgePair.childNode1, tmpEdgePair.childNode2)][std::make_pair(
-                            tmpEdgePair.parentNode1,
-                            tmpEdgePair.parentNode2)] = tmpEdgePair.fwd;
-                    fwdValueSum[i] += tmpEdgePair.fwd;
-                }
+        }
+
+        if(fitPair == 0 && !reenter)
+        {
+            //fprintf(stderr,"fatal error at marker %d\n",i);
+            //exit(EXIT_FAILURE);
+            fprintf(stderr,"no fit genotype at marker %d\n",i);
+            reenter=true;
+            goto REENTRY;
+        }
+
+
+        while (not EdgePairList.empty()) {
+            EdgePair tmpEdgePair = EdgePairList.top();
+            EdgePairList.pop();
+            if (tmpEdgePair.fwd > 0.f) {
+                parentsNodeVec[i][std::make_pair(tmpEdgePair.childNode1, tmpEdgePair.childNode2)][std::make_pair(
+                        tmpEdgePair.parentNode1,
+                        tmpEdgePair.parentNode2)] = tmpEdgePair.fwd;
+                fwdValueSum[i] += tmpEdgePair.fwd;
             }
         }
 
@@ -2388,6 +2432,14 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
     int sampled = 0;
 
     choice = rand->Uniform(0, 1);
+    int count=0;
+    for(auto iter=parentsNodeVec[markers-1].begin();iter!=parentsNodeVec[markers-1].end();++iter)
+    {
+        count++;
+            sampledFwd = SumFwdValueFromOriginVec(iter->second);
+            fprintf(stderr,"(%d,%d)\tvalue:%g\tcount:%d\n",iter->first.first,iter->first.second,sampledFwd,count);
+
+    }
 
     for (auto kv: parentsNodeVec[markers - 1]) {
         for (auto parent : kv.second) {
@@ -2427,6 +2479,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
 //                choice, sampledParent0, sampledParent1, sampledChild0, sampledChild1,  sampledFwd,
 //                availablePair.Size(),
 //                recRate, gl0, edgeProb0, edgeProb1, fwdValueSum[i]);
+////
 //
 //        for (auto kv:parentsNodeVec[i][std::make_pair(sampledParent0, sampledParent1)]) {
 //            fprintf(stderr, "marker:%d\tpair:(%d,%d)\ttestSum:%g\n", i, kv.first.first, kv.first.second, kv.second);
