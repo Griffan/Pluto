@@ -998,31 +998,31 @@ bool PBWTWrapper::IsEditDistanceOK(int stateA, int stateB, int index, int error_
     int backRankA, backRankB;
     int numTruth(0);
     const int sizeB=(int)dist[stateB].size();
-    for (int i = 0; i < sizeB; ++i) {
-        backRankB = dist[stateB][i];
-        auto lowerRankA = std::lower_bound(dist[stateA].begin(), dist[stateA].end(), backRankB);
-        if (lowerRankA == dist[stateA].end()) lower = backRankB + 1;
-        else if (lowerRankA == dist[stateA].begin()) {
-            lower = -1;
+    for (int i = 0; i < sizeB; ++i) {//for each item in smaller set
+        backRankB = dist[stateB][i];//get its rank
+        auto lowerRankA = std::lower_bound(dist[stateA].begin(), dist[stateA].end(), backRankB);//find closest item in larger set
+        if (lowerRankA == dist[stateA].end()) lower = backRankB + 1;//if not found, lower bound is rankB + 1
+        else if (lowerRankA == dist[stateA].begin()) {//if found as smallest in larger set
+            lower = -1;//lower bound is minus 1
         }
         else {
-            lowerRankA--;
+            lowerRankA--;//otherwise, get the element in larger set immediately smaller than current item in smaller set
             lower = *lowerRankA;
         }
-        auto upperRankB = std::upper_bound(dist[stateA].begin(), dist[stateA].end(), backRankB);
+        auto upperRankB = std::upper_bound(dist[stateA].begin(), dist[stateA].end(), backRankB);//same thing for upper bound
         if (upperRankB == dist[stateA].end()) upper = backRankB - 1;
         else upper = *upperRankB;
-        while (lower != -1 and lower < backRankB) {
-            if (allDelta[index][++lower] < thresh_pos) continue;
+        while (lower != -1 and lower < backRankB) {//if lower bound is smaller than current item
+            if (allDelta[index][++lower] < thresh_pos) continue;//keep going up if shared prefix ended beyound thresh_pos
             else break;
         }
-        while (backRankB < upper) {
-            if (allDelta[index][--upper] < thresh_pos) continue;
+        while (backRankB < upper) {//if upper bound is larger than current item
+            if (allDelta[index][--upper] < thresh_pos) continue;//keep going down if share prefix ended beyound thresh_pos
             else break;
         }
-        if (lower == backRankB || upper == backRankB) numTruth++;
+        if (lower == backRankB || upper == backRankB) numTruth++;//if either bound meet current item's rank, that means current item is a member of them
     }
-    if (numTruth == sizeB) return true;
+    if (numTruth == sizeB) return true;//if all of the items in smaller set are members of larger set, return true
     return false;
 }
 
@@ -1247,21 +1247,6 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
             if (GetAllele(site, stateL) != GetAllele(site, stateR))
                 continue;
 
-            if (dist[stateL].size() <= 4) {
-                if (dist[stateR].size() <= 4) {//both rare
-                    continue;
-                } else//j rare, k not
-                {
-                    if (!IsEditDistanceOK(stateL, stateR, site, 50))
-                        continue;
-                }
-            } else if (dist[stateR].size() <= 4)//j not, k rare
-            {
-                if (!IsEditDistanceOK(stateL, stateR, site, 50))
-                    continue;
-            }
-
-
             if (!IsRecipricalLengthOK(dist[stateL], dist[stateR]))
                 continue;
 
@@ -1273,6 +1258,28 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
 //                    PrintVector(rightCoordinate[k],"big beta hat right k:");
                 continue;
             }
+
+//            if (dist[stateL].size() <= 20) {
+//                if (dist[stateR].size() <= 20) {//both rare
+//                    continue;
+//                } else//j rare, k not
+//                {
+//                    if (!IsEditDistanceOK(stateL, stateR, site, 50))
+//                        continue;
+//                }
+//            } else if (dist[stateR].size() <= 20)//j not, k rare
+//            {
+//                if (!IsEditDistanceOK(stateL, stateR, site, 50))
+//                    continue;
+//            }
+            if (dist[stateL].size() <= 20 || dist[stateR].size() <= 20 ) {
+                if (!IsEditDistanceOK(stateL, stateR, site, 50))
+                        continue;
+            }
+
+
+
+
 
 
             sizeL = clusterMembership[stateL].size();

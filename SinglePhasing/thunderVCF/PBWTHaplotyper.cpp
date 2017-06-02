@@ -2252,6 +2252,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
         fwdValueSum[i] = 0.f;
         numCrediablePair = 0;
         fitPair = 0;
+        reenter=false;
         //all states at site i-1, parentNode1: hap1
         REENTRY:
         for (auto kv: parentsNodeVec[i - 1]) {
