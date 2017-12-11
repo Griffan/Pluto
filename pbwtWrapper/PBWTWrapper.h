@@ -1,16 +1,10 @@
 //
 // Created by Fan Zhang on 7/20/15.
 //
-/*
- * Notice that currently, we only want to forward
- * and backward following thunder's iterating
- * pattern. Hence both forward and backward initiation
- * are not implemented yet.
- */
+
 #ifndef PLUTO_PBWTWRAPPER_H
 #define PLUTO_PBWTWRAPPER_H
 //#define DEBUG 1
-
 
 #include "ks.h"
 #include <vector>
@@ -24,6 +18,112 @@
 #include <fstream>
 #include "Rmath.h"
 
+#define THROW_IF(val) if (val) throw "error in " __FUNCTION__
+#define WHEREAMI printf("error in %s", __FUNCTION__)
+//Definition for linear regression
+template<typename T>
+struct square {
+    T operator()(const T &Left, const T &Right) const {
+        return (Left + Right * Right);
+    }
+};
+
+extern const float T_CRITICAL_VALUE[];
+
+inline float GetTCritical(uint32_t df) {
+    if (df <= 30) return T_CRITICAL_VALUE[df - 1];
+    else if (df <= 100) return T_CRITICAL_VALUE[29 + (df - 30) / 5];
+    else if (df <= 200) return T_CRITICAL_VALUE[44];
+    else if (df <= 500) return T_CRITICAL_VALUE[45];
+    else return T_CRITICAL_VALUE[46];
+}
+
+struct r_stat_t {
+    float S0x, S1x;
+    float Sy;
+    float S0xx, S1xx;
+    float Syy;
+    float S0xy, S1xy;
+    int size;
+
+    r_stat_t(const std::vector<float> &yCoordinate) {
+        size = yCoordinate.size();
+        S0x = 0;
+        S1x = yCoordinate.size();
+        Sy = std::accumulate(yCoordinate.begin(), yCoordinate.end(), 0.0);
+        S0xx = 0;
+        S1xx = S1x;
+        Syy = std::accumulate(yCoordinate.begin(), yCoordinate.end(), 0.0, square<float>());
+        S0xy = 0;
+        S1xy = Sy;
+    }
+
+    r_stat_t() {
+        size = 0;
+        S0x = 0;
+        S1x = 0;
+        Sy = 0;
+        S0xx = 0;
+        S1xx = 0;
+        Syy = 0;
+        S0xy = 0;
+        S1xy = 0;
+    }
+
+    r_stat_t &operator=(const r_stat_t &a) {
+        size = a.size;
+        S1x = a.S1x;
+        Sy = a.Sy;
+        S1xx = a.S1xx;
+        Syy = a.Syy;
+        S0xy = a.S0xy;
+        S1xy = a.S1xy;
+        return *this;
+    }
+
+    r_stat_t Combine(const r_stat_t &a) {
+        r_stat_t b;
+        b.size = size + a.size;
+        b.S0x = S0x + a.S1x;
+        b.S1x = S1x + a.S0x;
+        b.Sy = Sy + a.Sy;
+        b.S0xx = S0xx + a.S1xx;
+        b.S1xx = S1xx + a.S0xx;
+        b.Syy = Syy + a.Syy;
+        b.S0xy = S0xy + a.S1xy;
+        b.S1xy = S1xy + a.S0xy;
+        return b;
+    }
+
+    r_stat_t &operator+(const r_stat_t &a) {
+        size += a.size;
+        S0x += a.S0x;
+        S1x += a.S1x;
+        Sy += a.Sy;
+        S0xx += a.S0xx;
+        S1xx += a.S1xx;
+        Syy += a.Syy;
+        S0xy += a.S0xy;
+        S1xy += a.S1xy;
+        return *this;
+    }
+
+    bool IsSignificant() {
+        double r = (size * S0xy - S0x * Sy) / (sqrt(size * S0xx - S0x * S0x) * sqrt(size * Syy - Sy * Sy));
+//        double r2=(size*S1xy-S1x*Sy)/(sqrt(size*S1xx-S1x*S1x)*sqrt(size*Syy-Sy*Sy));
+        double t = r * sqrt(size - 2) / sqrt(1 - r * r);
+        return fabs(t) > GetTCritical(size - 2);
+//        double t2=r2*sqrt(size-2)/sqrt(1-r2*r2);
+//        double p=pt(t,size-2,1,0);
+
+//if(p<0.25||p>0.75)        fprintf(stderr,"r:%f,\tbeta hat:%f,\tp value:%f,\t df:%d\n",r,S0xy/S0xx,p,size-2);
+//        return p<0.25||p>0.75;
+
+    }
+};
+
+
+//Pairs for merging event
 typedef int16_t StateIndex;
 
 struct MaxPair
@@ -56,187 +156,134 @@ inline bool comparator(const MaxPair &lhs, const MaxPair &rhs) {
     return lhs.pval < rhs.pval;
 }
 
-
-template<typename T>
-struct square
-{
-    T operator()(const T& Left, const T& Right) const
-    {
-        return (Left + Right*Right);
-    }
-};
-
-extern const float T_CRITICAL_VALUE[];
-
-inline float GetTCritical(uint32_t df)
-{
-    if(df<=30) return T_CRITICAL_VALUE[df-1];
-    else if(df<=100) return T_CRITICAL_VALUE[29+(df-30)/5];
-    else if(df<=200) return T_CRITICAL_VALUE[44];
-    else if(df<=500) return T_CRITICAL_VALUE[45];
-    else return T_CRITICAL_VALUE[46];
-}
-
-struct r_stat_t
-{
-    float S0x,S1x;
-    float Sy;
-    float S0xx,S1xx;
-    float Syy;
-    float S0xy,S1xy;
-    int size;
-    r_stat_t(const std::vector<float>& yCoordinate)
-    {
-        size=yCoordinate.size();
-        S0x=0;
-        S1x=yCoordinate.size();
-        Sy=std::accumulate(yCoordinate.begin(), yCoordinate.end(), 0.0);
-        S0xx=0;
-        S1xx=S1x;
-        Syy=std::accumulate(yCoordinate.begin(), yCoordinate.end(), 0.0, square<float>());
-        S0xy=0;
-        S1xy=Sy;
-    }
-    r_stat_t()
-    {
-        size=0;
-        S0x=0;
-        S1x=0;
-        Sy=0;
-        S0xx=0;
-        S1xx=0;
-        Syy=0;
-        S0xy=0;
-        S1xy=0;
-    }
-    r_stat_t& operator=(const r_stat_t&a)
-    {
-        size=a.size;
-        S1x=a.S1x;
-        Sy=a.Sy;
-        S1xx=a.S1xx;
-        Syy=a.Syy;
-        S0xy=a.S0xy;
-        S1xy=a.S1xy;
-        return *this;
-    }
-    r_stat_t Combine(const r_stat_t& a)
-    {
-        r_stat_t b;
-        b.size=size+a.size;
-        b.S0x=S0x+a.S1x;
-        b.S1x=S1x+a.S0x;
-        b.Sy=Sy+a.Sy;
-        b.S0xx=S0xx+a.S1xx;
-        b.S1xx=S1xx+a.S0xx;
-        b.Syy=Syy+a.Syy;
-        b.S0xy=S0xy+a.S1xy;
-        b.S1xy=S1xy+a.S0xy;
-        return b;
-    }
-    r_stat_t& operator+(const r_stat_t&a)
-    {
-        size+=a.size;
-        S0x+=a.S0x;
-        S1x+=a.S1x;
-        Sy+=a.Sy;
-        S0xx+=a.S0xx;
-        S1xx+=a.S1xx;
-        Syy+=a.Syy;
-        S0xy+=a.S0xy;
-        S1xy+=a.S1xy;
-        return *this;
-    }
-    bool IsSignificant()
-    {
-        double r=(size*S0xy-S0x*Sy)/(sqrt(size*S0xx-S0x*S0x)*sqrt(size*Syy-Sy*Sy));
-//        double r2=(size*S1xy-S1x*Sy)/(sqrt(size*S1xx-S1x*S1x)*sqrt(size*Syy-Sy*Sy));
-        double t=r*sqrt(size-2)/sqrt(1-r*r);
-        return fabs(t)>GetTCritical(size-2);
-//        double t2=r2*sqrt(size-2)/sqrt(1-r2*r2);
-//        double p=pt(t,size-2,1,0);
-
-//if(p<0.25||p>0.75)        fprintf(stderr,"r:%f,\tbeta hat:%f,\tp value:%f,\t df:%d\n",r,S0xy/S0xx,p,size-2);
-//        return p<0.25||p>0.75;
-
-    }
-};
-
+//Definition for HMM framework
 typedef unsigned char uchar;
-//define NODE structure which represents cluster or state in HMM model
+//typedef std::unordered_set<StateIndex> ParentSet;
+typedef std::vector<StateIndex> ParentSet;
+
 class StateNode
 {
 private:
+    uchar allele;
+    StateIndex childNode[2]={-1,-1};
+    float numHap[2]={0.f,0.f};
+    ParentSet parentNodeSet;
+
     StateNode(const StateNode&);
     StateNode() {
+        allele=0;
         numHap[0]=0;
         numHap[1]=0;
-        childNodeIndex[0]= -1;
-        childNodeIndex[1]= -1;
-        allele=0;
+        childNode[0]= -1;
+        childNode[1]= -1;
     }
 
 public:
 
-    //float numHap;
-    uchar allele;
-    std::unordered_set<StateIndex> parentNodeIndex;
-    StateIndex childNodeIndex[2];
-    float numHap[2];
-
-
-    StateNode(uchar tAllele) {
+    explicit StateNode(uchar tAllele) {
+        allele=tAllele;
         numHap[0]=0;
         numHap[1]=0;
-        childNodeIndex[0]= -1;
-        childNodeIndex[1]= -1;
-        allele=tAllele;
+        childNode[0]= -1;
+        childNode[1]= -1;
     }
 
     ~StateNode()
     {
-        parentNodeIndex.clear();
+        parentNodeSet.clear();
     }
 
     StateNode & operator=(const StateNode& A)
     {
-        fprintf(stderr,"using operator =\n");
+        WHEREAMI;
         numHap[0]=A.numHap[0];
         numHap[1]=A.numHap[1];
         allele=A.allele;
-        parentNodeIndex=A.parentNodeIndex;
-        childNodeIndex[0]=A.childNodeIndex[0];
-        childNodeIndex[1]=A.childNodeIndex[1];
+        parentNodeSet=A.parentNodeSet;
+        childNode[0]=A.childNode[0];
+        childNode[1]=A.childNode[1];
         return *this;
     }
 
     int AddParentNode(StateIndex parentIndex) {
-        parentNodeIndex.insert(parentIndex);
+        parentNodeSet.insert(parentNodeSet.end(),parentIndex);
         return 0;
     }
 
     int AddChildNode(uchar allele, StateIndex index) {//should only be called once
-//        if(childNodeIndex[(size_t)allele] != nullptr)
-//            fprintf(stderr,"add index: %p to child %p with allele %d(%d) with numHaplotype:%f to\n",index,childNodeIndex[(size_t)allele],allele,(size_t)allele,numHaplotype);
-//        else fprintf(stderr,"add nullptr to allele %d with numHaplotype:%f\n",allele,numHaplotype);
-        if(childNodeIndex[allele]!=index && childNodeIndex[allele]!= -1)
+        if(childNode[allele]!=index && childNode[allele]!= -1)
         {
-            fprintf(stderr,"roar from StateNode AddChildNode!!!!allele:%d\t%d\tto\t%d\n",allele,childNodeIndex[allele],index);
+            fprintf(stderr,"roar from StateNode AddChildNode!!!!allele:%d\t%d\tto\t%d\n",allele,childNode[allele],index);
             exit(EXIT_FAILURE);
         }
-        childNodeIndex[allele]=index;
+        childNode[allele]=index;
         numHap[allele]+=1.;
         return 0;
     }
 
-    std::unordered_set<StateIndex>& GetParentIndexSet()
+    inline uchar GetAllele()
     {
-        return parentNodeIndex;
+        return allele;
+    }
+
+    inline StateIndex GetChildNodeIndex(uchar allele)
+    {
+        return childNode[allele];
+    }
+
+    inline void SetChildNodeIndex(uchar allele, StateIndex value)
+    {
+        childNode[allele]=value;
+    }
+
+    inline float GetNumHap(uchar allele)
+    {
+        return numHap[allele];
+    }
+
+    inline void SetNumHap(uchar allele, float value)
+    {
+        numHap[allele]=value;
     }
 
 
-    int writeNode(std::ofstream & fout);
-    int readNode(std::ifstream & fin);
+    ParentSet& GetParentIndexSet()
+    {
+        return parentNodeSet;
+    }
+
+
+    int writeNode(std::ofstream & fout)
+    {
+        int totalSize=0;
+        fout.write((char*)&allele,sizeof(uchar));
+        totalSize+=2*sizeof(uchar);
+        fout.write((char*)&childNode,2*sizeof(StateIndex));
+        totalSize+=2*sizeof(StateIndex);
+        fout.write((char*)&numHap,2*sizeof(float));
+        totalSize+=2*sizeof(float);
+        unsigned long sizeOfSet=parentNodeSet.size();
+        fout.write((char*)&sizeOfSet,sizeof(unsigned long));
+        totalSize+=sizeof(unsigned long);
+        for (auto k:parentNodeSet) {
+            fout.write((char*)&k,sizeof(StateIndex));
+            totalSize+=sizeof(StateIndex);
+        }
+        return totalSize;
+    }
+    int readNode(std::ifstream & fin)
+    {
+        fin.read((char*)&allele,sizeof(uchar));
+        fin.read((char*)&childNode,2*sizeof(StateIndex));
+        fin.read((char*)&numHap,2*sizeof(float));
+        unsigned long sizeOfSet;
+        fin.read((char*)&sizeOfSet,sizeof(unsigned long));
+        for (int i=0;i!=sizeOfSet;i++) {
+            StateIndex k;
+            fin.read((char*)&k,sizeof(StateIndex));
+            AddParentNode(k);
+        }
+    }
 };
 
 class StateNodeContainer//actual graph
@@ -247,19 +294,19 @@ private:
         nsnps=A.nsnps;
         nhaps=A.nhaps;
         StateNodeMat=A.StateNodeMat;
-        tmpNodeVec=A.tmpNodeVec;
+//        tmpNodeVec=A.tmpNodeVec;
     }
     StateNodeContainer& operator=(StateNodeContainer& A);
 public:
-    int nsnps;
-    int nhaps;
+    int nsnps=0;
+    int nhaps=0;
     std::vector<std::vector<StateNode*> > StateNodeMat;
-    std::vector<StateNode*> tmpNodeVec;
 
 
     StateNodeContainer()
     {
         nsnps=0;
+        nhaps=0;
     }
     ~StateNodeContainer()
     {
@@ -278,21 +325,21 @@ public:
 
     int JoinNodes(int marker, StateIndex indexRetain, StateIndex indexRemove)
     {
-        StateNodeMat[marker][indexRetain]->numHap[0]+=StateNodeMat[marker][indexRemove]->numHap[0];
-        StateNodeMat[marker][indexRetain]->numHap[1]+=StateNodeMat[marker][indexRemove]->numHap[1];
-        for (auto kv:StateNodeMat[marker][indexRemove]->parentNodeIndex) {
+        StateNodeMat[marker][indexRetain]->SetNumHap(0,StateNodeMat[marker][indexRetain]->GetNumHap(0)+StateNodeMat[marker][indexRemove]->GetNumHap(0));
+        StateNodeMat[marker][indexRetain]->SetNumHap(1,StateNodeMat[marker][indexRetain]->GetNumHap(1)+StateNodeMat[marker][indexRemove]->GetNumHap(1));
+
+        for (auto kv:StateNodeMat[marker][indexRemove]->GetParentIndexSet()) {
             StateNodeMat[marker][indexRetain]->AddParentNode(kv);
-//            fprintf(stderr,"allele 0:%x, allele 1:%x, address:%x\n",kv.second->childNodeIndex[0],kv.second->childNodeIndex[1],&(A.nodeIndex));
-            if(StateNodeMat[marker][indexRemove]->allele==0)//Remove has 0 allele
+            if(StateNodeMat[marker][indexRemove]->GetAllele()==0)//Remove has 0 allele
             {
-                StateNodeMat[marker-1][kv]->childNodeIndex[0]=indexRetain;
+                StateNodeMat[marker-1][kv]->SetChildNodeIndex(0,indexRetain);
             }
-            else if (StateNodeMat[marker][indexRemove]->allele==1)//Remove has 1 allele
+            else if (StateNodeMat[marker][indexRemove]->GetAllele()==1)//Remove has 1 allele
             {
-                StateNodeMat[marker-1][kv]->childNodeIndex[1]=indexRetain;
+                StateNodeMat[marker-1][kv]->SetChildNodeIndex(1,indexRetain);
             }
             else{
-                fprintf(stderr,"roar from StateNode operator+=!!!!\n%d and %d: %d\n",StateNodeMat[marker-1][kv]->childNodeIndex[0],StateNodeMat[marker-1][kv]->childNodeIndex[1],indexRemove);
+                fprintf(stderr,"roar from StateNode operator+=!!!!\n%d and %d: %d\n",StateNodeMat[marker-1][kv]->GetChildNodeIndex(0),StateNodeMat[marker-1][kv]->GetChildNodeIndex(1),indexRemove);
                 exit(EXIT_FAILURE);
             }
         }
@@ -301,19 +348,60 @@ public:
 
     void UpdateChildNodeIndex(int marker, StateIndex parentIndex, StateIndex newChildIndex, uchar allele)
     {
-        StateNodeMat[marker][parentIndex]->childNodeIndex[allele]=newChildIndex;
+        StateNodeMat[marker][parentIndex]->SetChildNodeIndex(allele,newChildIndex);
     }
 
     float GetProbToCurrentNodeConditionalOnParentNode(int marker, StateIndex parentIndex, uchar allele) {
-        return StateNodeMat[marker][parentIndex]->numHap[allele]/(StateNodeMat[marker][parentIndex]->numHap[0]+StateNodeMat[marker][parentIndex]->numHap[1]);
+        return StateNodeMat[marker][parentIndex]->GetNumHap(allele)/(StateNodeMat[marker][parentIndex]->GetNumHap(0)+StateNodeMat[marker][parentIndex]->GetNumHap(1));
     }
 
     float GetEdgeProbFromParentNode(int marker, StateIndex parentIndex, uchar allele) {
-        return StateNodeMat[marker][parentIndex]->numHap[allele]/nhaps;
+        return StateNodeMat[marker][parentIndex]->GetNumHap(allele)/nhaps;
     }
 
-    int writeContainer(const std::string& fileName);
-    int readContainer(const std::string& fileName);
+    int writeContainer(const std::string& fileName)
+    {
+        int totalSize=0;
+        std::ofstream fout(fileName,std::ifstream::binary);
+        if(!fout.is_open())
+        {
+            std::cerr<<"open file "<<fileName<<" failed!"<<std::endl;
+            exit(EXIT_FAILURE);
+        }
+        fout.write((char*)&nhaps,sizeof(int));
+        totalSize+=sizeof(int);
+        fout.write((char*)&nsnps,sizeof(int));
+        totalSize+=sizeof(int);
+        for (int i = 0; i <nsnps ; ++i) {
+            int currentSiteNodeNum = StateNodeMat[i].size();
+            fout.write((char*)&currentSiteNodeNum,sizeof(int));
+            totalSize+=sizeof(int);
+            for (int j = 0; j <currentSiteNodeNum; ++j) {
+                totalSize+=StateNodeMat[i][j]->writeNode(fout);
+            }
+        }
+        return totalSize;
+    }
+    int readContainer(const std::string& fileName)
+    {
+        std::ifstream fin(fileName,std::ifstream::binary);
+        if(!fin.is_open())
+        {
+            std::cerr<<"open file "<<fileName<<" failed!"<<std::endl;
+            exit(EXIT_FAILURE);
+        }
+        fin.read((char*)&nhaps,sizeof(int));
+        fin.read((char*)&nsnps,sizeof(int));
+        for (int i = 0; i <nsnps ; ++i) {
+            int currentSiteNodeNum = StateNodeMat[i].size();
+            fin.read((char*)&currentSiteNodeNum,sizeof(int));
+            for (int j = 0; j <currentSiteNodeNum; ++j) {
+                StateNode * tmpNode = new StateNode(255);
+                tmpNode->readNode(fin);
+                StateNodeMat[i].push_back(tmpNode);
+            }
+        }
+    }
 };
 
 
@@ -484,10 +572,10 @@ public:
 
     bool HasSiblings(int site, StateIndex state) {
         if(site ==0) return true;
-        for(auto kv:Graph.StateNodeMat[site][state]->parentNodeIndex)
+        for(auto kv:Graph.StateNodeMat[site][state]->GetParentIndexSet())
         {
-            if(Graph.StateNodeMat[site-1][kv]->childNodeIndex[0]!= -1 && Graph.StateNodeMat[site-1][kv]->childNodeIndex[0]!=state) return true;
-            if(Graph.StateNodeMat[site-1][kv]->childNodeIndex[1]!= -1 && Graph.StateNodeMat[site-1][kv]->childNodeIndex[1]!=state) return true;
+            if(Graph.StateNodeMat[site-1][kv]->GetChildNodeIndex(0)!= -1 && Graph.StateNodeMat[site-1][kv]->GetChildNodeIndex(0)!=state) return true;
+            if(Graph.StateNodeMat[site-1][kv]->GetChildNodeIndex(1)!= -1 && Graph.StateNodeMat[site-1][kv]->GetChildNodeIndex(1)!=state) return true;
         }
         return false;
     }
@@ -518,7 +606,8 @@ public:
     }
     inline uchar GetAllele(int site, StateIndex state)
     {
-        return Graph.StateNodeMat[site][state]->allele;
+//        return Graph.StateNodeMat[site][state]->allele;
+        return Graph.StateNodeMat[site][state]->GetAllele();
     }
     inline unsigned long GetNumHaps(int site) const { return haplotypeCluster[site].size(); }
 
@@ -536,7 +625,7 @@ public:
 
     inline float GetHapProbAt(int site,int index)
     {
-        return (Graph.StateNodeMat[site][index]->numHap[0]+Graph.StateNodeMat[site][index]->numHap[1])/M;
+        return (Graph.StateNodeMat[site][index]->GetNumHap(0)+Graph.StateNodeMat[site][index]->GetNumHap(1))/M;
     }
 
     //fast update pbwt
@@ -593,7 +682,7 @@ public:
         int sum=0;
         std::cerr<<sum<<" enter childless state out of "<<a.size()<<" total states"<<std::endl;
         for (auto & node:a) {
-            if(node->childNodeIndex[0]== -1 || node->childNodeIndex[1]== -1)
+            if(node->GetChildNodeIndex(0)== -1 || node->GetChildNodeIndex(1)== -1)
                 sum++;
         }
         std::cerr<<sum<<" leave childless state out of "<<a.size()<<" total states"<<std::endl;
@@ -606,20 +695,20 @@ public:
         int index=0;
         std::unordered_map<int,bool> bag;
         for (auto & node:currentNodes) {
-            if(node->childNodeIndex[0]!= -1 )
+            if(node->GetChildNodeIndex(0)!= -1 )
             {
-                index=node->childNodeIndex[0];
+                index=node->GetChildNodeIndex(0);
                 if(bag.find(index) ==bag.end()) bag[index]=true;
                 else continue;
-                sum1+=Graph.StateNodeMat[childSite][index]->numHap[0];
+                sum1+=Graph.StateNodeMat[childSite][index]->GetNumHap(0);
 
             }
-            if(node->childNodeIndex[1]!= -1)
+            if(node->GetChildNodeIndex(1)!= -1)
             {
-                index=node->childNodeIndex[1];
+                index=node->GetChildNodeIndex(1);
                 if(bag.find(index) ==bag.end()) bag[index]=true;
                 else continue;
-                sum1+=Graph.StateNodeMat[childSite][index]->numHap[1];
+                sum1+=Graph.StateNodeMat[childSite][index]->GetNumHap(1);
 
             }
 

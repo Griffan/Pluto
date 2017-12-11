@@ -5,9 +5,6 @@
 #ifndef PLUTO_PBWTHAPLOTYPER_H
 #define PLUTO_PBWTHAPLOTYPER_H
 
-
-
-
 #include <unordered_set>
 #include "ShotgunHaplotyper.h"
 #include "PBWTWrapper.h"
@@ -16,6 +13,7 @@
 
 class PBWTHaplotyper : public ShotgunHaplotyper{
 public:
+    std::string loadGraph="Empty";//indicate if build graph from previously built graph
 	bool onlyHeterSite;
     bool geneticMapAvailable;
     int prefixLength;
@@ -53,18 +51,17 @@ public:
 
 	int LoopThroughChromosomesViaPBWTWithHeterOnly();
 
-	void Transpose(int site, float * source, float * dest);
+//	void Transpose(int site, float * source, float * dest);
 
 	virtual void RandomSetup(Random * rand = NULL);
-    virtual void ScoreLeftConditional();
+//    virtual void ScoreLeftConditional();
 
-    virtual void ConditionOnData(float * matrix, int marker, char phred11, char phred12, char phred22);
+//    virtual void ConditionOnData(float * matrix, int marker, char phred11, char phred12, char phred22);
 
     virtual void ImputeAlleles(int marker, int state1, int state2, Random *rand, int currentIndividual, char** haps);
 	virtual void ImputeAllelesRaw(int marker, int state1, int state2, Random *rand, int currentIndividual, char** haps);
     virtual void ImputeAllele(int haplotype, int marker, int state, char** haps);
     virtual void FillPath(int haplotype, int fromMarker, int toMarker, int state, char** haps);
-    virtual void SampleChromosomes(Random * rand);
 
 
     void SetUseRev(bool useOrNot){isRev=useOrNot;}
@@ -78,7 +75,7 @@ public:
     //Memory management functions
     //virtual bool AllocateMemory(int nIndividuals, int maxHaplos, int nMarkers, float defaultTheta);
     //virtual void EstimateMemoryInfo(int Individuals, int Markers, int States, bool Compact, bool Phased);
-    virtual void RetrieveMemoryBlock(int marker);
+//    virtual void RetrieveMemoryBlock(int marker);
 
 
 
@@ -86,10 +83,6 @@ public:
 
     //inline section
 	inline float GetTransitionProb(int site, StateIndex from, StateIndex to) {
-//		if(Wrapper->transVector.size()<= site) {fprintf(stderr,"%d doesn't exist!\n",site);abort();}
-//		if(Wrapper->transVector[site].size()<=from) {fprintf(stderr,"site:%d out of %lu sites, from:%d states too large!\n",site,Wrapper->transVector.size(),from);abort();}
-//		if(Wrapper->transVector[site][from].size()<=to) {fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);abort();}
-//		return Wrapper->transVector[site][from][to];
         uchar allele=GetAllele(site+1,to);
 		if((int)Wrapper->Graph.StateNodeMat.size()<= site) {fprintf(stderr,"site %d doesn't exist!\n",site);abort();}
 		if((int)Wrapper->Graph.StateNodeMat[site].size()<=from)
@@ -97,12 +90,11 @@ public:
             fprintf(stderr,"site:%d, from:%d states too large!\n",site,from);
             return 0.f;
         }
-        if(Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[allele]== -1||Wrapper->Graph.StateNodeMat[site][from]->childNodeIndex[allele]!=to)
+        if(Wrapper->Graph.StateNodeMat[site][from]->GetChildNodeIndex(allele)== -1||Wrapper->Graph.StateNodeMat[site][from]->GetChildNodeIndex(allele)!=to)
 		{
             fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);
             return 0.f;
         }
-//		return Wrapper->Graph.StateNodeMat[site][from]->numHapChild[GetAllele(site+1,to)];
         return Wrapper->Graph.GetProbToCurrentNodeConditionalOnParentNode(site, from, allele);//site is for parent
 	}
     inline float GetHapProbAt(int site,int index)
@@ -119,9 +111,9 @@ public:
 	}
     inline StateIndex GetChildNode(int site, StateIndex state, uchar allele)
     {
-        return Wrapper->Graph.StateNodeMat[site][state]->childNodeIndex[allele];
+        return Wrapper->Graph.StateNodeMat[site][state]->GetChildNodeIndex(allele);
     }
-    inline std::unordered_set<StateIndex>& GetParentNodes(int site, StateIndex state)
+    inline ParentSet& GetParentNodes(int site, StateIndex state)
     {
         return Wrapper->Graph.StateNodeMat[site][state]->GetParentIndexSet();
     }
@@ -184,13 +176,6 @@ public:
     int ResetFwdValues();
     double GetGL(int individual, int marker, uchar allele1, uchar allele2);
     float GetRecombRate(int marker);
-    StateIndex GetChildNode(int site, int stateIndex, uchar allele)
-    {
-        if(Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[allele]== -1)
-            return -1;
-        else return Wrapper->Graph.StateNodeMat[site][stateIndex]->childNodeIndex[allele];
-    }
-
 
 
     //without recombination
@@ -419,7 +404,6 @@ protected:
 	void ResetReuseablePool();
 	void ReleaseMemoryBlock();
 };
-
 
 #endif //PLUTO_PBWTHAPLOTYPER_H
 

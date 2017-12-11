@@ -1,21 +1,26 @@
-////////////////////////////////////////////////////////////////////// 
-// thunder/Main.cpp 
-// (c) 2000-2008 Goncalo Abecasis
-// 
-// This file is distributed as part of the MaCH source code package   
-// and may not be redistributed in any form, without prior written    
-// permission from the author. Permission is granted for you to       
-// modify this file for your own personal use, but modified versions  
-// must retain this copyright notice and must not be distributed.     
-// 
-// Permission is granted for you to use this file to compile MaCH.    
-// 
-// All computer programs have bugs. Use this file at your own risk.   
-// 
-// Saturday April 12, 2008
-// 
+/*The MIT License (MIT)
 
-//static int NUM_NON_GLF_FIELDS = 9;
+Copyright (c) 2017 Fan Zhang, Hyun Min Kang
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+ */
+
 
 #include <vector>
 #include <map>
@@ -61,8 +66,8 @@ std::unordered_map<std::string, std::pair<int, int> > DuplicatedIndividualPair;
 // thetas contains recombination rate information between markers
 // error-rates contains per-marker error rates
 // rsqs contains rsq_hat estimates ??
-void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &consensus, DosageCalculator &doses,
-                        const String &filename, float *thetas, float *error_rates, PBWTHaplotyper &engine) {
+void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &consensus, const String &filename,
+                        float *thetas, float *error_rates, PBWTHaplotyper &engine) {
     consensus.Merge(); // calculate consensus sequence
 
     if (consensus.stored)
@@ -169,7 +174,7 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
 
             if (unphaseMarkerFlag[std::string(markerName.c_str())] ==
                 true) {//if unphase also has this marker, update content otherwise remains as before
-                doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
+//                doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
 
                 ////fprintf(stderr,"foo1\n");
                 int nInfo = pMarker->asInfoKeys.Find("LDAF");
@@ -229,17 +234,6 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                     throw VcfFileException("Cannot recognize GT key in FORMAT field");
                 }
 
-                int DSidx = 0;
-                int PLidx = GTidx + 2;
-//                if(!engine.GetOnlyGT()) {
-//                    DSidx = pMarker->asFormatKeys.Find("DS");
-//                    if (DSidx < 0) {
-//                        //throw VcfFileException("Cannot recognize DS key in FORMAT field");
-//                        pMarker->asFormatKeys.InsertAt(GTidx + 1, "DS");
-//                        DSidx = GTidx+1;
-//                    }
-//                }
-
                 int nFormats = pMarker->asFormatKeys.Length();
 
                 pMarker->setSampleSize(static_cast<int>(vcf2ped.size()), pVcf->bParseGenotypes, pVcf->bParseDosages, pVcf->bParseValues);
@@ -249,7 +243,6 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                 for (int i = 0; i < (int)vcf2ped.size(); ++i) {
                     int pi = vcf2ped[i];
                     // modify GT values;
-                    //fprintf(stderr,"i=%d, pi=%d, GTidx = %d, nFormats = %d, asSampleValues.Length() = %d, haplotypes = %x\n",i,pi,GTidx,nFormats,pMarker->asSampleValues.Length(), haplotypes);
                     if (pMarker->asAlts.Length() == 1) {
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][m],
                                                                              haplotypes[pi * 2 + 1][m]);
@@ -258,15 +251,6 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][m] + 1,
                                                                              haplotypes[pi * 2 + 1][m] + 1);
                     }
-//                    if(!engine.GetOnlyGT()) {
-//                        // add DS values
-//                        sprintf(sDose, "%.3f", 2 - doses.GetDosage(pi, m));
-//                        if (DSidx < 0) {
-//                            pMarker->asSampleValues.InsertAt(nFormats * i + DSidx, sDose);
-//                        }
-//                        else
-//                            pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3f", sDose);
-//                    }
                 }
             }
             pMarker->printVCFMarker(outVCF, false); // print marker to output file
@@ -280,8 +264,8 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
     }
 }
 
-void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculator &doses, const String &filename,
-                              float *thetas, float *error_rates, PBWTHaplotyper &engine) {
+void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filename, float *thetas, float *error_rates,
+                              PBWTHaplotyper &engine) {
 
     // read and write VCF inputs
     try {
@@ -373,7 +357,7 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
 
                 markerIndex = refMarkerIdx[std::string(markerName.c_str())];
 
-                doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
+//                doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
 
 //                fprintf(stderr,"foo1,marker:%d\t%f\t%f\t%f\t%f\n",m,freq,maf,avgPost,rsq);
 
@@ -436,27 +420,12 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
                     throw VcfFileException("Cannot recognize GT key in FORMAT field");
                 }
 
-                int DSidx = 0;
-                //int PLidx = GTidx + 2;
-//                if(!engine.GetOnlyGT()) {
-//                    DSidx = pMarker->asFormatKeys.Find("DS");
-//                    if (DSidx < 0) {
-//                        //throw VcfFileException("Cannot recognize DS key in FORMAT field");
-//                        pMarker->asFormatKeys.InsertAt(GTidx + 1, "DS");
-//                        DSidx = GTidx + 1;
-//                    }
-//                }
-
                 int nFormats = pMarker->asFormatKeys.Length();
 
                 pMarker->setSampleSize(static_cast<int>(vcf2ped.size()), pVcf->bParseGenotypes, pVcf->bParseDosages, pVcf->bParseValues);
 
-//                fprintf(stderr,"nFormats=%d\tGTidx=%d\tDSidx=%d\n",nFormats,GTidx,DSidx);
-
                 for (int i = 0; i < (int)vcf2ped.size(); ++i) {
                     int pi = vcf2ped[i];
-                    // modify GT values;
-                    //fprintf(stderr,"i=%d, tok=%d, pi=%d, GTidx = %d, nFormats = %d, asSampleValues.Length() = %d, haplotypes = %x\n",i, tok,pi,GTidx,nFormats,pMarker->asSampleValues.Length(), engine.haplotypes);
                     if (pMarker->asAlts.Length() == 1) {
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", engine.haplotypes[pi * 2][markerIndex],
                                                                              engine.haplotypes[pi * 2 + 1][markerIndex]);
@@ -465,18 +434,6 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, DosageCalculat
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", engine.haplotypes[pi * 2][markerIndex] + 1,
                                                                              engine.haplotypes[pi * 2 + 1][markerIndex] + 1);
                     }
-//                    if(!engine.GetOnlyGT()) {
-////                    // add DS values
-//                        sprintf(sDose, "%.3f", 2 - doses.GetDosage(pi, m));
-//                        if (DSidx < 0) {
-//                            // fprintf(stderr,"cant find DS filed\n");
-//                            pMarker->asSampleValues.InsertAt(nFormats * i + DSidx, sDose);
-//                        }
-//                        else {
-//                            //fprintf(stderr,"pMarker->asSampleValues.size:%s nFormtas:%d\tDSidx:%d\tsDose:%s\n",pMarker->asSampleValues[nFormats * i + DSidx].c_str(),nFormats,DSidx,sDose);
-//                            pMarker->asSampleValues[nFormats * i + DSidx].printf("%.3f", sDose);
-//                        }
-//                    }
                 }
             }
             pMarker->printVCFMarker(outVCF, false); // print marker to output file
@@ -1130,7 +1087,7 @@ int PhasingMain(int argc, char **argv) {
                     LONG_STRINGPARAMETER("crossoverMap", &crossFile)
                     LONG_STRINGPARAMETER("errorMap", &errorFile)
                     LONG_STRINGPARAMETER("geneticDistance", &GDFile)
-                    LONG_STRINGPARAMETER("physicalMap", &mapfile)
+                    LONG_STRINGPARAMETER("physicalMap", &mapfile)//decide which of these two, GD and physicalMap, to use
                     LONG_PARAMETER_GROUP("Graph Builder")
                     LONG_INTPARAMETER("graphComplexity", &prefixLength)
                     LONG_PARAMETER_GROUP("Markov Sampler")
@@ -1178,16 +1135,12 @@ int PhasingMain(int argc, char **argv) {
     pl.Read(argc, argv);
     pl.Status();
 
-//    if (OutputManager::outputDosage == false) { // hmkang
-//        error("--dosage flag must be set in this implementation");
-//    }
 
     // Setup random seed ...
     globalRandom.Reset(seed);
 
 
 
-    SetCrashExplanation("loading information on polymorphic sites");
 
     if (rounds < burnin) burnin = 0;
 
@@ -1197,6 +1150,7 @@ int PhasingMain(int argc, char **argv) {
     engine.geneticMapAvailable = false;
     engine.prefixLength = prefixLength;
 
+    SetCrashExplanation("loading Pvalue Matrix");
 
     if(PMatrix.IsEmpty() and calPMatrix.IsEmpty()) {
         std::cerr<<"parameter --PvalueMatrix [PATH] or --calPvalueMatrix [PATH] required!"<<std::endl;
@@ -1210,11 +1164,9 @@ int PhasingMain(int argc, char **argv) {
         std::cerr<<"Pvalue Matrix calculated, next time you can specify parameter --PvalueMatrix [PATH] to skip calculation stage!"<<std::endl;
     }
 
-
-    // Setup and load a list of polymorphic sites, each with two allele labels ...
+    SetCrashExplanation("loading information of individuals");
+    // Setup and load a list of individuals
     Pedigree ped;
-
-    SetCrashExplanation("loading Pvalue Matrix - first pass");
     LoadPidToBeIncluded(pidIncludeFromUnphased, pidIncludeFromPhased);
     LoadPidToBeExcluded(pidExcludeFromUnphased, pidExcludeFromPhased);
 
@@ -1233,15 +1185,13 @@ int PhasingMain(int argc, char **argv) {
 
     /*Notice that now we adding markers as subset of phased markers*/
     // here only extracted site information only, used for site check
-    if (!GDFile.IsEmpty()) {
-        engine.GDMap.InputGeneticDistanceMap(std::string(GDFile.c_str()));
-        engine.geneticMapAvailable = true;
-    }
+
+    SetCrashExplanation("loading information for polymorphic sites");
 
     if (phasedfile != "Empty")
     {
         LoadRefPanelPolymorphicSites(phasedfile);
-    LoadUnphasedPolymorphicSites(unphasedfile);
+        LoadUnphasedPolymorphicSites(unphasedfile);
     }
     else
     {
@@ -1249,9 +1199,14 @@ int PhasingMain(int argc, char **argv) {
         LoadUnphasedPolymorphicSites(unphasedfile);
     }
 
-    SetCrashExplanation("loading map information for polymorphic sites");
-
     fprintf(stderr,"Load information on %d polymorphic sites\n\n", Pedigree::markerCount);
+
+    SetCrashExplanation("loading information of Genetic Map");
+
+    if (!GDFile.IsEmpty()) {
+        engine.GDMap.InputGeneticDistanceMap(std::string(GDFile.c_str()));
+        engine.geneticMapAvailable = true;
+    }
 
     Pedigree::LoadMarkerMap(mapfile);//the format of mapfiles is:	chrome\tmarker_name\tposition
 
@@ -1293,7 +1248,7 @@ int PhasingMain(int argc, char **argv) {
     engine.AllocateMemory(ped.count, states, ped.markerCount, (float) transRate);
     engine.InitAuxillary();
 
-
+    SetCrashExplanation("loading genotype");
     fprintf(stderr,"Copy unphased genotypes into haplotyping engine\n");
     // Copy genotypes into haplotyping engine
     if (engine.readyForUse)
@@ -1310,12 +1265,8 @@ int PhasingMain(int argc, char **argv) {
         fprintf(stderr, "Done loading phased genotype file\n\n");
     }
 
-
-    //if (engine.readyForUse == false || engine.ForceMemoryAllocation() == false)
-    //   return MemoryAllocationFailure();//check error
-
     if (positionsAvailable &&
-        engine.AllocateDistances())//it is interesting to notice that there are two position information sources, one is from VCF the other is from markerMap
+        engine.AllocateDistances())//notice that there are two position information sources, one is from VCF the other is from markerMap
     {
         for (int i = 1; i < ped.markerCount; i++)//here the distance is based on markerMap file
             engine.distances[i - 1] = ped.GetMarkerInfo(i)->position -
@@ -1338,16 +1289,6 @@ int PhasingMain(int argc, char **argv) {
     if (consensus.readyForUse == false)
         return MemoryAllocationFailure();
 
-    DosageCalculator::storeDistribution = OutputManager::outputDosage ||
-                                          OutputManager::outputQuality ||
-                                          OutputManager::outputGenotypes;
-
-
-    DosageCalculator::EstimateMemoryInfo(rounds - burnin, ped.count, ped.markerCount);
-    DosageCalculator doses(rounds - burnin, ped.count, ped.markerCount);
-
-    if (doses.readyForUse == false)
-        return MemoryAllocationFailure();
 
     if (states < weightedStates) {
         error("Total number of states (--states) must be equal or greater than the total number of weighted states (--weightStates)");
@@ -1379,28 +1320,20 @@ int PhasingMain(int argc, char **argv) {
         engine.RandomSetup(NULL);
         engine.InitialSampleCopy(NULL);
     }
-//  UnphasedSamplesOutputVCF(unphasedfile, ped, doses, outfile + ".checkpoint1.vcf.gz", thetas, error_rates, engine);
     printf("Found initial haplotype set\n\n");
-    //OutputManager::WriteHaplotypes(outfile, ped, engine.haplotypes);
-    //return 0;
-//    if(phasedfile!="Empty")
-//    engine.LoadHaplotypesFromPhasedVCF(ped, phasedfile);// override randomsetup for phased samples
 
     SetCrashExplanation("revving up haplotyping engine");
 
     SetCrashExplanation("interating through markov chain haplotyping procedure");
 
-//    engine.PrepareRefSetPBWTWrapper();
-//    engine.PrepareRefSetPBWTWrapperLeaveOneOut();
+    engine.loadGraph="reference.panel.DAG";
     for (int i = 0; i < rounds; i++) {
-        engine.SetUseRev(i%2);
-//        engine.orderedGenotypes=true;
-        if(isSingleRound)
+        engine.SetUseRev(i % 2);
+        if (isSingleRound)
 //            engine.LoopThroughChromosomesSingleRound();
             engine.LoopThroughChromosomesRecomb();
         else
             engine.LoopThroughChromosomesHighPrecision();
-//        engine.LoopThroughChromosomesLeaveOneOut();
         if (!fixTrans) engine.UpdateThetas();
         errorRate = engine.UpdateErrorRate();
 
@@ -1411,39 +1344,22 @@ int PhasingMain(int argc, char **argv) {
             continue;
 
         if (OutputManager::outputHaplotypes) {
-            if(isSingleRound)
-                consensus.StoreForSingleRound(engine.sampledHaps,engine.nSampleCopy);
+            if (isSingleRound)
+                consensus.StoreForSingleRound(engine.sampledHaps, engine.nSampleCopy);
             else
                 consensus.Store(engine.haplotypes);
         }
-
-
-	if (doses.storeDosage || doses.storeDistribution)
-		doses.Update(engine.haplotypes);
     }
-/*
-    consensus.Merge();
-    engine.InitialHaplotypeByConsensus(consensus);
-    for (int j = 0; j < ConsensusBuilderRounds ; ++j) {
-
-        engine.SetUseRev(j%2);
-        engine.LoopThroughChromosomesRecomb();
-
-        if (OutputManager::outputHaplotypes) {
-                consensus.Store(engine.haplotypes);
-        }
-    }
-*/
     if (rounds) printf("\n");
 
     SetCrashExplanation("outputing solution");
     fprintf(stderr, "%d %d\n", ped.count, ped.markerCount);
     // If we did multiple rounds of haplotyping, then generate consensus
     {
-        UnphasedSamplesOutputVCF(unphasedfile, ped, doses, outfile + ".vcf.gz", thetas, error_rates, engine);
+        UnphasedSamplesOutputVCF(unphasedfile, ped, outfile + ".vcf.gz", thetas, error_rates, engine);
         if (OutputManager::outputHaplotypes)
-        OutputVCFConsensus(unphasedfile, ped, consensus, doses, outfile + ".consensus.vcf.gz", thetas, error_rates,
-                           engine);
+            OutputVCFConsensus(unphasedfile, ped, consensus, outfile + ".consensus.vcf.gz", thetas, error_rates,
+                               engine);
     }
 
 //    printf("Estimated mismatch rate in Markov model is: %.5f\n", errorRate);

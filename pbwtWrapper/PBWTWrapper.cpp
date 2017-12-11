@@ -1211,7 +1211,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
     stateOrder.clear();//mapping oldState to newOrder
 //    tmpAllele.clear();
     removeMembership.clear();//rankID,state
-    Graph.tmpNodeVec.clear();
+    std::vector<StateNode*> tmpNodeVec;
 
 //
 //    int totalChanged=0;
@@ -1470,7 +1470,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
                 Graph.UpdateChildNodeIndex(site-1,kv,tmpOrder,GetAllele(site,stateM));
             }
 
-            Graph.tmpNodeVec.push_back(Graph.StateNodeMat[site][stateM]);
+            tmpNodeVec.push_back(Graph.StateNodeMat[site][stateM]);
             stateOrder[stateM] = tmpOrder;
             tmpOrder++;
         }
@@ -1480,7 +1480,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
             value = stateOrder[value];//TODO:don't forget index in StateNode
         }
 //        clusterAllele[site] = tmpAllele;//update merged cluster allele
-        Graph.StateNodeMat[site] = Graph.tmpNodeVec;
+        Graph.StateNodeMat[site] = tmpNodeVec;
 //        PrintVector(clusterAllele[site],"allele cluster states final");
         //PrintVector(haplotypeCluster[site],"haplotype cluster states final");
         //adjust d array and a array
