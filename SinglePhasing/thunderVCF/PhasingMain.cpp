@@ -585,7 +585,7 @@ void LoadSamples(Pedigree &ped, const String &filename, std::unordered_map<std::
     }
 
     //ped.Sort();
-    printf("Loaded %d individuals from file %s\n\n", ped.count, filename.c_str());
+//    printf("Loaded %d individuals from file %s\n\n", ped.count, filename.c_str());
 }
 
 void LoadRefPanelPolymorphicSites(const String &filename) {
@@ -1035,9 +1035,251 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
         error(e.what());
     }
 }
+//graph building version
+void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename, PBWTHaplotyper &engine) {
+    try {
+        VcfFile *pVcf = new VcfFile;
+        pVcf->bSiteOnly = false;
+        pVcf->bParseGenotypes = false;
+        pVcf->bParseDosages = false;
+        pVcf->bParseValues = true;
+        pVcf->openForRead(filename.c_str());
 
-int PhasingMain(int argc, char **argv) {
+        // check the sanity of data
+        if (pVcf->getSampleCount() == 0) {
+            throw VcfFileException("No individual genotype information exist in the input VCF file %s",
+                                   filename.c_str());
+        }
+        int nSamples = pVcf->getSampleCount();
 
+        std::unordered_map<int, int> personIndices;//order in VCF -> order in haplotype memory
+        StringIntHash sampleOrderInCurrentVcf; // key: famid+subID, value: original order (0 based); in phased file
+        int person = 0;
+        for (int i = 0; i < nSamples; i++) {//add samples in current phased file into sampleOrderInCurrentVcf
+            {
+                //std::cerr << "if ordered:" << pVcf->vpVcfInds[i]->sIndID << std::endl;
+                sampleOrderInCurrentVcf.Add(pVcf->vpVcfInds[i]->sIndID + "." + pVcf->vpVcfInds[i]->sIndID, person);
+                person++;
+            }
+        }
+
+        for (int i = 0; i < engine.individuals; i++) {
+            int idx = sampleOrderInCurrentVcf.Integer(ped[i].famid + "." + ped[i].pid);//this requires assumption indivisuals in ped stored as unphased individuals + phased individuals
+            if (idx != -1)//phased in this vcf
+            {
+                personIndices[idx] = i;//put idx sample in this vcf into i th position in engine
+            }
+        }
+
+        int markerindex = 0;
+        VcfMarker *pMarker = nullptr;
+        String markerName;
+
+        while (pVcf->iterateMarker()) {//for each marker
+            pMarker = pVcf->getLastMarker();
+            int PLidx = pMarker->asFormatKeys.Find("PL");
+            int GLidx = pMarker->asFormatKeys.Find("GL");
+            int GTidx = pMarker->asFormatKeys.Find("GT");
+            if (GTidx <0) {
+                throw VcfFileException("Cannot recognize GT key in FORMAT field");
+            }
+            int formatLength = pMarker->asFormatKeys.Length();
+
+            StringArray phred;
+            int genoindex = markerindex * 3;
+            long phred11(-1),phred12(-1),phred22(-1);
+            for (int i = 0; i < nSamples; i++)//for each phased individual
+            {
+                //printf("phred scores are   %d, %d\n", i, ped.count);
+                if (personIndices.find(i) != personIndices.end())
+                {
+                    if(PLidx>=0)//found PL
+                    {
+                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
+                        phred11=phred[0].AsInteger();
+                        phred12=phred[1].AsInteger();
+                        phred22=phred[2].AsInteger();
+                    }
+                    else if(GLidx >= 0)//found GL
+                    {
+                        phred.ReplaceTokens(pMarker->asSampleValues[GLidx + i * formatLength], ",");
+                        phred11=static_cast<int>(-10. * phred[0].AsDouble());
+                        phred12=static_cast<int>(-10. * phred[1].AsDouble());
+                        phred22=static_cast<int>(-10. * phred[2].AsDouble());
+                    }
+                    if(GTidx >= 0)//found GT
+                    {
+                        phred.ReplaceTokens(pMarker->asSampleValues[GTidx + i * formatLength], "|/");
+//                        long geno=phred[0].AsInteger()+phred[1].AsInteger();
+//                        if(geno==0)
+//                        {
+//                            phred11=0;
+//                            phred12=30;
+//                            phred22=50;
+//                        }
+//                        else if(geno==1)
+//                        {
+//                            phred11=50;
+//                            phred12=0;
+//                            phred22=50;
+//                        }
+//                        else
+//                        {
+//                            phred11=50;
+//                            phred12=30;
+//                            phred22=0;
+//                        }
+                        engine.haplotypes[personIndices[i] * 2][markerindex] = static_cast<char>(phred[0].AsInteger());
+                        engine.haplotypes[personIndices[i] * 2 + 1][markerindex] = static_cast<char>(phred[1].AsInteger());
+                    } else
+                    {
+                        fprintf(stderr,"no GT field found for phased VCF!");
+                        exit(EXIT_FAILURE);
+                    }
+//                    if ((phred11 < 0) || (phred12 < 0) || (phred22 < 0)) {
+//                        error("Negative PL or Positive GL observed");
+//                    }
+
+                    //printf("phred scores are %d, %d, %d, %d, %d\n", phred11, phred12, phred22,i, ped.count );
+
+//                    if (phred11 > 255) phred11 = 255;
+//                    if (phred12 > 255) phred12 = 255;
+//                    if (phred22 > 255) phred22 = 255;
+//
+//                    engine.genotypes[personIndices[i]][genoindex] = static_cast<char>(phred11);
+//                    engine.genotypes[personIndices[i]][genoindex + 1] = static_cast<char>(phred12);
+//                    engine.genotypes[personIndices[i]][genoindex + 2] = static_cast<char>(phred22);
+                }
+            }
+            ++markerindex;
+        }
+        delete pVcf;
+        //delete pMarker;
+    }
+    catch (VcfFileException e) {
+        error(e.what());
+    }
+}
+int BuildGraph(int argc, char **argv) {
+
+    String outfile("mach1.out"), phasedfile("Empty"), pidIncludeFromUnphased(
+            ""), pidIncludeFromPhased(
+            ""), pidExcludeFromUnphased(""), pidExcludeFromPhased(""), PMatrix(""),calPMatrix("");
+
+    clock_t t;
+    t = clock();
+    int seed = 123456,samplingRounds = 1;
+
+    int prefixLength = 120;
+
+    bool onlyHeterSite = false;
+
+    SetupCrashHandlers();
+    SetCrashExplanation("reading command line options");
+
+    printf("Pluto 0.01 -- Markov Chain Haplotyping for Shotgun Sequence Data\n"
+                   "(c) 2015-2017 Fan Zhang, Goncalo Abecasis, and Hyun Min Kang\n\n");
+
+    ParameterList pl;
+
+    BEGIN_LONG_PARAMETERS(longParameters)
+                    LONG_PARAMETER_GROUP("Shotgun Sequences")
+                    LONG_STRINGPARAMETER("refVCF", &phasedfile)
+                    LONG_PARAMETER_GROUP("Optional Files")
+                    LONG_STRINGPARAMETER("includeUnphasedIDs", &pidIncludeFromUnphased)
+                    LONG_STRINGPARAMETER("includePhasedIDs", &pidIncludeFromPhased)
+                    LONG_STRINGPARAMETER("excludeUnphasedIDs", &pidExcludeFromUnphased)
+                    LONG_STRINGPARAMETER("excludePhasedIDs", &pidExcludeFromPhased)
+                    LONG_PARAMETER_GROUP("Graph Builder")
+                    LONG_INTPARAMETER("graphComplexity", &prefixLength)
+                    LONG_STRINGPARAMETER("PvalueMatrix", &PMatrix)
+                    LONG_STRINGPARAMETER("calPvalueMatrix", &calPMatrix)
+                    LONG_INTPARAMETER("seed", &seed)
+                    LONG_PARAMETER("onlyHeterSite", &onlyHeterSite)
+                    LONG_PARAMETER_GROUP("Output Files")
+                    LONG_STRINGPARAMETER("outPrefix", &outfile)
+    END_LONG_PARAMETERS();
+
+    pl.Add(new LongParameters("Available Options", longParameters));
+    pl.Add(new HiddenString('o', "Output File", outfile));
+
+    pl.Read(argc, argv);
+    pl.Status();
+
+    // Setup random seed ...
+    globalRandom.Reset(seed);
+
+    PBWTHaplotyper engine;//declaration of engine, also will call default constructor
+    engine.nSampleCopy = samplingRounds;
+    engine.onlyHeterSite = onlyHeterSite;
+    engine.prefixLength = prefixLength;
+    engine.outputPrefix = std::string(outfile.c_str())+".DAG";
+
+    SetCrashExplanation("loading Pvalue Matrix");
+
+    if(PMatrix.IsEmpty() and calPMatrix.IsEmpty()) {
+        std::cerr<<"parameter --PvalueMatrix [PATH] or --calPvalueMatrix [PATH] required!"<<std::endl;
+        exit(EXIT_FAILURE);
+    }
+    else if(!PMatrix.IsEmpty()) {
+        engine.ReadPvalueMatrix(std::string(PMatrix.c_str()));
+        fprintf(stderr, "Done reading P-Value Matrix...\n\n");
+    }
+    else if(!calPMatrix.IsEmpty()) {
+        fprintf(stderr, "Calculate P-Value Matrix...\n");
+        engine.CalculatePvalueMatrix();
+        engine.WritePvalueMatrix(std::string(calPMatrix.c_str()));
+        std::cerr<<"Pvalue Matrix calculated, next time you can specify parameter --PvalueMatrix [PATH] to skip calculation stage!"<<std::endl;
+    }
+
+    SetCrashExplanation("loading information of individuals");
+    // Setup and load a list of individuals
+    Pedigree ped;
+    LoadPidToBeIncluded(pidIncludeFromUnphased, pidIncludeFromPhased);
+    LoadPidToBeExcluded(pidExcludeFromUnphased, pidExcludeFromPhased);
+
+    /*now loading phased individuals*/
+    // here unphasedfile is the vcf file and is used for filling up the first five column of PED file(check the PED format).
+    if (phasedfile != "Empty")
+        LoadSamples(ped, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf, engine.phased);
+    fprintf(stderr,"Done loading %d phased individuals\n\n",engine.phased);
+
+    /*Notice that now we adding markers as subset of phased markers*/
+    // here only extracted site information only, used for site check
+
+    SetCrashExplanation("loading information for polymorphic sites");
+
+    if (phasedfile != "Empty") {
+        LoadRefPanelPolymorphicSites(phasedfile);
+    } else
+    {
+        std::cerr<<"--refVCF is required" <<std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(stderr,"Done loading information on %d polymorphic sites\n\n", Pedigree::markerCount);
+
+//    fprintf(stderr,"Processing input files and allocating memory for haplotyping\n");
+
+    SetCrashExplanation("allocating memory for haplotype engine graph builder");
+
+    engine.AllocateMemory(ped.count, ped.markerCount);
+
+    SetCrashExplanation("loading genotype");
+
+    LoadGenotypeAndHaplotypeFromPhasedVCF(ped, phasedfile, engine);//this is where we copy GL into genotype arrays
+    fprintf(stderr, "Done loading phased genotype file\n\n");
+
+
+    SetCrashExplanation("building graph...");
+    engine.ConstructGraph();
+    fprintf(stderr, "Done building graph\n\n");
+
+    fprintf(stderr,"Total time:%.2f sec\n", (float) (clock() - t) / CLOCKS_PER_SEC);
+    return 0;
+}
+
+int PhaseByRefGraph(int argc, char **argv) {
 
     String unphasedfile, mapfile, outfile("mach1.out"), phasedfile("Empty"), pidIncludeFromUnphased(
             ""), pidIncludeFromPhased(
@@ -1070,7 +1312,7 @@ int PhasingMain(int argc, char **argv) {
     SetCrashExplanation("reading command line options");
 
     printf("Pluto 0.01 -- Markov Chain Haplotyping for Shotgun Sequence Data\n"
-                   "(c) 2005-2007 Goncalo Abecasis, Yun Li, with thanks to Paul Scheet\n\n");
+                   "(c) 2015-2017 Fan Zhang, Goncalo Abecasis, and Hyun Min Kang\n\n");
 
     ParameterList pl;
 
@@ -1245,7 +1487,338 @@ int PhasingMain(int argc, char **argv) {
     engine.economyMode = compact;//
 
     engine.EstimateMemoryInfo(ped.count, ped.markerCount, states, compact, false);
-    engine.AllocateMemory(ped.count, states, ped.markerCount, (float) transRate);
+    engine.ShotgunHaplotyper::AllocateMemory(ped.count, states, ped.markerCount, (float) transRate);
+    engine.InitAuxillary();
+
+    SetCrashExplanation("loading genotype");
+    fprintf(stderr,"Copy unphased genotypes into haplotyping engine\n");
+    // Copy genotypes into haplotyping engine
+    if (engine.readyForUse)
+        LoadGenotypeFromUnphasedVCF(ped, unphasedfile, maxPhred, engine);//this is where we copy GL into genotype arrays
+
+    fprintf(stderr,"Done loading unphased genotype file\n\n");
+    // Copy phased haplotypes into haplotyping engine, but we put phased haps in the end
+
+
+    if (phasedfile!="Empty") {
+        fprintf(stderr, "Copy phased genotypes into haplotyping engine\n");
+        LoadGenotypeAndHaplotypeFromPhasedVCF(ped, phasedfile, maxPhred, engine.phased, engine, errorRate,
+                                              transRate);//this is where we copy GL into genotype arrays
+        fprintf(stderr, "Done loading phased genotype file\n\n");
+    }
+
+    if (positionsAvailable &&
+        engine.AllocateDistances())//notice that there are two position information sources, one is from VCF the other is from markerMap
+    {
+        for (int i = 1; i < ped.markerCount; i++)//here the distance is based on markerMap file
+            engine.distances[i - 1] = ped.GetMarkerInfo(i)->position -
+                                      ped.GetMarkerInfo(i - 1)->position;
+    }
+
+    engine.ShowMemoryInfo();
+
+
+    int ConsensusBuilderRounds=0;
+    if(rounds-burnin==1)
+    {
+        isSingleRound=true;
+        ConsensusBuilderRounds=samplingRounds;
+    }
+    else ConsensusBuilderRounds=rounds-burnin;
+    ConsensusBuilder::EstimateMemoryInfo(ConsensusBuilderRounds, (ped.count-engine.phased) * 2, ped.markerCount);
+    ConsensusBuilder consensus(ConsensusBuilderRounds, (ped.count-engine.phased) * 2, ped.markerCount);
+
+    if (consensus.readyForUse == false)
+        return MemoryAllocationFailure();
+
+
+    if (states < weightedStates) {
+        error("Total number of states (--states) must be equal or greater than the total number of weighted states (--weightStates)");
+    }
+    engine.weightedStates = weightedStates;
+
+    printf("Memory allocated successfully\n\n");
+
+    SetCrashExplanation("loading error rate and cross over maps");
+
+    bool newline = engine.LoadCrossoverRates(crossFile);
+    newline |= engine.LoadErrorRates(errorFile);
+    if (newline) printf("\n");
+
+    SetCrashExplanation("searching for initial haplotype set");
+
+    if (inputPhased) {
+        printf("Loading phased information from the input VCF file\n\n");
+        engine.LoadHaplotypesFromVCF(unphasedfile);
+        engine.InitialSampleCopy(NULL);
+    }
+    else if (phaseByRef) {
+        printf("Assigning haplotypes based on reference genome\n\n");
+        engine.PhaseByReferenceSetup();
+        engine.InitialSampleCopy(NULL);
+    }
+    else {
+        printf("Assigning random set of haplotypes\n\n");
+        engine.RandomSetup(NULL);
+        engine.InitialSampleCopy(NULL);
+    }
+    printf("Found initial haplotype set\n\n");
+
+    SetCrashExplanation("revving up haplotyping engine");
+
+    SetCrashExplanation("interating through markov chain haplotyping procedure");
+
+    engine.loadGraph="reference.panel.DAG";
+    for (int i = 0; i < rounds; i++) {
+        engine.SetUseRev(i % 2);
+        if (isSingleRound)
+//            engine.LoopThroughChromosomesSingleRound();
+            engine.LoopThroughChromosomesRecomb();
+        else
+            engine.LoopThroughChromosomesHighPrecision();
+        if (!fixTrans) engine.UpdateThetas();
+        errorRate = engine.UpdateErrorRate();
+
+        printf("Markov Chain iteration %d [%d mosaic crossovers]\n",
+               i + 1, engine.TotalCrossovers());
+
+        if (i < burnin)
+            continue;
+
+        if (OutputManager::outputHaplotypes) {
+            if (isSingleRound)
+                consensus.StoreForSingleRound(engine.sampledHaps, engine.nSampleCopy);
+            else
+                consensus.Store(engine.haplotypes);
+        }
+    }
+    if (rounds) printf("\n");
+
+    SetCrashExplanation("outputing solution");
+    fprintf(stderr, "%d %d\n", ped.count, ped.markerCount);
+    // If we did multiple rounds of haplotyping, then generate consensus
+    {
+        UnphasedSamplesOutputVCF(unphasedfile, ped, outfile + ".vcf.gz", thetas, error_rates, engine);
+        if (OutputManager::outputHaplotypes)
+            OutputVCFConsensus(unphasedfile, ped, consensus, outfile + ".consensus.vcf.gz", thetas, error_rates,
+                               engine);
+    }
+
+//    printf("Estimated mismatch rate in Markov model is: %.5f\n", errorRate);
+    printf("Total time:%.2f sec\n", (float) (clock() - t) / CLOCKS_PER_SEC);
+    return 0;
+}
+
+int PhasingMain(int argc, char **argv) {
+
+
+    String unphasedfile, mapfile, outfile("mach1.out"), phasedfile("Empty"), pidIncludeFromUnphased(
+            ""), pidIncludeFromPhased(
+            ""), pidExcludeFromUnphased(""), pidExcludeFromPhased(""), PMatrix(""),calPMatrix("");
+    String crossFile, errorFile;
+    String GDFile;
+
+    clock_t t;
+    t = clock();
+    double errorRate = 0.01;
+    double transRate = 0.01;
+    int seed = 123456, warmup = 0, states = 0, weightedStates = 0;
+    int burnin = 5, rounds = 10, polling = 0, samples = 0, samplingRounds = 1;
+    int maxPhred = 255;
+
+    int prefixLength = 120;
+
+    bool compact = false;
+    bool mle = false, mledetails = false, uncompressed = false;
+
+    bool inputPhased = false;
+    bool phaseByRef = false;
+    bool randomPhase = false;
+    bool fixTrans = true;
+
+    bool isSingleRound = false;
+    bool onlyHeterSite = false;
+
+    SetupCrashHandlers();
+    SetCrashExplanation("reading command line options");
+
+    printf("Pluto 0.01 -- Markov Chain Haplotyping for Shotgun Sequence Data\n"
+                   "(c) 2015-2017 Fan Zhang, Goncalo Abecasis, and Hyun Min Kang\n\n");
+
+    ParameterList pl;
+
+    BEGIN_LONG_PARAMETERS(longParameters)
+                    LONG_PARAMETER_GROUP("Shotgun Sequences")
+                    LONG_STRINGPARAMETER("unphasedVcf", &unphasedfile)
+                    LONG_STRINGPARAMETER("refVcf", &phasedfile)
+                    LONG_INTPARAMETER("maxPhred", &maxPhred)
+                    LONG_PARAMETER_GROUP("Optional Files")
+                    LONG_STRINGPARAMETER("includeUnphasedIDs", &pidIncludeFromUnphased)
+                    LONG_STRINGPARAMETER("includePhasedIDs", &pidIncludeFromPhased)
+                    LONG_STRINGPARAMETER("excludeUnphasedIDs", &pidExcludeFromUnphased)
+                    LONG_STRINGPARAMETER("excludePhasedIDs", &pidExcludeFromPhased)
+                    LONG_STRINGPARAMETER("crossoverMap", &crossFile)
+                    LONG_STRINGPARAMETER("errorMap", &errorFile)
+                    LONG_STRINGPARAMETER("geneticDistance", &GDFile)
+                    LONG_STRINGPARAMETER("physicalMap", &mapfile)//decide which of these two, GD and physicalMap, to use
+                    LONG_PARAMETER_GROUP("Graph Builder")
+                    LONG_INTPARAMETER("graphComplexity", &prefixLength)
+                    LONG_PARAMETER_GROUP("Markov Sampler")
+                    LONG_INTPARAMETER("seed", &seed)
+                    LONG_INTPARAMETER("burnin", &burnin)
+                    LONG_INTPARAMETER("rounds", &rounds)
+                    LONG_INTPARAMETER("samplingRounds", &samplingRounds)
+                    LONG_PARAMETER_GROUP("Haplotyper")
+                    LONG_INTPARAMETER("states", &states)
+                    LONG_DOUBLEPARAMETER("errorRate", &errorRate)
+                    LONG_DOUBLEPARAMETER("transRate", &transRate)
+                    LONG_INTPARAMETER("weightedStates", &weightedStates)
+                    LONG_PARAMETER("compact", &compact)
+                    LONG_PARAMETER("fixTrans", &fixTrans)
+                    LONG_PARAMETER("onlyHeterSite", &onlyHeterSite)
+                    LONG_PARAMETER_GROUP("Phasing")
+                    EXCLUSIVE_PARAMETER("randomPhase", &randomPhase)
+                    EXCLUSIVE_PARAMETER("inputPhased", &inputPhased)
+                    EXCLUSIVE_PARAMETER("refPhased", &phaseByRef)
+                    LONG_PARAMETER_GROUP("Imputation")
+                    LONG_PARAMETER("geno", &OutputManager::outputGenotypes)
+                    LONG_PARAMETER("quality", &OutputManager::outputQuality)
+                    LONG_PARAMETER("dosage", &OutputManager::outputDosage)
+                    LONG_PARAMETER("probs", &OutputManager::outputProbabilities)
+                    LONG_PARAMETER("mle", &mle)
+                    LONG_PARAMETER_GROUP("Output Files")
+                    LONG_STRINGPARAMETER("prefix", &outfile)
+                    LONG_PARAMETER("phase", &OutputManager::outputHaplotypes)
+                    LONG_PARAMETER("uncompressed", &OutputManager::uncompressed)
+                    LONG_PARAMETER("mldetails", &mledetails)
+                    LONG_PARAMETER_GROUP("Interim Output")
+                    LONG_INTPARAMETER("sampleInterval", &samples)
+                    LONG_INTPARAMETER("interimInterval", &polling)
+                    LONG_STRINGPARAMETER("PvalueMatrix", &PMatrix)
+                    LONG_STRINGPARAMETER("calPvalueMatrix", &calPMatrix)
+    END_LONG_PARAMETERS();
+
+    pl.Add(new LongParameters("Available Options", longParameters));
+
+    pl.Add(new HiddenString('m', "Map File", mapfile));
+    pl.Add(new HiddenString('o', "Output File", outfile));
+    pl.Add(new HiddenInteger('r', "Haplotyping Rounds", rounds));
+    pl.Add(new HiddenDouble('e', "Error Rate", errorRate));
+
+    pl.Read(argc, argv);
+    pl.Status();
+
+
+    // Setup random seed ...
+    globalRandom.Reset(seed);
+
+
+
+
+    if (rounds < burnin) burnin = 0;
+
+    PBWTHaplotyper engine;//declaration of engine, also will call default constructor
+    engine.nSampleCopy = samplingRounds;
+    engine.onlyHeterSite = onlyHeterSite;
+    engine.geneticMapAvailable = false;
+    engine.prefixLength = prefixLength;
+
+    SetCrashExplanation("loading Pvalue Matrix");
+
+    if(PMatrix.IsEmpty() and calPMatrix.IsEmpty()) {
+        std::cerr<<"parameter --PvalueMatrix [PATH] or --calPvalueMatrix [PATH] required!"<<std::endl;
+        exit(EXIT_FAILURE);
+    }
+    else if(!PMatrix.IsEmpty())
+        engine.ReadPvalueMatrix(std::string(PMatrix.c_str()));
+    else if(!calPMatrix.IsEmpty()) {
+        engine.CalculatePvalueMatrix();
+        engine.WritePvalueMatrix(std::string(calPMatrix.c_str()));
+        std::cerr<<"Pvalue Matrix calculated, next time you can specify parameter --PvalueMatrix [PATH] to skip calculation stage!"<<std::endl;
+    }
+
+    SetCrashExplanation("loading information of individuals");
+    // Setup and load a list of individuals
+    Pedigree ped;
+    LoadPidToBeIncluded(pidIncludeFromUnphased, pidIncludeFromPhased);
+    LoadPidToBeExcluded(pidExcludeFromUnphased, pidExcludeFromPhased);
+
+    /*We add unphased individuals first*/
+    int numUnphased(0);
+    LoadSamples(ped, unphasedfile, pidIncludedInUnphasedVcf, pidExcludedInUnphasedVcf, numUnphased);
+    std::cerr << "Load unphased individuals:" << numUnphased << std::endl;
+    if (ped.count < 1) {
+        error("SinglePhasing requires more than 0 sample.");
+    }
+    /*now loading phased individuals*/
+    // here unphasedfile is the vcf file, here vcf is used for filling up the first five column of PED file(check the PED format).
+    if (phasedfile != "Empty")
+        LoadSamples(ped, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf, engine.phased);
+    std::cerr << "Load phased individuals:" << engine.phased << std::endl;
+
+    /*Notice that now we adding markers as subset of phased markers*/
+    // here only extracted site information only, used for site check
+
+    SetCrashExplanation("loading information for polymorphic sites");
+
+    if (phasedfile != "Empty")
+    {
+        LoadRefPanelPolymorphicSites(phasedfile);
+        LoadUnphasedPolymorphicSites(unphasedfile);
+    }
+    else
+    {
+        LoadRefPanelPolymorphicSites(unphasedfile);
+        LoadUnphasedPolymorphicSites(unphasedfile);
+    }
+
+    fprintf(stderr,"Load information on %d polymorphic sites\n\n", Pedigree::markerCount);
+
+    SetCrashExplanation("loading information of Genetic Map");
+
+    if (!GDFile.IsEmpty()) {
+        engine.GDMap.InputGeneticDistanceMap(std::string(GDFile.c_str()));
+        engine.geneticMapAvailable = true;
+    }
+
+    Pedigree::LoadMarkerMap(mapfile);//the format of mapfiles is:	chrome\tmarker_name\tposition
+
+
+    // Check if physical map is available
+    bool positionsAvailable = true;
+
+    for (int i = 0; i < ped.markerCount; i++)
+        if (Pedigree::GetMarkerInfo(i)->chromosome < 0) {
+            positionsAvailable = false;//no physical map available
+            break;
+        }
+
+    if (positionsAvailable) {
+        printf("    Physical map will be used to improve crossover rate estimates.\n");
+
+        for (int i = 1; i < ped.markerCount; i++)
+            if (ped.GetMarkerInfo(i)->position <= ped.GetMarkerInfo(i - 1)->position ||
+                ped.GetMarkerInfo(i)->chromosome != ped.GetMarkerInfo(i - 1)->chromosome) {
+                printf("    FATAL ERROR -- Problems with physical map ...\n\n"
+                               "    Before continuing, check the following:\n"
+                               "    * All markers are on the same chromosome\n"
+                               "    * All marker positions are unique\n"
+                               "    * Markers in pedigree and haplotype files are ordered by physical position\n\n");
+                return -1;
+            }
+    }
+
+    printf("\n");
+
+    printf("Processing input files and allocating memory for haplotyping\n");
+
+    SetCrashExplanation("allocating memory for haplotype engine and consensus builder");
+
+
+    engine.economyMode = compact;//
+
+    engine.EstimateMemoryInfo(ped.count, ped.markerCount, states, compact, false);
+    engine.ShotgunHaplotyper::AllocateMemory(ped.count, states, ped.markerCount, (float) transRate);
     engine.InitAuxillary();
 
     SetCrashExplanation("loading genotype");

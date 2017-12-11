@@ -70,7 +70,7 @@ int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
 
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 0");
     for (int k = 0; k != N; ++k) {
-        //fprintf(stderr,"at site %d\n",k);
+//        fprintf(stderr,"at site %d\n",k);
         CursorForwardsTo(k, prefixLength);
     }
     //copy end of a to PBWT
@@ -1524,16 +1524,13 @@ void PBWTWrapper::DoMerge(int site, StateIndex retainState, StateIndex removeSta
 
 
 int PBWTWrapper::SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampledHaps, int CopyStart2, int CopyEnd2, float* rate) {
-//    phased = nPhase;
-//    nSampledCopy = nCopy;
+
     if(rate)
     recomRate.assign(rate,rate+nMarkers-1);
 //    for (int k = 0; k <nMarkers-1 ; ++k) {
 //        std::cerr<<"marker "<<k+1<<":"<<recomRate[k]<<std::endl;
 //    }
     haplotype = new char *[M];
-//    int unphased = (nSamples - phased) / (nSampledCopy + 1);
-//    int nonCoppiedIndividuals = unphased + phased;//nSampledCopy additional copies, the original one not included
     int i=0;
     for (int j = CopyStart; i<M && j < CopyEnd; ++i,++j) {
         haplotype[i] = haps[j];

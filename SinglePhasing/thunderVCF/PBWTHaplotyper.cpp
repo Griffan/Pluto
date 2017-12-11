@@ -42,8 +42,6 @@ void PBWTHaplotyper::InitAuxillary() {
     tmpGeno = AllocateCharMatrix(individuals, markers * 3);
 
     tmpPenetrance = new float[markers * 9];
-
-    Wrapper = nullptr;
 }
 
 PBWTHaplotyper::~PBWTHaplotyper() {
@@ -63,11 +61,12 @@ PBWTHaplotyper::~PBWTHaplotyper() {
     if (tmpPenetrance != nullptr)
         delete[] tmpPenetrance;
 
-
-    for (int l = 0; l < nSampleCopy * (individuals - phased) * 2; ++l) {
-        delete[] sampledHaps[l];
+    if(sampledHaps != nullptr) {
+        for (int l = 0; l < nSampleCopy * (individuals - phased) * 2; ++l) {
+            delete[] sampledHaps[l];
+        }
+        delete[] sampledHaps;
     }
-    delete[] sampledHaps;
 
     if (Wrapper != nullptr)
         delete Wrapper;
@@ -390,35 +389,7 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb() {
 
     ResetCrossovers();
 
-    if(loadGraph!="Empty")
-    {
-        clock_t t = clock();
-        if (Wrapper != nullptr) {
-            delete Wrapper;
-            Wrapper = nullptr;
-        }
-        Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, prefixLength);
-        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
-        Wrapper->Graph.readContainer(loadGraph);
-        clock_t t1 = clock();
-        printf("[Recomb]load graph time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
-    }
-    else {
-        if (isRev) ReverseInput();
-        clock_t t = clock();
-        if (Wrapper != nullptr) {
-            delete Wrapper;
-            Wrapper = nullptr;
-        }
-        Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, prefixLength);
-        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
-        Wrapper->CursorBackwards();//calculate backwards order of suffix
-        Wrapper->CursorForwards();
-        Wrapper->Graph.writeContainer(std::string("reference.panel.DAG"));
-        clock_t t1 = clock();
-        printf("[Recomb]build graph time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
-    }
-
+    ConstructGraph();
 
     clock_t t1 = clock();
     for (int i = individuals - 1; i >= 0; i--) {
@@ -460,6 +431,38 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb() {
     printf("[Recomb]forward algorithm and sampling time:%.2f sec\n", (float) (t - t1) / CLOCKS_PER_SEC);
     if (isRev) ReverseInput();
     return 0;
+}
+
+void PBWTHaplotyper::ConstructGraph() {
+    if(isRev) ReverseInput();
+
+    if(loadGraph != "Empty")
+    {
+        clock_t t = clock();
+        if (Wrapper != nullptr) {
+            delete Wrapper;
+            Wrapper = nullptr;
+        }
+        Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, prefixLength);
+        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
+        Wrapper->Graph.readContainer(loadGraph);
+        clock_t t1 = clock();
+        printf("load graph time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
+    }
+    else {
+        clock_t t = clock();
+        if (Wrapper != nullptr) {
+            delete Wrapper;
+            Wrapper = nullptr;
+        }
+        Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, prefixLength);
+        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
+        Wrapper->CursorBackwards();//calculate backwards order of suffix
+        Wrapper->CursorForwards();
+        Wrapper->Graph.writeContainer(outputPrefix);
+        clock_t t1 = clock();
+        printf("build graph time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
+    }
 }
 
 int PBWTHaplotyper::LoopThroughChromosomesSingleRound() {
@@ -1860,10 +1863,8 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
                                                                              tmpParentNode2)]);//sum over all the parents of current parents that lead to a child pair
                             else
                                 prevFwdValue = 0.f;
-
                             baseProb = GetTransitionProb(i - 1, tmpParentNode1, childNode1) *
                                        GetTransitionProb(i - 1, tmpParentNode2, childNode2) * gl;
-
                             tmpFwdValue = prevFwdValue * baseProb * (1 - recRate) * (1 - recRate);
 //                        fprintf(stderr,"(%d,%d) to (%d,%d) tmp output1 tmpFwdValue:%g\tprevFwdValue:%g\tbaseProb:%g\n",tmpParentNode1,tmpParentNode2,childNode1,childNode2,tmpFwdValue,prevFwdValue,baseProb);
                             if (fwdValueNode1Sum[i - 1].find(tmpParentNode1) != fwdValueNode1Sum[i - 1].end())
@@ -2179,3 +2180,17 @@ int PBWTHaplotyper::FillHeterSitesBack(int individualToProcess) {
 }
 
 
+//memory management
+bool PBWTHaplotyper::AllocateMemory(int persons, int m)//for GraphConstruct
+{
+    individuals = persons;
+    markers = m;
+
+//    genotypes = AllocateCharMatrix(individuals, markers*3);
+    genotypes = nullptr;
+    haplotypes = AllocateCharMatrix(individuals * 2, markers);
+
+    Wrapper = nullptr;
+
+    return readyForUse = true;
+}

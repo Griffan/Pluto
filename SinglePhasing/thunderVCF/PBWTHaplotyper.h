@@ -14,6 +14,7 @@
 class PBWTHaplotyper : public ShotgunHaplotyper{
 public:
     std::string loadGraph="Empty";//indicate if build graph from previously built graph
+    std::string outputPrefix="Empty";
 	bool onlyHeterSite;
     bool geneticMapAvailable;
     int prefixLength;
@@ -39,7 +40,9 @@ public:
         consensus.stored=0;
     }
 
-	void InitialSampleCopy(Random * rand);
+    void ConstructGraph();
+
+    void InitialSampleCopy(Random * rand);
 //    void RandomSetup(Random * rand);
     void SwapIndividuals(int a, int b);
     void PrepareRefSetPBWTWrapper();
@@ -73,8 +76,8 @@ public:
 	int ExtractHeterSites(int individualToProcess);
 	int FillHeterSitesBack(int individualToProcess);
     //Memory management functions
-    //virtual bool AllocateMemory(int nIndividuals, int maxHaplos, int nMarkers, float defaultTheta);
-    //virtual void EstimateMemoryInfo(int Individuals, int Markers, int States, bool Compact, bool Phased);
+    bool AllocateMemory(int nIndividuals, int nMarkers);
+//    virtual void EstimateMemoryInfo(int Individuals, int Markers, int States, bool Compact, bool Phased);
 //    virtual void RetrieveMemoryBlock(int marker);
 
 
@@ -260,13 +263,13 @@ public:
      */
     int BackwardSamplingRecNew(Random *rand, int SampleIndex, char** sampledHaps);
 
-	char ** sampledHaps;
+	char ** sampledHaps= nullptr;
 	int nSampleCopy;
 
 
     //KS D value related
 
-    float *** PvalueMatrix;//10k X 10k
+    float *** PvalueMatrix= nullptr;//10k X 10k
     inline int CalculatePvalueMatrix()
     {
         std::cerr<<"Enter CalculatePvalueMatrix() "<<std::endl;
@@ -354,20 +357,20 @@ public:
 
 protected:
 
-    PBWTWrapper* Wrapper;
+    PBWTWrapper* Wrapper= nullptr;
 
     int indexBeingSampled;
 	//subset markers related
-	char** tmpHaps;
-	char ** tmpGeno;
-    float* tmpPenetrance;
+	char** tmpHaps= nullptr;
+	char ** tmpGeno= nullptr;
+    float* tmpPenetrance = nullptr;
 	int tmpMarkers;
 	double max_num;
 
 
 //    double * phred2prob;
 
-	bool isRev;
+	bool isRev = false;
     bool onlyGT;
 
 	std::vector<int> relativeIndexToAbsolute;
@@ -403,6 +406,7 @@ protected:
 	void ResetMemoryPool();
 	void ResetReuseablePool();
 	void ReleaseMemoryBlock();
+
 };
 
 #endif //PLUTO_PBWTHAPLOTYPER_H

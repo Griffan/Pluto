@@ -19,7 +19,7 @@
 #include "Rmath.h"
 
 #define THROW_IF(val) if (val) throw "error in " __FUNCTION__
-#define WHEREAMI printf("error in %s", __FUNCTION__)
+#define WHEREAMI fprintf(stderr,"running at in %s", __FUNCTION__)
 //Definition for linear regression
 template<typename T>
 struct square {
