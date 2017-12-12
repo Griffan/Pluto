@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstring>
 #include "SinglePhasing/thunderVCF/PhasingMain.h"
 using namespace std;
 

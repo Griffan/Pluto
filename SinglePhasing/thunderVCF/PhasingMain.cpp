@@ -1415,7 +1415,6 @@ int BuildGraph(int argc, char **argv) {
     END_LONG_PARAMETERS();
 
     pl.Add(new LongParameters("Available Options", longParameters));
-    pl.Add(new HiddenString('o', "Output File", outfile));
 
     pl.Read(argc, argv);
     pl.Status();
@@ -1451,6 +1450,7 @@ int BuildGraph(int argc, char **argv) {
     if (!GDFile.IsEmpty()) {
         engine.GDMap.InputGeneticDistanceMap(std::string(GDFile.c_str()));
         engine.geneticMapAvailable = true;
+	fprintf(stderr, "Done reading genetic map file.\n\n");
     }
 
     SetCrashExplanation("loading information of individuals");

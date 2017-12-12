@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <iostream>
 #include <algorithm>
+#include <functional>
 #include <queue>
 #include <map>
 #include <numeric>

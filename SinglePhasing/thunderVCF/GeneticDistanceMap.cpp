@@ -10,7 +10,6 @@
 #include <algorithm>
 
 void GeneticDistanceMap::InputGeneticDistanceMap(const std::string &inputFile) {
-    std::cerr<<inputFile<<" opening"<<std::endl;
     std::ifstream FIN(inputFile);
     if(!FIN.is_open())
     {
