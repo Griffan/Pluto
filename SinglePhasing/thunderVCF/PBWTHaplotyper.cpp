@@ -443,9 +443,19 @@ void PBWTHaplotyper::ConstructGraph() {
             delete Wrapper;
             Wrapper = nullptr;
         }
-        Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, prefixLength);
+        Wrapper = new PBWTWrapper(2 * phasedForByRef, markers, PvalueMatrix, prefixLength);
+        Wrapper->ReleaseWrapperMemory();
         Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
-        Wrapper->Graph.readContainer(loadGraph);
+        Wrapper->Graph.ReadContainer(loadGraph);
+        //for debug
+//        loadGraph="reference.panel.DAG";
+//        Wrapper->Graph.WriteContainer(loadGraph);
+//        Wrapper->ResetWrapper();
+//        Wrapper->Graph.ReadContainer(loadGraph);
+//
+//        loadGraph="reference.panel.DAG2";
+//        Wrapper->Graph.WriteContainer(loadGraph);
+        //for debug
         clock_t t1 = clock();
         printf("load graph time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     }
@@ -459,7 +469,7 @@ void PBWTHaplotyper::ConstructGraph() {
         Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
         Wrapper->CursorBackwards();//calculate backwards order of suffix
         Wrapper->CursorForwards();
-        Wrapper->Graph.writeContainer(outputPrefix);
+        Wrapper->Graph.WriteContainer(outputPrefix);
         clock_t t1 = clock();
         printf("build graph time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     }
@@ -1850,11 +1860,11 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
             UpdateStateNum(GetStateNumFrom(i));
             for (childNode1 = 0; childNode1 < states; ++childNode1) {//dest nodeA
                 for (childNode2 = 0; childNode2 < states; ++childNode2) {//dest nodeB
-                    gl = GetGL(SampleIndex, i, GetAllele(i, childNode1), GetAllele(i, childNode2));
+                    gl = GetGL(SampleIndex, i, GetAllele(i, childNode1), GetAllele(i, childNode2));//genotype of each childNode pair
                     if (gl < 1e-1) continue;
                     for ( auto tmpParentNode1:GetParentNodes(i, childNode1)) {
                         for ( auto tmpParentNode2:GetParentNodes(i, childNode2)) {
-                            if( GetGL(SampleIndex, i-1, GetAllele(i-1, tmpParentNode1), GetAllele(i-1, tmpParentNode2)) < 1e-1) continue;
+                            if( GetGL(SampleIndex, i-1, GetAllele(i-1, tmpParentNode1), GetAllele(i-1, tmpParentNode2)) < 1e-1) continue;//genotype of all possible parentNode pair of childNode
                             fitPair++;
                             if (parentsNodeVec[i - 1].find(std::make_pair(tmpParentNode1, tmpParentNode2)) !=
                                 parentsNodeVec[i - 1].end())
@@ -1969,7 +1979,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
     {
         count++;
             sampledFwd = SumFwdValueFromOriginVec(iter->second);
-            fprintf(stderr,"(%d,%d)\tvalue:%g\tcount:%d\n",iter->first.first,iter->first.second,sampledFwd,count);
+//            fprintf(stderr,"(%d,%d)\tvalue:%g\tcount:%d\n",iter->first.first,iter->first.second,sampledFwd,count);
 
     }
 
@@ -2018,7 +2028,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
 //        }
 //        }
 
-        fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\n",i,sum,choice,sampledParent0,sampledParent1,sampledFwd);
+//        fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\n",i,sum,choice,sampledParent0,sampledParent1,sampledFwd);
 
         sum = 0.f;
         testSum = 0.f;
@@ -2181,16 +2191,55 @@ int PBWTHaplotyper::FillHeterSitesBack(int individualToProcess) {
 
 
 //memory management
+bool PBWTHaplotyper::SetErrorAndTheta(std::vector<double> &holderError,std::vector<double> &holderTheta)
+{
+    for (int i = 0; i < markers - 1; i++)
+        thetas[i] = holderTheta[i];
+    for (int i = 0; i < markers; i++)
+        SetErrorRate(i, holderError[i]);
+}
 bool PBWTHaplotyper::AllocateMemory(int persons, int m)//for GraphConstruct
 {
-    individuals = persons;
+    individuals = persons - phasedForByRef/*variable 'phased' affect many different parts, use this avatar instead here*/;
     markers = m;
 
-//    genotypes = AllocateCharMatrix(individuals, markers*3);
-    genotypes = nullptr;
+    if(phased==0) {//enter from phase by ref
+        thetas = new float[markers - 1];
+        for (int i = 0; i < markers - 1; i++)
+            thetas[i] = 0.01;
+        genotypes = AllocateCharMatrix(individuals, markers*3);
+        penetrances = new float[markers * 9];
+        error_models = new Errors[markers];
+        freq1s = new double[markers];
+        crossovers = new int[markers - 1];
+    }
+    else//enter from graph construct
+    {
+        thetas = nullptr;
+        genotypes = nullptr;
+        penetrances = nullptr;
+        error_models = nullptr;
+        freq1s = nullptr;
+        crossovers = nullptr;
+    }
     haplotypes = AllocateCharMatrix(individuals * 2, markers);
-
     Wrapper = nullptr;
+    marginals = nullptr;
+
+    leftMatrices = nullptr;
+    leftProbabilities = nullptr;
+
+    memoryBlock = nullptr;
+    smallMemoryBlock = nullptr;
+    smallFree = 0;
+
+    stack = nullptr;
+    stackPtr = -1;
+
+
+
+
+    orderedGenotypeFlags = nullptr;
 
     return readyForUse = true;
 }

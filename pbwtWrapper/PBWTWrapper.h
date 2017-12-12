@@ -158,8 +158,8 @@ inline bool comparator(const MaxPair &lhs, const MaxPair &rhs) {
 
 //Definition for HMM framework
 typedef unsigned char uchar;
-//typedef std::unordered_set<StateIndex> ParentSet;
-typedef std::vector<StateIndex> ParentSet;
+typedef std::unordered_set<StateIndex> ParentSet;
+//typedef std::vector<StateIndex> ParentSet;
 
 class StateNode
 {
@@ -253,7 +253,21 @@ public:
     }
 
 
-    int writeNode(std::ofstream & fout)
+    std::string ToString()
+    {
+        std::string line;
+        line+=std::to_string(allele)+"\t";
+        line+=std::to_string(childNode[0])+"\t";
+        line+=std::to_string(childNode[1])+"\t";
+        line+=std::to_string(numHap[0])+"\t";
+        line+=std::to_string(numHap[1])+"\t";
+        line+=std::to_string(parentNodeSet.size())+"\t";
+        for (auto k:parentNodeSet) {
+            line+=std::to_string(k)+"\t";
+        }
+        return line;
+    }
+    int WriteNode(std::ofstream &fout)
     {
         int totalSize=0;
         fout.write((char*)&allele,sizeof(uchar));
@@ -271,15 +285,15 @@ public:
         }
         return totalSize;
     }
-    int readNode(std::ifstream & fin)
+    int ReadNode(std::ifstream &fin)
     {
         fin.read((char*)&allele,sizeof(uchar));
         fin.read((char*)&childNode,2*sizeof(StateIndex));
         fin.read((char*)&numHap,2*sizeof(float));
         unsigned long sizeOfSet;
         fin.read((char*)&sizeOfSet,sizeof(unsigned long));
+        StateIndex k;
         for (int i=0;i!=sizeOfSet;i++) {
-            StateIndex k;
             fin.read((char*)&k,sizeof(StateIndex));
             AddParentNode(k);
         }
@@ -359,10 +373,11 @@ public:
         return StateNodeMat[marker][parentIndex]->GetNumHap(allele)/nhaps;
     }
 
-    int writeContainer(const std::string& fileName)
+    int WriteContainer(const std::string &fileName)
     {
         int totalSize=0;
         std::ofstream fout(fileName,std::ifstream::binary);
+
         if(!fout.is_open())
         {
             std::cerr<<"open file "<<fileName<<" failed!"<<std::endl;
@@ -373,18 +388,34 @@ public:
         fout.write((char*)&nsnps,sizeof(int));
         totalSize+=sizeof(int);
         for (int i = 0; i <nsnps ; ++i) {
-            int currentSiteNodeNum = StateNodeMat[i].size();
-            fout.write((char*)&currentSiteNodeNum,sizeof(int));
-            totalSize+=sizeof(int);
+            unsigned long currentSiteNodeNum = StateNodeMat[i].size();
+            fout.write((char*)&currentSiteNodeNum,sizeof(unsigned long));
+            totalSize+=sizeof(unsigned long);
             for (int j = 0; j <currentSiteNodeNum; ++j) {
-                totalSize+=StateNodeMat[i][j]->writeNode(fout);
+                totalSize+= StateNodeMat[i][j]->WriteNode(fout);
             }
         }
+        fout.close();
+
+//        std::ofstream fout2(fileName+".txt");
+//        fout2<<"nhaps:"<<nhaps<<std::endl;
+//        fout2<<"nsnps"<<nsnps<<std::endl;
+//        for (int i = 0; i <nsnps ; ++i) {
+//            fout2<<i<<"th snp nodeVec size:"<<StateNodeMat[i].size()<<std::endl;
+//            for (int j = 0; j <StateNodeMat[i].size(); ++j) {
+//                fout2<<j<<"th node:"<<StateNodeMat[i][j]->ToString()<<std::endl;
+//            }
+//        }
+//        fout2<<std::endl;
+//        fout2<<std::endl;
+//        fout2.close();
+
         return totalSize;
     }
-    int readContainer(const std::string& fileName)
+    int ReadContainer(const std::string &fileName)
     {
         std::ifstream fin(fileName,std::ifstream::binary);
+
         if(!fin.is_open())
         {
             std::cerr<<"open file "<<fileName<<" failed!"<<std::endl;
@@ -393,14 +424,28 @@ public:
         fin.read((char*)&nhaps,sizeof(int));
         fin.read((char*)&nsnps,sizeof(int));
         for (int i = 0; i <nsnps ; ++i) {
-            int currentSiteNodeNum = StateNodeMat[i].size();
-            fin.read((char*)&currentSiteNodeNum,sizeof(int));
+            unsigned long currentSiteNodeNum(0);
+            fin.read((char*)&currentSiteNodeNum,sizeof(unsigned long));
             for (int j = 0; j <currentSiteNodeNum; ++j) {
                 StateNode * tmpNode = new StateNode(255);
-                tmpNode->readNode(fin);
+                tmpNode->ReadNode(fin);
                 StateNodeMat[i].push_back(tmpNode);
             }
         }
+        fin.close();
+
+//        std::ofstream fout2(fileName+".txt");
+//        fout2<<"nhaps:"<<nhaps<<std::endl;
+//        fout2<<"nsnps"<<nsnps<<std::endl;
+//        for (int i = 0; i <nsnps ; ++i) {
+//            fout2<<i<<"th snp node size:"<<StateNodeMat[i].size()<<std::endl;
+//            for (int j = 0; j <StateNodeMat[i].size(); ++j) {
+//                fout2<<j<<"th node:"<<StateNodeMat[i][j]->ToString()<<std::endl;
+//            }
+//        }
+//        fout2<<std::endl;
+//        fout2<<std::endl;
+//        fout2.close();
     }
 };
 

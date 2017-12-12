@@ -15,9 +15,10 @@ class PBWTHaplotyper : public ShotgunHaplotyper{
 public:
     std::string loadGraph="Empty";//indicate if build graph from previously built graph
     std::string outputPrefix="Empty";
-	bool onlyHeterSite;
-    bool geneticMapAvailable;
-    int prefixLength;
+	bool onlyHeterSite=false;
+    bool geneticMapAvailable=false;
+    int prefixLength=0;
+    int phasedForByRef=0;
 
     GeneticDistanceMap GDMap;
 
@@ -76,6 +77,7 @@ public:
 	int ExtractHeterSites(int individualToProcess);
 	int FillHeterSitesBack(int individualToProcess);
     //Memory management functions
+    bool SetErrorAndTheta(std::vector<double> &holderError,std::vector<double> &holderTheta);
     bool AllocateMemory(int nIndividuals, int nMarkers);
 //    virtual void EstimateMemoryInfo(int Individuals, int Markers, int States, bool Compact, bool Phased);
 //    virtual void RetrieveMemoryBlock(int marker);
@@ -345,13 +347,15 @@ public:
     inline void DestroyPvalueMatrix()
     {
         //KS table
-        for (int i = 1; i <=100; ++i) {
-            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
-                delete [] PvalueMatrix[i][j];
+        if(PvalueMatrix) {
+            for (int i = 1; i <= 100; ++i) {
+                for (int j = i; j < (int) floor(10000.0 / i) + 1; ++j) {
+                    delete[] PvalueMatrix[i][j];
+                }
+                delete[] PvalueMatrix[i];
             }
-            delete [] PvalueMatrix[i];
+            delete[] PvalueMatrix;
         }
-        delete [] PvalueMatrix;
     }
 
 
