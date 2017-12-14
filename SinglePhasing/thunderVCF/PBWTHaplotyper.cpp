@@ -1,7 +1,7 @@
 //
 // Created by Fan Zhang on 8/6/15.
 //
-
+#include "Pedigree.h"
 #include "PBWTHaplotyper.h"
 #include "MemoryAllocators.h"
 
@@ -393,7 +393,7 @@ class SamplingException: public std::exception
         return "Current sample encountered unexpected sampling space!";
     }
 } samplingException;
-int PBWTHaplotyper::LoopThroughChromosomesRecomb(const Pedigree &ped) {
+int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
 
     ResetCrossovers();
 
@@ -428,7 +428,7 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb(const Pedigree &ped) {
             catch (std::exception &e)
             {
                 fprintf(stderr,"%dth individual(%s) phasing failed!",i,ped[i].pid.c_str());
-                fprintf(stderr,e.what());
+                fprintf(stderr,"%s\n",e.what());
             }
 
 #ifdef _DEBUG

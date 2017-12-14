@@ -49,7 +49,7 @@ public:
     void PrepareRefSetPBWTWrapper();
 
     int LoopThroughChromosomesHighPrecision();
-    int LoopThroughChromosomesRecomb(const Pedigree &ped);
+    int LoopThroughChromosomesRecomb(Pedigree &ped);
     int LoopThroughChromosomesSingleRound();
 
 
