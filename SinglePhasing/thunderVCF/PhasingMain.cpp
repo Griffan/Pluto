@@ -1371,6 +1371,7 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
         error(e.what());
     }
 }
+
 int BuildGraph(int argc, char **argv) {
 
     String outfile("mach1.out"), phasedfile("Empty"), pidIncludeFromUnphased(
@@ -1657,7 +1658,7 @@ int PhaseByRefGraph(int argc, char **argv) {
     engine.loadGraph=std::string(phasedfile.c_str())+".DAG";
 
 //            engine.LoopThroughChromosomesSingleRound();
-    engine.LoopThroughChromosomesRecomb();
+    engine.LoopThroughChromosomesRecomb(ped);
 
 
     SetCrashExplanation("outputing solution");
@@ -1959,7 +1960,7 @@ int PhasingMain(int argc, char **argv) {
 
         if (isSingleRound)
 //            engine.LoopThroughChromosomesSingleRound();
-            engine.LoopThroughChromosomesRecomb();
+        engine.LoopThroughChromosomesRecomb(<#initializer#>);
         else
             engine.LoopThroughChromosomesHighPrecision();
 

@@ -606,7 +606,7 @@ public:
 
 //    PBWTWrapper(const char ** haps, int nhaps, int nsnps);
     PBWTWrapper(int nhaps, int nsnps, float ***_PvalueMatrix, int prefixLen);
-   PBWTWrapper(int nhaps, int nsnps);
+    PBWTWrapper(int nhaps, int nsnps);
 
     int CursorForwards();
     int CursorBackwards();
@@ -629,7 +629,7 @@ public:
         return false;
     }
 
-//    int LabelNoSiblingCluster(int site);
+//  int LabelNoSiblingCluster(int site);
 //	int UpdateTransVector(int site);
 
     bool IsEditDistanceOK(int stateA, int stateB, int index, int thresh);

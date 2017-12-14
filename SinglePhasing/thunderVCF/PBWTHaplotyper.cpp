@@ -385,7 +385,15 @@ int PBWTHaplotyper::LoopThroughChromosomesHighPrecision() {
     return 0;
 }
 
-int PBWTHaplotyper::LoopThroughChromosomesRecomb() {
+#include <exception>
+class SamplingException: public std::exception
+{
+    virtual const char* what() const throw()
+    {
+        return "Current sample encountered unexpected sampling space!";
+    }
+} samplingException;
+int PBWTHaplotyper::LoopThroughChromosomesRecomb(const Pedigree &ped) {
 
     ResetCrossovers();
 
@@ -408,12 +416,19 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb() {
                //Wrapper->PrintVector(Wrapper->a[Wrapper->N-7],"last a array");
            }
 #endif
-            fprintf(stderr, "[Recomb]phasing individual %d...\n", i);
-            ForwardAlgorithmRec();
-            BackwardSamplingRec(&globalRandom, individuals - 1, haplotypes);
+            fprintf(stderr, "[%s]phasing individual %d...\n",__FUNCTION__,i);
+            try {
+                ForwardAlgorithmRec();
+                BackwardSamplingRec(&globalRandom, individuals - 1, haplotypes);
 //            BackwardSamplingRecVitebi(&globalRandom, individuals - 1, haplotypes);
-            for (int j = 0; j < nSampleCopy; ++j) {//n copy per individual
-                BackwardSamplingRec(&globalRandom, j + i * nSampleCopy, sampledHaps);
+                for (int j = 0; j < nSampleCopy; ++j) {//n copy per individual
+                    BackwardSamplingRec(&globalRandom, j + i * nSampleCopy, sampledHaps);
+                }
+            }
+            catch (std::exception &e)
+            {
+                fprintf(stderr,"%dth individual(%s) phasing failed!",i,ped[i].pid.c_str());
+                fprintf(stderr,e.what());
             }
 
 #ifdef _DEBUG
@@ -428,7 +443,7 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb() {
         }
     }
     clock_t t = clock();
-    fprintf(stderr,"[Recomb]forward algorithm and sampling time:%.2f sec\n", (float) (t - t1) / CLOCKS_PER_SEC);
+    fprintf(stderr,"[%s]forward algorithm and sampling time:%.2f sec\n", __FUNCTION__,(float) (t - t1) / CLOCKS_PER_SEC);
     if (isRev) ReverseInput();
     return 0;
 }
@@ -1954,6 +1969,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec() {
     return 0;
 }
 
+
 int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sampledHaps) {
 
     double choice(0.);
@@ -2099,12 +2115,14 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int SampleIndex, char **sa
             SAMPLE_BREAK:
             ;
         }
-        if (sum < choice)
+        if (sum < choice) {
             fprintf(stderr,
                     "inside marker:%d\ttestSum:%g\tsum:%g\tchoice:%g\t(%d,%d)\ttotalValue:%g\tsampled:%d\tsubSum:%g\trecRate:%g\tbaseProb:%g\tfwdValueSum:%g\n",
                     i, testSum, sum, choice, sampledParent0, sampledParent1, sampledFwd, sampled, subSum,
                     recRate,
                     baseProb, fwdValueSum[i]);
+            throw samplingException;
+        }
     }
 
     ImputeAlleles(0, sampledParent0, sampledParent1, rand, SampleIndex, sampledHaps);

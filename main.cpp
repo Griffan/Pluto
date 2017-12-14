@@ -5,7 +5,10 @@ using namespace std;
 
 int usage()
 {
-
+    fprintf(stderr,"Usage:\n");
+    fprintf(stderr,"\tPluto oneStop\n");
+    fprintf(stderr,"\tPluto index\n");
+    fprintf(stderr,"\tPluto phase\n");
 }
 
 int main(int argc, char ** argv) {
