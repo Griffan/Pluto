@@ -428,7 +428,7 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb() {
         }
     }
     clock_t t = clock();
-    printf("[Recomb]forward algorithm and sampling time:%.2f sec\n", (float) (t - t1) / CLOCKS_PER_SEC);
+    fprintf(stderr,"[Recomb]forward algorithm and sampling time:%.2f sec\n", (float) (t - t1) / CLOCKS_PER_SEC);
     if (isRev) ReverseInput();
     return 0;
 }
@@ -443,9 +443,10 @@ void PBWTHaplotyper::ConstructGraph() {
             delete Wrapper;
             Wrapper = nullptr;
         }
-        Wrapper = new PBWTWrapper(2 * phasedForByRef, markers, PvalueMatrix, prefixLength);
-        Wrapper->ReleaseWrapperMemory();
-        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
+        //Wrapper = new PBWTWrapper(2 * phasedForByRef, markers, PvalueMatrix, prefixLength);
+        //Wrapper->ReleaseWrapperMemory();
+        Wrapper = new PBWTWrapper(2 * phasedForByRef, markers);
+	Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
         Wrapper->Graph.ReadContainer(loadGraph);
         //for debug
 //        loadGraph="reference.panel.DAG";
@@ -457,7 +458,7 @@ void PBWTHaplotyper::ConstructGraph() {
 //        Wrapper->Graph.WriteContainer(loadGraph);
         //for debug
         clock_t t1 = clock();
-        printf("load graph time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
+        fprintf(stderr,"load graph time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     }
     else {
         clock_t t = clock();
@@ -575,7 +576,7 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWTWithHeterOnly() {
 //            ScoreLeftConditional();
             ForwardAlgorithm();
             t = clock();
-            printf("forward algorithm time:%.2f sec\n", (float) (t - t1) / CLOCKS_PER_SEC);
+            fprintf(stderr,"forward algorithm time:%.2f sec\n", (float) (t - t1) / CLOCKS_PER_SEC);
 
 //            SampleChromosomes(&globalRandom);
             BackwardSampling(&globalRandom, individuals - 1, haplotypes);
@@ -584,7 +585,7 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWTWithHeterOnly() {
                 BackwardSampling(&globalRandom, j + i * nSampleCopy, sampledHaps);
             }
             t1 = clock();
-            printf("sampling time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
+            fprintf(stderr,"sampling time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
             //exit(EXIT_SUCCESS);
 
 //            if (updateDiseaseScores && diseaseCount)
@@ -2191,12 +2192,19 @@ int PBWTHaplotyper::FillHeterSitesBack(int individualToProcess) {
 
 
 //memory management
-bool PBWTHaplotyper::SetErrorAndTheta(std::vector<double> &holderError,std::vector<double> &holderTheta)
+bool PBWTHaplotyper::SetErrorAndTheta(std::vector<float> &holderError,std::vector<float> &holderTheta)
 {
     for (int i = 0; i < markers - 1; i++)
-        thetas[i] = holderTheta[i];
-    for (int i = 0; i < markers; i++)
-        SetErrorRate(i, holderError[i]);
+    {
+        thetas[i] = holderTheta[i+1]; 
+	SetErrorRate(i, holderError[i]);
+//	fprintf(stderr,"out of %d, marker %d:%f\n",markers,i,holderError[i]);
+    }
+    SetErrorRate(markers-1,holderError[markers-1]);
+//    fprintf(stderr,"got here!\n");
+    holderError.clear();
+    holderTheta.clear();
+    return true;
 }
 bool PBWTHaplotyper::AllocateMemory(int persons, int m)//for GraphConstruct
 {

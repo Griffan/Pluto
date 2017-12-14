@@ -701,7 +701,7 @@ void LoadUnphasedPolymorphicSites(const String &filename) {
 }
 
 void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, int maxPhred, PBWTHaplotyper &engine) {
-    printf("starting LoadGenotypeFromUnphasedVCF\n\n");
+//printf("starting LoadGenotypeFromUnphasedVCF\n\n");
     try {
         VcfFile *pVcf = new VcfFile;
         pVcf->bSiteOnly = false;
@@ -1043,8 +1043,8 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
 
 
 //graph reading version
-std::vector<double> errorRateHolder;
-std::vector<double> transRateHolder;
+std::vector<float> errorRateHolder;
+std::vector<float> transRateHolder;
 void LoadRefPanelPolymorphicSites(const std::string &filename) {
     try {
         std::ifstream fin(filename+".site");
@@ -1074,7 +1074,7 @@ void LoadRefPanelPolymorphicSites(const std::string &filename) {
     }
 }
 void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, PBWTHaplotyper &engine,double defaultErrorRate, double defaultTransRate) {
-    printf("starting LoadGenotypeFromUnphasedVCF\n\n");
+    //printf("starting LoadGenotypeFromUnphasedVCF\n\n");
     try {
         VcfFile *pVcf = new VcfFile;
         pVcf->bSiteOnly = false;
@@ -1426,7 +1426,7 @@ int BuildGraph(int argc, char **argv) {
     engine.nSampleCopy = samplingRounds;
     engine.onlyHeterSite = onlyHeterSite;
     engine.prefixLength = prefixLength;
-    engine.outputPrefix = std::string(outfile.c_str())+".DAG";
+    engine.outputPrefix = std::string(phasedfile.c_str())+".DAG";
 
     SetCrashExplanation("loading Pvalue Matrix");
 
@@ -1537,8 +1537,8 @@ int PhaseByRefGraph(int argc, char **argv) {
 
     BEGIN_LONG_PARAMETERS(longParameters)
                     LONG_PARAMETER_GROUP("Input Files")
-                    LONG_STRINGPARAMETER("unphasedVcf", &unphasedfile)
-                    LONG_STRINGPARAMETER("refVcf", &phasedfile)
+                    LONG_STRINGPARAMETER("unphasedVCF", &unphasedfile)
+                    LONG_STRINGPARAMETER("refVCF", &phasedfile)
                     LONG_PARAMETER_GROUP("Optional Files")
                     LONG_STRINGPARAMETER("includeUnphasedIDs", &pidIncludeFromUnphased)
                     LONG_STRINGPARAMETER("includePhasedIDs", &pidIncludeFromPhased)
@@ -1552,7 +1552,6 @@ int PhaseByRefGraph(int argc, char **argv) {
                     LONG_PARAMETER_GROUP("Haplotyper")
                     LONG_DOUBLEPARAMETER("errorRate", &errorRate)
                     LONG_DOUBLEPARAMETER("transRate", &transRate)
-                    LONG_PARAMETER("compact", &compact)
                     LONG_PARAMETER("fixTrans", &fixTrans)
                     LONG_PARAMETER("onlyHeterSite", &onlyHeterSite)
                     LONG_PARAMETER_GROUP("Phasing")
@@ -1565,10 +1564,6 @@ int PhaseByRefGraph(int argc, char **argv) {
 
     pl.Add(new LongParameters("Available Options", longParameters));
 
-    pl.Add(new HiddenString('m', "Map File", mapfile));
-    pl.Add(new HiddenString('o', "Output File", outfile));
-    pl.Add(new HiddenInteger('r', "Haplotyping Rounds", rounds));
-    pl.Add(new HiddenDouble('e', "Error Rate", errorRate));
 
     pl.Read(argc, argv);
     pl.Status();
@@ -1622,7 +1617,7 @@ int PhaseByRefGraph(int argc, char **argv) {
 
     fprintf(stderr,"Load information on %d polymorphic sites\n\n", Pedigree::markerCount);
 
-    SetCrashExplanation("allocating memory for haplotype engine and consensus builder");
+    SetCrashExplanation("allocating memory for haplotype engine");
 
 //    engine.EstimateMemoryInfo(ped.count, ped.markerCount, states, compact, false);
     engine.AllocateMemory(ped.count,ped.markerCount);
@@ -1641,17 +1636,17 @@ int PhaseByRefGraph(int argc, char **argv) {
     SetCrashExplanation("searching for initial haplotype set");
 
     if (inputPhased) {
-        printf("Loading phased information from the input VCF file\n\n");
+        fprintf(stderr,"Loading phased information from the input VCF file\n\n");
         engine.LoadHaplotypesFromVCF(unphasedfile);
 //        engine.InitialSampleCopy(NULL);
     }
     else if (phaseByRef) {
-        printf("Assigning haplotypes based on reference genome\n\n");
+        fprintf(stderr,"Assigning haplotypes based on reference genome\n\n");
         engine.PhaseByReferenceSetup();
 //        engine.InitialSampleCopy(NULL);
     }
     else {
-        printf("Assigning random set of haplotypes\n\n");
+        fprintf(stderr,"Assigning random set of haplotypes\n\n");
         engine.RandomSetup(NULL);
 //        engine.InitialSampleCopy(NULL);
     }
@@ -1659,7 +1654,7 @@ int PhaseByRefGraph(int argc, char **argv) {
 
     SetCrashExplanation("haplotyping procedure");
 
-    engine.loadGraph=std::string(outfile.c_str())+".DAG";
+    engine.loadGraph=std::string(phasedfile.c_str())+".DAG";
 
 //            engine.LoopThroughChromosomesSingleRound();
     engine.LoopThroughChromosomesRecomb();
@@ -1715,8 +1710,8 @@ int PhasingMain(int argc, char **argv) {
 
     BEGIN_LONG_PARAMETERS(longParameters)
                     LONG_PARAMETER_GROUP("Shotgun Sequences")
-                    LONG_STRINGPARAMETER("unphasedVcf", &unphasedfile)
-                    LONG_STRINGPARAMETER("refVcf", &phasedfile)
+                    LONG_STRINGPARAMETER("unphasedVCF", &unphasedfile)
+                    LONG_STRINGPARAMETER("refVCF", &phasedfile)
                     LONG_INTPARAMETER("maxPhred", &maxPhred)
                     LONG_PARAMETER_GROUP("Optional Files")
                     LONG_STRINGPARAMETER("includeUnphasedIDs", &pidIncludeFromUnphased)

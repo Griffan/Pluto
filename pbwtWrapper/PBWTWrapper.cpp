@@ -24,7 +24,14 @@ const float T_CRITICAL_VALUE[] =
         };
 
 float P_thresh=0.6;
-
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps): Graph(nsnps, nhaps)
+{
+	nSamples = nhaps / 2;
+	nMarkers = nsnps;
+	N = nsnps;
+	M = nhaps;
+	haplotype = nullptr;
+}
 PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix, int prefixLen)
         : prefixLength(prefixLen), Graph(nsnps, nhaps),
           a(nhaps, 0), alpha(a),

@@ -77,7 +77,7 @@ public:
 	int ExtractHeterSites(int individualToProcess);
 	int FillHeterSitesBack(int individualToProcess);
     //Memory management functions
-    bool SetErrorAndTheta(std::vector<double> &holderError,std::vector<double> &holderTheta);
+    bool SetErrorAndTheta(std::vector<float> &holderError,std::vector<float> &holderTheta);
     bool AllocateMemory(int nIndividuals, int nMarkers);
 //    virtual void EstimateMemoryInfo(int Individuals, int Markers, int States, bool Compact, bool Phased);
 //    virtual void RetrieveMemoryBlock(int marker);

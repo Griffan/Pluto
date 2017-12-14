@@ -298,6 +298,7 @@ public:
             fin.read((char*)&k,sizeof(StateIndex));
             AddParentNode(k);
         }
+	return 0;
     }
 };
 
@@ -447,6 +448,7 @@ public:
 //        fout2<<std::endl;
 //        fout2<<std::endl;
 //        fout2.close();
+        return 0;
     }
 };
 
@@ -458,11 +460,12 @@ typedef std::map<int,std::map<int,bool> > EDGE;
 class PBWTWrapper
 {
 public:
-    int N,M;//numSites,numHaps
-    int nSamples;
-    int nMarkers;
+    int N=0;//numSites
+    int M=0;//numHaps
+    int nSamples=0;
+    int nMarkers=0;
 
-    float *** PvalueMatrix;//10k X 10k
+    float *** PvalueMatrix = nullptr;//10k X 10k
     inline float GetPValue(int n1, int n2, double D)
     {
         if(n1>n2) std::swap(n1,n2);
@@ -470,7 +473,7 @@ public:
         return PvalueMatrix[n1][n2][(a<1?1:a)-1];
     }
 
-    int prefixLength;
+    int prefixLength=0;
 
     StateNodeContainer Graph;
 
@@ -603,7 +606,7 @@ public:
 
 //    PBWTWrapper(const char ** haps, int nhaps, int nsnps);
     PBWTWrapper(int nhaps, int nsnps, float ***_PvalueMatrix, int prefixLen);
-
+   PBWTWrapper(int nhaps, int nsnps);
 
     int CursorForwards();
     int CursorBackwards();
