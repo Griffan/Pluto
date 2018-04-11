@@ -1425,9 +1425,8 @@ int BuildGraph(int argc, char **argv) {
 
     PBWTHaplotyper engine;//declaration of engine, also will call default constructor
     engine.nSampleCopy = samplingRounds;
-    engine.onlyHeterSite = onlyHeterSite;
     engine.prefixLength = prefixLength;
-    engine.outputPrefix = std::string(phasedfile.c_str())+".DAG";
+    engine.outputPrefix = std::string(phasedfile.c_str());
 
     SetCrashExplanation("loading Pvalue Matrix");
 
@@ -1528,6 +1527,8 @@ int PhaseByRefGraph(int argc, char **argv) {
 
     bool onlyHeterSite = false;
 
+    int nThread = 4;
+
     SetupCrashHandlers();
     SetCrashExplanation("reading command line options");
 
@@ -1551,6 +1552,7 @@ int PhaseByRefGraph(int argc, char **argv) {
                     LONG_PARAMETER_GROUP("Markov Sampler")
                     LONG_INTPARAMETER("seed", &seed)
                     LONG_PARAMETER_GROUP("Haplotyper")
+                    LONG_INTPARAMETER("nThread", &nThread)
                     LONG_DOUBLEPARAMETER("errorRate", &errorRate)
                     LONG_DOUBLEPARAMETER("transRate", &transRate)
                     LONG_PARAMETER("fixTrans", &fixTrans)
@@ -1577,9 +1579,9 @@ int PhaseByRefGraph(int argc, char **argv) {
 
     PBWTHaplotyper engine;//declaration of engine, also will call default constructor
     engine.nSampleCopy = samplingRounds;
-    engine.onlyHeterSite = onlyHeterSite;
     engine.geneticMapAvailable = false;
     engine.prefixLength = prefixLength;
+    engine.nThread = nThread;
 
     SetCrashExplanation("loading information of individuals");
     // Setup and load a list of individuals
@@ -1657,7 +1659,6 @@ int PhaseByRefGraph(int argc, char **argv) {
 
     engine.loadGraph=std::string(phasedfile.c_str())+".DAG";
 
-//            engine.LoopThroughChromosomesSingleRound();
     engine.LoopThroughChromosomesRecomb(ped);
 
 
@@ -1774,14 +1775,10 @@ int PhasingMain(int argc, char **argv) {
     // Setup random seed ...
     globalRandom.Reset(seed);
 
-
-
-
     if (rounds < burnin) burnin = 0;
 
     PBWTHaplotyper engine;//declaration of engine, also will call default constructor
     engine.nSampleCopy = samplingRounds;
-    engine.onlyHeterSite = onlyHeterSite;
     engine.geneticMapAvailable = false;
     engine.prefixLength = prefixLength;
 
@@ -1881,7 +1878,7 @@ int PhasingMain(int argc, char **argv) {
 
     engine.EstimateMemoryInfo(ped.count, ped.markerCount, states, compact, false);
     engine.ShotgunHaplotyper::AllocateMemory(ped.count, states, ped.markerCount, (float) transRate);
-    engine.InitAuxillary();
+//    engine.InitAuxillary();
 
     SetCrashExplanation("loading genotype");
     fprintf(stderr,"Copy unphased genotypes into haplotyping engine\n");
@@ -1959,8 +1956,7 @@ int PhasingMain(int argc, char **argv) {
 //    engine.loadGraph="HG00535.phased.DAG";
 
         if (isSingleRound)
-//            engine.LoopThroughChromosomesSingleRound();
-        engine.LoopThroughChromosomesRecomb(<#initializer#>);
+            engine.LoopThroughChromosomesRecomb(ped);
         else
             engine.LoopThroughChromosomesHighPrecision();
 

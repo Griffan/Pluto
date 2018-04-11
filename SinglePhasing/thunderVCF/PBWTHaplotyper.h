@@ -11,73 +11,116 @@
 #include "GeneticDistanceMap.h"
 #include "GzipFileType.h"
 
-class PBWTHaplotyper : public ShotgunHaplotyper{
+class PBWTHaplotyper : public ShotgunHaplotyper {
 public:
-    std::string loadGraph="Empty";//indicate if build graph from previously built graph
-    std::string outputPrefix="Empty";
-	bool onlyHeterSite=false;
-    bool geneticMapAvailable=false;
-    int prefixLength=0;
-    int phasedForByRef=0;
+    std::string loadGraph = "Empty";//indicate if build graph from previously built graph
+    std::string outputPrefix = "Empty";
+    bool geneticMapAvailable = false;
+    int prefixLength = 0;
+    int phasedForByRef = 0;
+    int nThread = 0;
 
     GeneticDistanceMap GDMap;
 
     PBWTHaplotyper(int nhaps, int nsnps);
-	PBWTHaplotyper();
-	void InitAuxillary();
+
+    PBWTHaplotyper();
+
+//	void InitAuxillary();
     ~PBWTHaplotyper();
 
     /*!InitialHaplotypeByConsensus
      * copy consencus haplotypes into haplotypes char[][], and reset consensus
      * @param consensus
      */
-    void InitialHaplotypeByConsensus(ConsensusBuilder& consensus)
-    {
-        for (int i = 0; i < (individuals-phased)*2; ++i) {
-            for (int j = 0; j < markers ; ++j) {
+    void InitialHaplotypeByConsensus(ConsensusBuilder &consensus) {
+        for (int i = 0; i < (individuals - phased) * 2; ++i) {
+            for (int j = 0; j < markers; ++j) {
                 haplotypes[i][j] = consensus.consensus[i][j];
             }
         }
-        consensus.stored=0;
+        consensus.stored = 0;
     }
 
     void ConstructGraph();
 
-    void InitialSampleCopy(Random * rand);
+    void InitialSampleCopy(Random *rand);
+
 //    void RandomSetup(Random * rand);
     void SwapIndividuals(int a, int b);
+
     void PrepareRefSetPBWTWrapper();
 
     int LoopThroughChromosomesHighPrecision();
-    int LoopThroughChromosomesRecomb(const Pedigree &ped);
+
+    int LoopThroughChromosomesRecomb(Pedigree &ped);
+
     int LoopThroughChromosomesSingleRound();
 
 
-	int LoopThroughChromosomesViaPBWTWithHeterOnly();
+    int LoopThroughChromosomesViaPBWTWithHeterOnly();
 
 //	void Transpose(int site, float * source, float * dest);
 
-	virtual void RandomSetup(Random * rand = NULL);
+    virtual void RandomSetup(Random *rand = NULL);
 //    virtual void ScoreLeftConditional();
 
 //    virtual void ConditionOnData(float * matrix, int marker, char phred11, char phred12, char phred22);
 
-    virtual void ImputeAlleles(int marker, int state1, int state2, Random *rand, int currentIndividual, char** haps);
-	virtual void ImputeAllelesRaw(int marker, int state1, int state2, Random *rand, int currentIndividual, char** haps);
-    virtual void ImputeAllele(int haplotype, int marker, int state, char** haps);
-    virtual void FillPath(int haplotype, int fromMarker, int toMarker, int state, char** haps);
+    virtual void ImputeAlleles(int marker, int state1, int state2, Random *rand, int currentIndividual, char **haps);
+
+    virtual void ImputeAllelesRaw(int marker, int state1, int state2, Random *rand, int currentIndividual, char **haps);
+
+    virtual void ImputeAllele(int haplotype, int marker, int state, char **haps);
+
+    virtual void FillPath(int haplotype, int fromMarker, int toMarker, int state, char **haps);
 
 
-    void SetUseRev(bool useOrNot){isRev=useOrNot;}
-	bool ReverseInput();
+    void SetUseRev(bool useOrNot) { isRev = useOrNot; }
 
-    void SetOnlyGT(bool onlyOrNot){onlyGT=onlyOrNot;}
-    bool GetOnlyGT(){ return onlyGT;}
+    bool ReverseInput();
 
-	int ExtractHeterSites(int individualToProcess);
-	int FillHeterSitesBack(int individualToProcess);
+    void SetOnlyGT(bool onlyOrNot) { onlyGT = onlyOrNot; }
+
+    bool GetOnlyGT() { return onlyGT; }
+
+#ifdef HETERSITE
+    bool onlyHeterSite=false;
+    //subset markers related
+    char** tmpHaps= nullptr;
+    char ** tmpGeno= nullptr;
+    float* tmpPenetrance = nullptr;
+    int tmpMarkers;
+    double max_num;
+    std::vector<int> relativeIndexToAbsolute;
+    std::unordered_map<int,int> absoluteIndexToRelative;
+    inline int SwapTempHaps()
+    {
+        char** tmpH = haplotypes;
+        haplotypes=tmpHaps;
+        tmpHaps=tmpH;
+
+        tmpH=genotypes;
+        genotypes=tmpGeno;
+        tmpGeno=tmpH;
+
+        float * tmpP=penetrances;
+        penetrances=tmpPenetrance;
+        tmpPenetrance=tmpP;
+
+        int tmpM=markers;
+        markers=tmpMarkers;
+        tmpMarkers=tmpM;
+        return 0;
+    }
+
+    int ExtractHeterSites(int individualToProcess);
+    int FillHeterSitesBack(int individualToProcess);
+#endif
+
     //Memory management functions
-    bool SetErrorAndTheta(std::vector<float> &holderError,std::vector<float> &holderTheta);
+    bool SetErrorAndTheta(std::vector<float> &holderError, std::vector<float> &holderTheta);
+
     bool AllocateMemory(int nIndividuals, int nMarkers);
 //    virtual void EstimateMemoryInfo(int Individuals, int Markers, int States, bool Compact, bool Phased);
 //    virtual void RetrieveMemoryBlock(int marker);
@@ -87,126 +130,104 @@ public:
     virtual bool ForceMemoryAllocation();
 
     //inline section
-	inline float GetTransitionProb(int site, StateIndex from, StateIndex to) {
-        uchar allele=GetAllele(site+1,to);
-		if((int)Wrapper->Graph.StateNodeMat.size()<= site) {fprintf(stderr,"site %d doesn't exist!\n",site);abort();}
-		if((int)Wrapper->Graph.StateNodeMat[site].size()<=from)
-        {
-            fprintf(stderr,"site:%d, from:%d states too large!\n",site,from);
+    inline float GetTransitionProb(int site, StateIndex from, StateIndex to) {
+        uchar allele = GetAllele(site + 1, to);
+        if ((int) Wrapper->Graph.StateNodeMat.size() <= site) {
+            fprintf(stderr, "site %d doesn't exist!\n", site);
+            abort();
+        }
+        if ((int) Wrapper->Graph.StateNodeMat[site].size() <= from) {
+            fprintf(stderr, "site:%d, from:%d states too large!\n", site, from);
             return 0.f;
         }
-        if(Wrapper->Graph.StateNodeMat[site][from]->GetChildNodeIndex(allele)== -1||Wrapper->Graph.StateNodeMat[site][from]->GetChildNodeIndex(allele)!=to)
-		{
-            fprintf(stderr,"site:%d from:%d to:%d states too large!\n",site,from,to);
+        if (Wrapper->Graph.StateNodeMat[site][from]->GetChildNodeIndex(allele) == -1 ||
+            Wrapper->Graph.StateNodeMat[site][from]->GetChildNodeIndex(allele) != to) {
+            fprintf(stderr, "site:%d from:%d to:%d states too large!\n", site, from, to);
             return 0.f;
         }
         return Wrapper->Graph.GetProbToCurrentNodeConditionalOnParentNode(site, from, allele);//site is for parent
-	}
-    inline float GetHapProbAt(int site,int index)
-    {
-        return Wrapper->GetHapProbAt(site,index);
     }
-    inline float GetEdgeProbAt(int site, StateIndex from, uchar allele)
-    {
-        return Wrapper->Graph.GetEdgeProbFromParentNode(site,from,allele);//
+
+    inline float GetHapProbAt(int site, int index) {
+        return Wrapper->GetHapProbAt(site, index);
     }
-	inline uchar GetAllele(int site, StateIndex state)
-	{
-		return Wrapper->GetAllele(site,state);
-	}
-    inline StateIndex GetChildNode(int site, StateIndex state, uchar allele)
-    {
+
+    inline float GetEdgeProbAt(int site, StateIndex from, uchar allele) {
+        return Wrapper->Graph.GetEdgeProbFromParentNode(site, from, allele);//
+    }
+
+    inline uchar GetAllele(int site, StateIndex state) {
+        return Wrapper->GetAllele(site, state);
+    }
+
+    inline StateIndex GetChildNode(int site, StateIndex state, uchar allele) {
         return Wrapper->Graph.StateNodeMat[site][state]->GetChildNodeIndex(allele);
     }
-    inline ParentSet& GetParentNodes(int site, StateIndex state)
-    {
+
+    inline ParentSet &GetParentNodes(int site, StateIndex state) {
         return Wrapper->Graph.StateNodeMat[site][state]->GetParentIndexSet();
     }
 
-	inline int GetStateNumFrom(int site)
-	{
-		return Wrapper->GetNumStates(site);
-	}
-	inline int GetCurrentIndividualState(int site, int chrom)
-	{
-		return Wrapper->haplotypeCluster[site][2 * (individuals - 1) + chrom];
-	}
-	inline void SetCurrentIndividualState(int site, int chrom, int state)
-	{
-		Wrapper->haplotypeCluster[site][2 * (individuals - 1) + chrom]=state;
-	}
-    inline void UpdateStateNum(int num){
-         states=num;
+    inline int GetStateNumFrom(int site) {
+        return Wrapper->GetNumStates(site);
     }
 
+    inline int GetCurrentIndividualState(int site, int chrom) {
+        return Wrapper->haplotypeCluster[site][2 * (individuals - 1) + chrom];
+    }
+
+    inline void SetCurrentIndividualState(int site, int chrom, int state) {
+        Wrapper->haplotypeCluster[site][2 * (individuals - 1) + chrom] = state;
+    }
+
+    inline void UpdateStateNum(int num) {
+        states = num;
+    }
+
+    double GetGL(int individual, int marker, uchar allele1, uchar allele2);
+
+    float GetRecombRate(int marker);
     //HMM version two
 
     struct pairhash {
     public:
-        template <typename T, typename U>
+        template<typename T, typename U>
         long operator()(const std::pair<T, U> &x) const//Cantor pairing function:
         {
-            int a=std::hash<T>()(x.first);
-            int b=std::hash<U>()(x.second);
-            unsigned long A = (unsigned long)(a >= 0 ? 2 * (long)a : -2 * (long)a - 1);
-            unsigned long B = (unsigned long)(b >= 0 ? 2 * (long)b : -2 * (long)b - 1);
-            long C = (long)((A >= B ? A * A + A + B : A + B * B) / 2);
+            int a = std::hash<T>()(x.first);
+            int b = std::hash<U>()(x.second);
+            unsigned long A = (unsigned long) (a >= 0 ? 2 * (long) a : -2 * (long) a - 1);
+            unsigned long B = (unsigned long) (b >= 0 ? 2 * (long) b : -2 * (long) b - 1);
+            long C = (long) ((A >= B ? A * A + A + B : A + B * B) / 2);
             return a < 0 && b < 0 || a >= 0 && b >= 0 ? C : -C - 1;
         }
     };
-    typedef std::unordered_map<std::pair<StateIndex ,StateIndex>,float,pairhash> Source;//(nodeA,nodeB)->fwd
-    typedef std::unordered_set<std::pair<StateIndex,StateIndex>,pairhash> NodePair;//(nodeA,nodeB)
-    typedef std::unordered_map<StateIndex,std::unordered_map<StateIndex,Source> > ChildToSource;
-    typedef std::unordered_map<std::pair<StateIndex,StateIndex>,Source,pairhash> DestToSource;
 
-    std::vector<ChildToSource> genuienParents;
-    //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
-    std::vector<DestToSource> parentsNodeVec;
+    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, float, pairhash> Source;//(nodeA,nodeB)->fwd
+    typedef std::unordered_set<std::pair<StateIndex, StateIndex>, pairhash> NodePair;//(nodeA,nodeB)
+    typedef std::unordered_map<StateIndex, std::unordered_map<StateIndex, Source> > ChildToSource;
+    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, Source, pairhash> DestToSource;
 
-    std::vector<float> fwdValueSum;
-    std::vector<std::unordered_map<int,float> > fwdValueNode1Sum;
-    std::vector<std::unordered_map<int,float> > fwdValueNode2Sum;
-    std::vector<bool> isRec;
-    float SumFwdValueFromOriginVec(const Source& a)
-    {
-        if (a.size() ==0) return 0.f;
-        float sum(0.f);
-        for (auto kv:a) {
-            sum+=kv.second;
-        }
-        return sum;
-    }
-
-    int InitialFwdValues();
-    int ResetFwdValues();
-    double GetGL(int individual, int marker, uchar allele1, uchar allele2);
-    float GetRecombRate(int marker);
-
-
-    //without recombination
-    int ForwardAlgorithm();
-    int BackwardSampling(Random *rand, int SampleIndex, char** sampledHaps);
-    //with recombination
     class AvailableParentStatePair {
 //        std::vector<NodePair > nextAvailableStatePair;//marker/availablePair
         NodePair::iterator nextAvailableStatePairIter;
 //        int MarkerIndex;
     public:
         int MarkerIndex;
-        std::vector<NodePair > nextAvailableStatePair;//marker/availablePair
-        AvailableParentStatePair(int nmarker):nextAvailableStatePair(nmarker,NodePair()),MarkerIndex(0)
-        {}
-        ~AvailableParentStatePair()
-        {
+        std::vector<NodePair> nextAvailableStatePair;//marker/availablePair
+        AvailableParentStatePair(int nmarker) : nextAvailableStatePair(nmarker, NodePair()), MarkerIndex(0) {}
+
+        ~AvailableParentStatePair() {
             nextAvailableStatePair.clear();
         }
+
         void FillNextAvailableStatePair(std::pair<int, int> p) {
             nextAvailableStatePair[MarkerIndex].insert(p);
         }
 
         void ResetMarkerIndexAt(int index) {
             MarkerIndex = index;
-            nextAvailableStatePairIter=nextAvailableStatePair[MarkerIndex].begin();
+            nextAvailableStatePairIter = nextAvailableStatePair[MarkerIndex].begin();
         }
 
         std::pair<int, int> GetNextAvailableStatePair() {
@@ -216,21 +237,62 @@ public:
         bool IsEnd() {
             return nextAvailableStatePairIter == nextAvailableStatePair[MarkerIndex].end();
         }
-        void NextMarker(){MarkerIndex++;}
-        void PrevMarker(){
+
+        void NextMarker() { MarkerIndex++; }
+
+        void PrevMarker() {
 //            nextAvailableStatePair[MarkerIndex].clear();
             MarkerIndex--;
-            nextAvailableStatePairIter=nextAvailableStatePair[MarkerIndex].begin();}
-        int Size()
-        {
+            nextAvailableStatePairIter = nextAvailableStatePair[MarkerIndex].begin();
+        }
+
+        int Size() {
             return nextAvailableStatePair[MarkerIndex].size();
         }
-        int Assign(NodePair & PairHash)
-        {
+
+        int Assign(NodePair &PairHash) {
             nextAvailableStatePair[MarkerIndex] = PairHash;
         }
     };
-    AvailableParentStatePair availablePair;//available parents at each site
+
+    struct FwdBwdLocalParameter {
+        AvailableParentStatePair availablePair;//available parents at each site
+        std::vector<ChildToSource> genuienParents;
+        //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
+        std::vector<DestToSource> parentsNodeVec;
+
+        std::vector<float> fwdValueSum;
+        std::vector<std::unordered_map<int, float> > fwdValueNode1Sum;
+        std::vector<std::unordered_map<int, float> > fwdValueNode2Sum;
+        std::vector<bool> isRec;
+
+        FwdBwdLocalParameter() : genuienParents(10000, ChildToSource()), parentsNodeVec(10000, DestToSource()),
+                                 availablePair(10000) {
+
+        }
+
+        inline float SumFwdValueFromOriginVec(const Source &a) const {
+            if (a.size() == 0) return 0.f;
+            float sum(0.f);
+            for (auto kv:a) {
+                sum += kv.second;
+            }
+            return sum;
+        }
+    };
+
+    int InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &localParameter);
+
+    int ResetFwdValues(FwdBwdLocalParameter &localParameter);
+
+    int LocalForwadBackWard(int sampleIndex);
+
+    //without recombination
+    int ForwardAlgorithm(int sampleIndex, FwdBwdLocalParameter &localParameter);
+
+    int BackwardSampling(Random *rand, int sampleIndex, char **sampledHaps, FwdBwdLocalParameter localParameter);
+    //with recombination
+#ifdef RECBEAGLE
     /*!ForwadAlgorithmRec()
      * forward algorithm with recombination model added
      * @return
@@ -244,8 +306,10 @@ public:
      * @return
      */
     int BackwardSamplingRecBeagle(Random *rand, int SampleIndex, char **sampledHaps);
+#endif
 
-    int ForwardAlgorithmRec();
+    int ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &localParameter);
+
     /*!BackwardSamplingRec()
      * sampling haplotype while backward algorithm with recombination model added
      * @param rand random number generator
@@ -253,8 +317,10 @@ public:
      * @param sampledHaps char[][] array to store sampled haplotype
      * @return
      */
-    int BackwardSamplingRec(Random *rand, int SampleIndex, char **sampledHaps);
+    int
+    BackwardSamplingRec(Random *rand, int sampleIndex, char **sampledHaps, FwdBwdLocalParameter localParameter);
 
+#ifdef RECBEAGLEVARIANT
     int ForwardAlgorithmRecNew();
     /*!BackwardSamplingRec()
      * sampling haplotype while backward algorithm with recombination model added
@@ -264,50 +330,45 @@ public:
      * @return
      */
     int BackwardSamplingRecNew(Random *rand, int SampleIndex, char** sampledHaps);
-
-	char ** sampledHaps= nullptr;
-	int nSampleCopy;
+#endif
+    char **sampledHaps = nullptr;
+    int nSampleCopy;
 
 
     //KS D value related
 
-    float *** PvalueMatrix= nullptr;//10k X 10k
-    inline int CalculatePvalueMatrix()
-    {
-        std::cerr<<"Enter CalculatePvalueMatrix() "<<std::endl;
-        PvalueMatrix=new float ** [101];
-        for (int i = 1; i <=100; ++i) {
-            PvalueMatrix[i]=new float* [(int)floor(10000.0/i)+1];
-            std::cerr<<"Calculating "<<i<<" thousand"<<std::endl;
-            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
-                PvalueMatrix[i][j]=new float [1000];
+    float ***PvalueMatrix = nullptr;//10k X 10k
+    inline int CalculatePvalueMatrix() {
+        std::cerr << "Enter CalculatePvalueMatrix() " << std::endl;
+        PvalueMatrix = new float **[101];
+        for (int i = 1; i <= 100; ++i) {
+            PvalueMatrix[i] = new float *[(int) floor(10000.0 / i) + 1];
+            std::cerr << "Calculating " << i << " thousand" << std::endl;
+            for (int j = i; j < (int) floor(10000.0 / i) + 1; ++j) {
+                PvalueMatrix[i][j] = new float[1000];
 
-                for(int D=1000;D>0;D--)
-                {
-                    PvalueMatrix[i][j][D-1]=1.-psmirnov2x(double(D)/1000.0, i, j);
+                for (int D = 1000; D > 0; D--) {
+                    PvalueMatrix[i][j][D - 1] = 1. - psmirnov2x(double(D) / 1000.0, i, j);
 //                    std::cerr<<i<<"\t"<<j<<"\t"<<D<<"\t"<<PvalueMatrix[i][j][size_t(D*1000)-1]<<std::endl;
                 }
             }
         }
-        std::cerr<<"Exit CalculatePvalueMatrix() "<<std::endl;
+        std::cerr << "Exit CalculatePvalueMatrix() " << std::endl;
         return 0;
     }
 
-    inline int WritePvalueMatrix(std::string fileName)
-    {
+    inline int WritePvalueMatrix(std::string fileName) {
         //std::fstream fout("/Users/fanzhang/Downloads/PlutoTest/PvalueMatrix",std::ios_base::binary|std::ios_base::out);
-        GzipFileType fout(fileName.c_str(),"w");
-        if(!fout.isOpen())
-        {
-            std::cerr<<"open file "<<fileName<<" failed!"<<std::endl;
+        GzipFileType fout(fileName.c_str(), "w");
+        if (!fout.isOpen()) {
+            std::cerr << "open file " << fileName << " failed!" << std::endl;
             exit(EXIT_FAILURE);
         }
-        for (int i = 1; i <=100 ; ++i) {
-            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
+        for (int i = 1; i <= 100; ++i) {
+            for (int j = i; j < (int) floor(10000.0 / i) + 1; ++j) {
 
-                for(int D=1000;D>0;D--)
-                {
-                    fout.write((char*)&(PvalueMatrix[i][j][D-1]),sizeof(float));
+                for (int D = 1000; D > 0; D--) {
+                    fout.write((char *) &(PvalueMatrix[i][j][D - 1]), sizeof(float));
 //                    std::cerr<<"write:"<<i<<"\t"<<j<<"\t"<<D<<"\t"<<PvalueMatrix[i][j][size_t(D*1000)-1]<<std::endl;
 
                 }
@@ -317,24 +378,21 @@ public:
         return 0;
     }
 
-    inline int ReadPvalueMatrix(std::string fileName)
-    {
+    inline int ReadPvalueMatrix(std::string fileName) {
         //std::fstream fin("/Users/fanzhang/Downloads/PlutoTest/PvalueMatrix",std::ios_base::binary|std::ios_base::in);
-        GzipFileType fin(fileName.c_str(),"r");
-        if(!fin.isOpen())
-        {
-            std::cerr<<"open file "<<fileName<<" failed!"<<std::endl;
-            std::cerr<<"please specify --calPvalueMatrix to obtain PvalueMatrix file!"<<std::endl;
+        GzipFileType fin(fileName.c_str(), "r");
+        if (!fin.isOpen()) {
+            std::cerr << "open file " << fileName << " failed!" << std::endl;
+            std::cerr << "please specify --calPvalueMatrix to obtain PvalueMatrix file!" << std::endl;
             exit(EXIT_FAILURE);
         }
-        PvalueMatrix=new float ** [101];
-        for (int i = 1; i <=100 ; ++i) {
-            PvalueMatrix[i]=new float* [(int)floor(10000.0/i)+1];
-            for (int j =i; j <(int)floor(10000.0/i)+1; ++j) {
-                PvalueMatrix[i][j]=new float [1000];
-                for(int D=1000;D>0;D--)
-                {
-                    fin.read((char*)&(PvalueMatrix[i][j][D-1]),sizeof(float));
+        PvalueMatrix = new float **[101];
+        for (int i = 1; i <= 100; ++i) {
+            PvalueMatrix[i] = new float *[(int) floor(10000.0 / i) + 1];
+            for (int j = i; j < (int) floor(10000.0 / i) + 1; ++j) {
+                PvalueMatrix[i][j] = new float[1000];
+                for (int D = 1000; D > 0; D--) {
+                    fin.read((char *) &(PvalueMatrix[i][j][D - 1]), sizeof(float));
 //                    std::cerr<<"read:"<<i<<"\t"<<j<<"\t"<<D<<"\t"<<PvalueMatrix[i][j][size_t(D*1000)-1]<<std::endl;
 
                 }
@@ -344,10 +402,9 @@ public:
         return 0;
     }
 
-    inline void DestroyPvalueMatrix()
-    {
+    inline void DestroyPvalueMatrix() {
         //KS table
-        if(PvalueMatrix) {
+        if (PvalueMatrix) {
             for (int i = 1; i <= 100; ++i) {
                 for (int j = i; j < (int) floor(10000.0 / i) + 1; ++j) {
                     delete[] PvalueMatrix[i][j];
@@ -360,56 +417,25 @@ public:
 
 
 protected:
+    PBWTWrapper *Wrapper = nullptr;
 
-    PBWTWrapper* Wrapper= nullptr;
-
-    int indexBeingSampled;
-	//subset markers related
-	char** tmpHaps= nullptr;
-	char ** tmpGeno= nullptr;
-    float* tmpPenetrance = nullptr;
-	int tmpMarkers;
-	double max_num;
-
-
-//    double * phred2prob;
-
-	bool isRev = false;
+    bool isRev = false;
     bool onlyGT;
 
-	std::vector<int> relativeIndexToAbsolute;
-	std::unordered_map<int,int> absoluteIndexToRelative;
-	inline int SwapTempHaps()
-	{
-		char** tmpH = haplotypes;
-		haplotypes=tmpHaps;
-		tmpHaps=tmpH;
+    //memory management related
+    std::unordered_map<int, std::vector<float *> > memoryBlockList;//size and list of address
+    std::unordered_map<int, int> numInUse;//size and list of address
+    int totalBlockNum;
 
-		tmpH=genotypes;
-		genotypes=tmpGeno;
-		tmpGeno=tmpH;
+    void GetMemoryBlock(int marker);//revise GetMemoryBlock function
+    float *GetReuseableBlock();//revise GetReuseableBlock function
+    float *GetLargeBlock();
 
-        float * tmpP=penetrances;
-        penetrances=tmpPenetrance;
-        tmpPenetrance=tmpP;
+    void ResetMemoryPool();
 
-		int tmpM=markers;
-		markers=tmpMarkers;
-		tmpMarkers=tmpM;
-		return 0;
-	}
+    void ResetReuseablePool();
 
-	//memory management related
-	std::unordered_map<int, std::vector<float *> > memoryBlockList;//size and list of address
-	std::unordered_map<int, int> numInUse;//size and list of address
-	int totalBlockNum;
-
-	void GetMemoryBlock(int marker);//revise GetMemoryBlock function
-	float* GetReuseableBlock();//revise GetReuseableBlock function
-	float* GetLargeBlock();
-	void ResetMemoryPool();
-	void ResetReuseablePool();
-	void ReleaseMemoryBlock();
+    void ReleaseMemoryBlock();
 
 };
 

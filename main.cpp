@@ -6,15 +6,15 @@ using namespace std;
 int usage()
 {
     fprintf(stderr,"Usage:\n");
-    fprintf(stderr,"\tPluto oneStop\n");
     fprintf(stderr,"\tPluto index\n");
     fprintf(stderr,"\tPluto phase\n");
+    fprintf(stderr,"\tPluto iterative\n");
 }
 
 int main(int argc, char ** argv) {
 
     if (argc < 2) return usage();
-    if (strcmp(argv[1], "oneStop") == 0) return PhasingMain(argc - 1, argv + 1);
+    if (strcmp(argv[1], "iterative") == 0) return PhasingMain(argc - 1, argv + 1);
     else if (strcmp(argv[1], "index") == 0) return BuildGraph(argc - 1, argv + 1);
     else if (strcmp(argv[1], "phase") == 0) return PhaseByRefGraph(argc - 1, argv + 1);
     else {
