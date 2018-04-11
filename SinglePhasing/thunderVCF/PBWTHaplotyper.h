@@ -14,7 +14,7 @@
 #define INDEX 1
 #define PHASE 2
 #define ITERATIVE 4
-#define HASH_RESERVE 8000
+#define HASH_RESERVE 4096
 class PBWTHaplotyper : public ShotgunHaplotyper {
 public:
     std::string loadGraph = "Empty";//indicate if build graph from previously built graph
@@ -274,8 +274,8 @@ public:
 
         FwdBwdLocalParameter() {
             DestToSource dummy;
-            dummy.reserve(2000);
-            parentsNodeVec.assign(HASH_RESERVE, dummy);
+            dummy.reserve(HASH_RESERVE);
+            parentsNodeVec.assign(10000, dummy);
         }
 
         inline float SumFwdValueFromOriginVec(const Source &a) const {
