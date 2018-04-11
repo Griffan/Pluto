@@ -323,7 +323,7 @@ public:
      * @return
      */
     int
-    BackwardSamplingRec(Random *rand, int sampleIndex, char **sampledHaps, FwdBwdLocalParameter localParameter);
+    BackwardSamplingRec(Random *rand, int sampleIndex, char **sampledHaps, FwdBwdLocalParameter &localParameter);
 
 #ifdef RECBEAGLEVARIANT
     int ForwardAlgorithmRecNew();

@@ -416,7 +416,7 @@ void PBWTHaplotyper::ConstructGraph() {
         //Wrapper = new PBWTWrapper(2 * phasedForByRef, markers, PvalueMatrix, prefixLength);
         //Wrapper->ReleaseWrapperMemory();
         Wrapper = new PBWTWrapper(2 * phased, markers);
-        Wrapper->SetHaps(haplotypes, 0, 2 * individuals, nullptr, 0, 0, thetas);//because phased ==0, no copy actually
+        Wrapper->SetHaps(haplotypes, 0, 0, nullptr, 0, 0, thetas);//because phased ==0, no copy actually
         Wrapper->Graph.ReadContainer(loadGraph);
         //for debug
 //        loadGraph="reference.panel.DAG";
@@ -1013,7 +1013,7 @@ int PBWTHaplotyper::BackwardSampling(Random *rand, int sampleIndex, char **sampl
                 if (sum > choice) {
                     sampledFirst = kv.first.first;
                     sampledSecond = kv.first.second;
-                    gl0 = GetGL(individuals - 1, i, GetAllele(i, first0), GetAllele(i, second0));
+                    gl0 = GetGL(sampleIndex, i, GetAllele(i, first0), GetAllele(i, second0));
                     transProb0 = GetTransitionProb(i - 1, sampledFirst, first0);
                     transProb1 = GetTransitionProb(i - 1, sampledSecond, second0);
                     sampledFwd = kv.second * localParameter.fwdValueSum[i] / (transProb0 * transProb1 * gl0);
@@ -1871,7 +1871,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
 }
 
 int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sampledHaps,
-                                        FwdBwdLocalParameter localParameter) {
+                                        FwdBwdLocalParameter &localParameter) {
 
     double choice(0.);
     double sum(0.), subSum(0.);
@@ -1954,7 +1954,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
         ImputeAlleles(i, sampledParent0, sampledParent1, rand, sampleIndex, sampledHaps);
         choice = rand->Uniform(0, sampledFwd);
 
-        gl0 = GetGL(individuals - 1, i+1, GetAllele(i+1, sampledChild0), GetAllele(i+1, sampledChild1));
+        gl0 = GetGL(sampleIndex, i+1, GetAllele(i+1, sampledChild0), GetAllele(i+1, sampledChild1));
 
         if (!localParameter.isRec[i]) {//normal hap match without rec
             double choice0=choice/(GetTransitionProb(i , sampledParent0, sampledChild0) *
