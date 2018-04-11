@@ -370,6 +370,9 @@ class SamplingException: public std::exception
         return "Current sample encountered unexpected sampling space!\n";
     }
 } samplingException;
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
 
     ResetCrossovers();
@@ -378,7 +381,6 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
 
     clock_t t1 = clock();
 #ifdef _OPENMP
-    #include <omp.h>
     omp_set_num_threads(nThread);
 #pragma omp parallel for
 #endif
