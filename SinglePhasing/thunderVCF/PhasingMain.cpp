@@ -1960,8 +1960,8 @@ int PhasingMain(int argc, char **argv) {
 
         if (isSingleRound)
             engine.LoopThroughChromosomesRecomb(ped);
-        else
-            engine.LoopThroughChromosomesHighPrecision();
+//        else
+//            engine.LoopThroughChromosomesHighPrecision();
 
         if (!fixTrans) engine.UpdateThetas();
         errorRate = engine.UpdateErrorRate();

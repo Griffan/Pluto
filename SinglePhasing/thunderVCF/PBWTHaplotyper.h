@@ -14,7 +14,7 @@
 #define INDEX 1
 #define PHASE 2
 #define ITERATIVE 4
-
+#define HASH_RESERVE 8000
 class PBWTHaplotyper : public ShotgunHaplotyper {
 public:
     std::string loadGraph = "Empty";//indicate if build graph from previously built graph
@@ -210,7 +210,7 @@ public:
 
     typedef std::unordered_map<std::pair<StateIndex, StateIndex>, float, pairhash> Source;//(nodeA,nodeB)->fwd
     typedef std::unordered_set<std::pair<StateIndex, StateIndex>, pairhash> NodePair;//(nodeA,nodeB)
-    typedef std::unordered_map<StateIndex, std::unordered_map<StateIndex, Source> > ChildToSource;
+//    typedef std::unordered_map<StateIndex, std::unordered_map<StateIndex, Source> > ChildToSource;
     typedef std::unordered_map<std::pair<StateIndex, StateIndex>, Source, pairhash> DestToSource;
 
     class AvailableParentStatePair {
@@ -262,19 +262,20 @@ public:
 
     struct FwdBwdLocalParameter {
         int states;
-        std::vector<ChildToSource> genuienParents;
+//        std::vector<ChildToSource> genuienParents;
         //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
         std::vector<DestToSource> parentsNodeVec;
-        AvailableParentStatePair availablePair;//available parents at each site
+//        AvailableParentStatePair availablePair;//available parents at each site
 
         std::vector<float> fwdValueSum;
         std::vector<std::unordered_map<int, float> > fwdValueNode1Sum;
         std::vector<std::unordered_map<int, float> > fwdValueNode2Sum;
         std::vector<bool> isRec;
 
-        FwdBwdLocalParameter() : genuienParents(10000, ChildToSource()), parentsNodeVec(10000, DestToSource()),
-                                 availablePair(10000) {
-
+        FwdBwdLocalParameter() {
+            DestToSource dummy;
+            dummy.reserve(2000);
+            parentsNodeVec.assign(HASH_RESERVE, dummy);
         }
 
         inline float SumFwdValueFromOriginVec(const Source &a) const {

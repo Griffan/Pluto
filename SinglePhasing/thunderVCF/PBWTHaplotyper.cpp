@@ -312,7 +312,7 @@ void PBWTHaplotyper::PrepareRefSetPBWTWrapper() {
     Wrapper->CursorBackwards();//calculate backwards order of suffix
     Wrapper->CursorForwards();
 }
-
+#ifdef NAIVE
 int PBWTHaplotyper::LoopThroughChromosomesHighPrecision() {
 
     ResetCrossovers();
@@ -361,7 +361,7 @@ int PBWTHaplotyper::LoopThroughChromosomesHighPrecision() {
     if (isRev) ReverseInput();
     return 0;
 }
-
+#endif
 #include <exception>
 class SamplingException: public std::exception
 {
@@ -677,8 +677,10 @@ void PBWTHaplotyper::FillPath(int haplotype, int fromMarker, int toMarker, int s
 int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &localParameter) {
     localParameter.isRec.assign(markers,false);
     localParameter.fwdValueSum.assign(markers,0.f);
-    localParameter.fwdValueNode1Sum.assign(markers, std::unordered_map<int, float>());
-    localParameter.fwdValueNode2Sum.assign(markers, std::unordered_map<int, float>());
+    std::unordered_map<int, float> dummy;
+    dummy.reserve(HASH_RESERVE);
+    localParameter.fwdValueNode1Sum.assign(markers, dummy);
+    localParameter.fwdValueNode2Sum.assign(markers, dummy);
 
     localParameter.states = GetStateNumFrom(0);
 
@@ -696,7 +698,7 @@ int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &loca
                     tmpFwdValue = UNDERFLOW_MIN;
                 }
                 localParameter.fwdValueSum[0] += tmpFwdValue;
-                localParameter.genuienParents[0][i][j][std::make_pair(0, 0)] = tmpFwdValue;
+//                localParameter.genuienParents[0][i][j][std::make_pair(0, 0)] = tmpFwdValue;
                 localParameter.parentsNodeVec[0][std::make_pair(i, j)][std::make_pair(0, 0)] = tmpFwdValue;
             }
         }
@@ -708,13 +710,6 @@ int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &loca
             localParameter.fwdValueNode1Sum[0][kv.first.first] += iter3->second;
             localParameter.fwdValueNode2Sum[0][kv.first.second] += iter3->second;
         }
-//    for (auto iter = genuienParents[0].begin(); iter != genuienParents[0].end(); ++iter)
-//        for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); ++iter2)
-//            for (auto iter3 = iter2->second.begin(); iter3 != iter2->second.end(); ++iter3) {
-//                iter3->second /= fwdValueSum[0];
-//                fwdValueNode1Sum[0][iter->first] += iter3->second;
-//                fwdValueNode2Sum[0][iter2->first] += iter3->second;
-//            }
     return 0;
 }
 
@@ -724,7 +719,7 @@ int PBWTHaplotyper::ResetFwdValues(FwdBwdLocalParameter &localParameter) {
     localParameter.fwdValueNode2Sum.clear();
 
     for (int k = 0; k < markers; ++k) {
-        localParameter.genuienParents[k].clear();
+//        localParameter.genuienParents[k].clear();
         localParameter.parentsNodeVec[k].clear();
     }
     return 0;
@@ -794,7 +789,7 @@ struct EdgePair {
 inline bool EdgePaircomparator(const EdgePair &lhs, const EdgePair &rhs) {
     return lhs.fwd > rhs.fwd;
 }
-
+#ifdef NAIVE
 int PBWTHaplotyper::ForwardAlgorithm(int sampleIndex, FwdBwdLocalParameter &localParameter) {
     float prevFwdValue(0.f);
     float tmpFwdValue(0.f);
@@ -1028,6 +1023,8 @@ int PBWTHaplotyper::BackwardSampling(Random *rand, int sampleIndex, char **sampl
     ImputeAlleles(0, sampledFirst, sampledSecond, rand, sampleIndex, sampledHaps);
     return 0;
 }
+
+#endif
 // with recombination
 
 //beagle version
