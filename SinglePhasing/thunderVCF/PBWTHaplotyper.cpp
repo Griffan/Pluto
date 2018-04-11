@@ -575,9 +575,9 @@ PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *rand, 
 //    int ph11 = (unsigned char) genotypes[states / 2][markerindex];
 //    int ph12 = (unsigned char) genotypes[states / 2][markerindex + 1];
 //    int ph22 = (unsigned char) genotypes[states / 2][markerindex + 2];
-    int ph11 = (unsigned char) genotypes[individuals - 1][markerindex];
-    int ph12 = (unsigned char) genotypes[individuals - 1][markerindex + 1];
-    int ph22 = (unsigned char) genotypes[individuals - 1][markerindex + 2];
+    int ph11 = (unsigned char) genotypes[currentIndividual][markerindex];
+    int ph12 = (unsigned char) genotypes[currentIndividual][markerindex + 1];
+    int ph22 = (unsigned char) genotypes[currentIndividual][markerindex + 2];
 
     CalculatePhred2Prob();
 
@@ -1896,7 +1896,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
     for(auto iter=localParameter.parentsNodeVec[markers-1].begin();iter!=localParameter.parentsNodeVec[markers-1].end();++iter)
     {
         count++;
-            sampledFwd = localParameter.SumFwdValueFromOriginVec(iter->second);
+        sampledFwd = localParameter.SumFwdValueFromOriginVec(iter->second);
 //            fprintf(stderr,"(%d,%d)\tvalue:%g\tcount:%d\n",iter->first.first,iter->first.second,sampledFwd,count);
 
     }
