@@ -680,13 +680,13 @@ int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &loca
     localParameter.fwdValueNode1Sum.assign(markers, std::unordered_map<int, float>());
     localParameter.fwdValueNode2Sum.assign(markers, std::unordered_map<int, float>());
 
-    UpdateStateNum(GetStateNumFrom(0));
+    localParameter.states = GetStateNumFrom(0);
 
-    float prior = 1.f / (states * states);
+    float prior = 1.f / (localParameter.states * localParameter.states);
     float tmpFwdValue(0.f), gl(0.f);
 
-    for (StateIndex i = 0; i < states; ++i) {
-        for (StateIndex j = 0; j < states; ++j) {
+    for (StateIndex i = 0; i < localParameter.states; ++i) {
+        for (StateIndex j = 0; j < localParameter.states; ++j) {
             int allele1 = GetAllele(0, i);
             int allele2 = GetAllele(0, j);
             gl = GetGL(sampleIndex, 0, allele1, allele2);
@@ -1771,12 +1771,12 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
 
         if (fitPair == 0 && !reenter)//process orphan nodes
         {
-            fprintf(stderr,"[%s] recombined at marker %d\n",__FUNCTION__,i);
+            fprintf(stderr,"[%s] sample %d recombined at marker %d\n",__FUNCTION__,sampleIndex,i);
             recRate = GetRecombRate(i - 1);//start from marker 1 but store at index 0
             localParameter.isRec[i-1] = true;
-            UpdateStateNum(GetStateNumFrom(i));
-            for (childNode1 = 0; childNode1 < states; ++childNode1) {//dest nodeA
-                for (childNode2 = 0; childNode2 < states; ++childNode2) {//dest nodeB
+            localParameter.states = GetStateNumFrom(i);
+            for (childNode1 = 0; childNode1 < localParameter.states; ++childNode1) {//dest nodeA
+                for (childNode2 = 0; childNode2 < localParameter.states; ++childNode2) {//dest nodeB
                     gl = GetGL(sampleIndex, i, GetAllele(i, childNode1), GetAllele(i, childNode2));//genotype of each childNode pair
                     if (gl < 1e-1) continue;
                     for ( auto tmpParentNode1:GetParentNodes(i, childNode1)) {
@@ -1832,7 +1832,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
         {
             //fprintf(stderr,"fatal error at marker %d\n",i);
             //exit(EXIT_FAILURE);
-            fprintf(stderr,"[%s] genotype mutated at marker %d\n",__FUNCTION__,i);
+            fprintf(stderr,"[%s] sample %d genotype mutated at marker %d\n",__FUNCTION__,sampleIndex,i);
             reenter=true;
             goto REENTRY;
         }

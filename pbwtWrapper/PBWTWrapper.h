@@ -222,7 +222,7 @@ public:
         return 0;
     }
 
-    inline uchar GetAllele()
+    inline uchar GetAllele()const
     {
         return allele;
     }
@@ -653,7 +653,7 @@ public:
 //        return clusterAllele[k].size();
         return Graph.StateNodeMat[k].size();
     }
-    inline uchar GetAllele(int site, StateIndex state)
+    inline uchar GetAllele(int site, StateIndex state)const
     {
 //        return Graph.StateNodeMat[site][state]->allele;
         return Graph.StateNodeMat[site][state]->GetAllele();

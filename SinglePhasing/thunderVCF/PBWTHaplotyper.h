@@ -161,7 +161,7 @@ public:
         return Wrapper->Graph.GetEdgeProbFromParentNode(site, from, allele);//
     }
 
-    inline uchar GetAllele(int site, StateIndex state) {
+    inline uchar GetAllele(int site, StateIndex state)const {
         return Wrapper->GetAllele(site, state);
     }
 
@@ -261,6 +261,7 @@ public:
     };
 
     struct FwdBwdLocalParameter {
+        int states;
         std::vector<ChildToSource> genuienParents;
         //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
         std::vector<DestToSource> parentsNodeVec;
