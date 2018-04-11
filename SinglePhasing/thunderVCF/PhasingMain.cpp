@@ -1598,20 +1598,21 @@ int PhaseByRefGraph(int argc, char **argv) {
     if (ped.count < 1) {
         error("SinglePhasing requires more than 0 sample.");
     }
-//    /*now loading phased individuals*/
-//    // here phasedfile is the refVcf file, here vcf is used for filling up the first five column of PED file(check the PED format).
-//    if (phasedfile != "Empty") {
-//        LoadSamples(ped, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf,
-//                    engine.phased);//keep engine.phased==0 while knowing the ref size
-//    }
-//    std::cerr << "Detected phased individuals in reference panel:" << engine.phased << std::endl;
+    /*now loading phased individuals*/
+    // here phasedfile is the refVcf file, here vcf is used for filling up the first five column of PED file(check the PED format).
+    if (phasedfile != "Empty") {
+        Pedigree tmpPed;//we don't alloc memory for phased samples
+        LoadSamples(tmpPed, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf,
+                    engine.phased);//keep engine.phased==0 while knowing the ref size
+    }
+    std::cerr << "Detected phased individuals in reference panel:" << engine.phased << std::endl;
 
     /*Notice that now we adding markers as subset of phased markers*/
     // here only extracted site information only, used for site check
 
     SetCrashExplanation("loading information for polymorphic sites");
 
-    if (phasedfile != "Empty")//TODO:simplify sites reading via bed file
+    if (phasedfile != "Empty")
     {
         LoadRefPanelPolymorphicSites(std::string(phasedfile.c_str()));
     } else
@@ -1665,7 +1666,7 @@ int PhaseByRefGraph(int argc, char **argv) {
 
 
     SetCrashExplanation("outputing solution");
-    fprintf(stderr, "In total we phased %d individuals at %d markers.\n\n", ped.count-engine.phased, ped.markerCount);
+    fprintf(stderr, "In total we phased %d individuals at %d markers.\n\n", ped.count, ped.markerCount);
     // If we did multiple rounds of haplotyping, then generate consensus
     {
         UnphasedSamplesOutputVCF(unphasedfile, ped, outfile + ".vcf.gz", thetas, error_rates, engine);

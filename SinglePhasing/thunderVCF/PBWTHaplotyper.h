@@ -261,10 +261,10 @@ public:
     };
 
     struct FwdBwdLocalParameter {
-        AvailableParentStatePair availablePair;//available parents at each site
         std::vector<ChildToSource> genuienParents;
         //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
         std::vector<DestToSource> parentsNodeVec;
+        AvailableParentStatePair availablePair;//available parents at each site
 
         std::vector<float> fwdValueSum;
         std::vector<std::unordered_map<int, float> > fwdValueNode1Sum;

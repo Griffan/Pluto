@@ -416,7 +416,7 @@ void PBWTHaplotyper::ConstructGraph() {
         //Wrapper = new PBWTWrapper(2 * phasedForByRef, markers, PvalueMatrix, prefixLength);
         //Wrapper->ReleaseWrapperMemory();
         Wrapper = new PBWTWrapper(2 * phased, markers);
-        Wrapper->SetHaps(haplotypes, 0, 0, nullptr, 0, 0, thetas);//because phased ==0, no copy actually
+        Wrapper->SetHaps(haplotypes, 0, 0, nullptr, 0, 0, thetas);
         Wrapper->Graph.ReadContainer(loadGraph);
         //for debug
 //        loadGraph="reference.panel.DAG";
@@ -430,7 +430,7 @@ void PBWTHaplotyper::ConstructGraph() {
         clock_t t1 = clock();
         fprintf(stderr,"Done loading graph in time:%.2f sec\n\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     }
-    else {
+    else {//construct graph, all are phased samples
         clock_t t = clock();
         if (Wrapper != nullptr) {
             delete Wrapper;
@@ -1771,7 +1771,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
 
         if (fitPair == 0 && !reenter)//process orphan nodes
         {
-            fprintf(stderr,"at marker %d no viable fitPair\n",i);
+            fprintf(stderr,"[%s] recombined at marker %d\n",__FUNCTION__,i);
             recRate = GetRecombRate(i - 1);//start from marker 1 but store at index 0
             localParameter.isRec[i-1] = true;
             UpdateStateNum(GetStateNumFrom(i));
@@ -1792,6 +1792,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                                 prevFwdValue = 0.f;
                             baseProb = GetTransitionProb(i - 1, tmpParentNode1, childNode1) *
                                        GetTransitionProb(i - 1, tmpParentNode2, childNode2) * gl;
+
                             tmpFwdValue = prevFwdValue * baseProb * (1 - recRate) * (1 - recRate);
 //                        fprintf(stderr,"(%d,%d) to (%d,%d) tmp output1 tmpFwdValue:%g\tprevFwdValue:%g\tbaseProb:%g\n",tmpParentNode1,tmpParentNode2,childNode1,childNode2,tmpFwdValue,prevFwdValue,baseProb);
                             if (localParameter.fwdValueNode1Sum[i - 1].find(tmpParentNode1) != localParameter.fwdValueNode1Sum[i - 1].end())
@@ -1831,7 +1832,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
         {
             //fprintf(stderr,"fatal error at marker %d\n",i);
             //exit(EXIT_FAILURE);
-            fprintf(stderr,"no fit genotype at marker %d\n",i);
+            fprintf(stderr,"[%s] genotype mutated at marker %d\n",__FUNCTION__,i);
             reenter=true;
             goto REENTRY;
         }
