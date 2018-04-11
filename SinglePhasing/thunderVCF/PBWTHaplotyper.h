@@ -11,13 +11,18 @@
 #include "GeneticDistanceMap.h"
 #include "GzipFileType.h"
 
+#define INDEX 1
+#define PHASE 2
+#define ITERATIVE 4
+
 class PBWTHaplotyper : public ShotgunHaplotyper {
 public:
     std::string loadGraph = "Empty";//indicate if build graph from previously built graph
     std::string outputPrefix = "Empty";
     bool geneticMapAvailable = false;
+    int runningModel = 0;
     int prefixLength = 0;
-    int phasedForByRef = 0;
+//    int phasedForByRef = 0;
     int nThread = 0;
 
     GeneticDistanceMap GDMap;

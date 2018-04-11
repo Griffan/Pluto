@@ -96,7 +96,7 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
     // read and write VCF inputs
     try {
 
-        fprintf(stderr, "Outputing VCF file %s\n", filename.c_str());
+        fprintf(stderr, "Output VCF file %s\n\n", filename.c_str());
 
         VcfFile *pVcf = new VcfFile;
         IFILE outVCF = ifopen(filename.c_str(), "wb");
@@ -1092,14 +1092,14 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, PBWTHapl
         int nSamples = pVcf->getSampleCount();
         //vector<int> personIndices(ped.count,-1);
         std::unordered_map<int, int> personIndices;
-        StringIntHash originalPeople; // key: famid+subID, value: original order (0 based);
+        StringIntHash originalPeople; // key: famid+subID, value: original order (0 based in Unphased VCF);
         int person = 0;
         for (int i = 0; i < nSamples; i++) {
             originalPeople.Add(pVcf->vpVcfInds[i]->sIndID + "." + pVcf->vpVcfInds[i]->sIndID, person);
             person++;
         }
 
-        for (int i = 0; i < engine.individuals;i++) {//first N samples in ped, not necessary the unphased sample
+        for (int i = 0; i < engine.individuals;i++) {//first N samples in ped, here is the unphased samples
             int idx=originalPeople.Integer(ped[i].famid + "." + ped[i].pid);
             if ( idx != -1) {//find index of this sample in current vcf
                 personIndices[idx] = i;//map index in current vcf to index in ped file
@@ -1208,7 +1208,7 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, PBWTHapl
             {
                 markerindex = refMarkerIdx[iter->first];
                 int genoindex = markerindex * 3;
-                for (int i = 0; i < (engine.individuals - engine.phased); i++)//for each unphased individual
+                for (int i = 0; i < (engine.individuals); i++)//for each unphased individual
                 {
                     engine.genotypes[i][genoindex] = 0;
                     engine.genotypes[i][genoindex + 1] = 0;
@@ -1424,6 +1424,7 @@ int BuildGraph(int argc, char **argv) {
     globalRandom.Reset(seed);
 
     PBWTHaplotyper engine;//declaration of engine, also will call default constructor
+    engine.runningModel |= INDEX;
     engine.nSampleCopy = samplingRounds;
     engine.prefixLength = prefixLength;
     engine.outputPrefix = std::string(phasedfile.c_str());
@@ -1578,6 +1579,7 @@ int PhaseByRefGraph(int argc, char **argv) {
     if (rounds < burnin) burnin = 0;
 
     PBWTHaplotyper engine;//declaration of engine, also will call default constructor
+    engine.runningModel |= PHASE;
     engine.nSampleCopy = samplingRounds;
     engine.geneticMapAvailable = false;
     engine.prefixLength = prefixLength;
@@ -1592,24 +1594,24 @@ int PhaseByRefGraph(int argc, char **argv) {
     /*We add unphased individuals first*/
     int numUnphased(0);
     LoadSamples(ped, unphasedfile, pidIncludedInUnphasedVcf, pidExcludedInUnphasedVcf, numUnphased);
-    std::cerr << "Load unphased individuals:" << numUnphased << std::endl;
+    fprintf(stderr,"Done loading unphased individuals:%d\n\n",numUnphased);
     if (ped.count < 1) {
         error("SinglePhasing requires more than 0 sample.");
     }
-    /*now loading phased individuals*/
-    // here unphasedfile is the vcf file, here vcf is used for filling up the first five column of PED file(check the PED format).
-    if (phasedfile != "Empty") {
-        LoadSamples(ped, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf,
-                    engine.phasedForByRef);//keep engine.phased==0 while knowing the ref size
-    }
-    std::cerr << "Detected phased individuals in reference panel:" << engine.phasedForByRef << std::endl;
+//    /*now loading phased individuals*/
+//    // here phasedfile is the refVcf file, here vcf is used for filling up the first five column of PED file(check the PED format).
+//    if (phasedfile != "Empty") {
+//        LoadSamples(ped, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf,
+//                    engine.phased);//keep engine.phased==0 while knowing the ref size
+//    }
+//    std::cerr << "Detected phased individuals in reference panel:" << engine.phased << std::endl;
 
     /*Notice that now we adding markers as subset of phased markers*/
     // here only extracted site information only, used for site check
 
     SetCrashExplanation("loading information for polymorphic sites");
 
-    if (phasedfile != "Empty")
+    if (phasedfile != "Empty")//TODO:simplify sites reading via bed file
     {
         LoadRefPanelPolymorphicSites(std::string(phasedfile.c_str()));
     } else
@@ -1618,7 +1620,7 @@ int PhaseByRefGraph(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    fprintf(stderr,"Load information on %d polymorphic sites\n\n", Pedigree::markerCount);
+    fprintf(stderr,"Done loading information on %d polymorphic sites\n\n", Pedigree::markerCount);
 
     SetCrashExplanation("allocating memory for haplotype engine");
 
@@ -1628,7 +1630,7 @@ int PhaseByRefGraph(int argc, char **argv) {
 //    engine.InitAuxillary();
 
     SetCrashExplanation("loading genotype");
-    fprintf(stderr,"Copy unphased genotypes into haplotyping engine\n");
+//    fprintf(stderr,"Done loading unphased genotypes into haplotyping engine\n\n");
     // Copy genotypes into haplotyping engine
     if (engine.readyForUse)
         LoadGenotypeFromUnphasedVCF(ped, unphasedfile, engine, errorRate, transRate);//this is where we copy GL into genotype arrays
@@ -1639,17 +1641,17 @@ int PhaseByRefGraph(int argc, char **argv) {
     SetCrashExplanation("searching for initial haplotype set");
 
     if (inputPhased) {
-        fprintf(stderr,"Loading phased information from the input VCF file\n\n");
+        fprintf(stderr,"Done loading phased information from the input VCF file\n\n");
         engine.LoadHaplotypesFromVCF(unphasedfile);
 //        engine.InitialSampleCopy(NULL);
     }
     else if (phaseByRef) {
-        fprintf(stderr,"Assigning haplotypes based on reference genome\n\n");
+        fprintf(stderr,"Done assigning haplotypes based on reference genome\n\n");
         engine.PhaseByReferenceSetup();
 //        engine.InitialSampleCopy(NULL);
     }
     else {
-        fprintf(stderr,"Assigning random set of haplotypes\n\n");
+        fprintf(stderr,"Done assigning random set of haplotypes\n\n");
         engine.RandomSetup(NULL);
 //        engine.InitialSampleCopy(NULL);
     }
@@ -1663,12 +1665,12 @@ int PhaseByRefGraph(int argc, char **argv) {
 
 
     SetCrashExplanation("outputing solution");
-    fprintf(stderr, "In total we phased %d individuals at %d markers.\n", ped.count-engine.phasedForByRef, ped.markerCount);
+    fprintf(stderr, "In total we phased %d individuals at %d markers.\n\n", ped.count-engine.phased, ped.markerCount);
     // If we did multiple rounds of haplotyping, then generate consensus
     {
         UnphasedSamplesOutputVCF(unphasedfile, ped, outfile + ".vcf.gz", thetas, error_rates, engine);
     }
-    fprintf(stderr,"Total time:%.2f sec\n", (float) (clock() - t) / CLOCKS_PER_SEC);
+    fprintf(stderr,"Total time:%.2f sec\n\n", (float) (clock() - t) / CLOCKS_PER_SEC);
     return 0;
 }
 

@@ -370,7 +370,6 @@ class SamplingException: public std::exception
         return "Current sample encountered unexpected sampling space!\n";
     }
 } samplingException;
-#include <omp.h>
 int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
 
     ResetCrossovers();
@@ -379,10 +378,11 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
 
     clock_t t1 = clock();
 #ifdef _OPENMP
+    #include <omp.h>
     omp_set_num_threads(nThread);
 #pragma omp parallel for
 #endif
-    for (int i = individuals - phased -1; i >= 0 ; i--) {
+    for (int i = individuals - 1; i >= 0 ; i--) {
 //            SwapIndividuals(i, individuals - 1);
             fprintf(stderr, "[%s]phasing individual %d:%s...\n\n",__FUNCTION__,i , ped[i].pid.c_str());
             LocalForwadBackWard(i);
@@ -396,7 +396,7 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
 //            SwapIndividuals(i, individuals - 1);
     }
     clock_t t = clock();
-    fprintf(stderr,"[%s]forward algorithm and sampling time:%.2f sec\n", __FUNCTION__,(float) (t - t1) / CLOCKS_PER_SEC);
+    fprintf(stderr,"[%s]forward algorithm and sampling time:%.2f sec\n\n", __FUNCTION__,(float) (t - t1) / CLOCKS_PER_SEC);
     if (isRev) ReverseInput();
     return 0;
 }
@@ -413,8 +413,8 @@ void PBWTHaplotyper::ConstructGraph() {
         }
         //Wrapper = new PBWTWrapper(2 * phasedForByRef, markers, PvalueMatrix, prefixLength);
         //Wrapper->ReleaseWrapperMemory();
-        Wrapper = new PBWTWrapper(2 * phasedForByRef, markers);
-        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
+        Wrapper = new PBWTWrapper(2 * phased, markers);
+//        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);//because phased ==0, no copy actually
         Wrapper->Graph.ReadContainer(loadGraph);
         //for debug
 //        loadGraph="reference.panel.DAG";
@@ -426,7 +426,7 @@ void PBWTHaplotyper::ConstructGraph() {
 //        Wrapper->Graph.WriteContainer(loadGraph);
         //for debug
         clock_t t1 = clock();
-        fprintf(stderr,"Load graph time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
+        fprintf(stderr,"Done loading graph in time:%.2f sec\n\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     }
     else {
         clock_t t = clock();
@@ -435,12 +435,12 @@ void PBWTHaplotyper::ConstructGraph() {
             Wrapper = nullptr;
         }
         Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, prefixLength);
-        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
+        Wrapper->SetHaps(haplotypes, 0, 2 * individuals, nullptr, 0, 0, thetas);
         Wrapper->CursorBackwards();//calculate backwards order of suffix
         Wrapper->CursorForwards();
         Wrapper->Graph.WriteContainer(outputPrefix+".DAG");
         clock_t t1 = clock();
-        printf("Build graph time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
+        printf("Done building graph in time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     }
 }
 
@@ -749,7 +749,7 @@ void PBWTHaplotyper::RandomSetup(Random *rand) {
 
     for (int j = 0; j < markers; j++) {
         int markerindex = 3 * j;
-        for (int i = 0; i < individuals - phased; i++) {
+        for (int i = 0; i < individuals; i++) {
 
             int posterior_11 = genotypes[i][markerindex];
             int posterior_12 = genotypes[i][markerindex + 1];
@@ -2145,12 +2145,11 @@ bool PBWTHaplotyper::SetErrorAndTheta(std::vector<float> &holderError,std::vecto
     holderTheta.clear();
     return true;
 }
-bool PBWTHaplotyper::AllocateMemory(int persons, int m)//for GraphConstruct
+bool PBWTHaplotyper::AllocateMemory(int persons, int m)//for GraphSeperated, only alloc mem for genotypes when phasing
 {
-    individuals = persons - phasedForByRef/*variable 'phased' affect many different parts, use this avatar instead here*/;
+    individuals = persons;
     markers = m;
-
-    if(phased==0) {//enter from phase by ref
+    if(runningModel & PHASE) {//enter from phase by ref
         thetas = new float[markers - 1];
         for (int i = 0; i < markers - 1; i++)
             thetas[i] = 0.01;
