@@ -212,10 +212,10 @@ public:
         }
     };
 
-    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, float, PairHash> Source;//(nodeA,nodeB)->fwd
-    typedef std::unordered_set<std::pair<StateIndex, StateIndex>, PairHash> NodePair;//(nodeA,nodeB)
-//    typedef std::unordered_map<StateIndex, std::unordered_map<StateIndex, Source> > ChildToSource;
-    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, Source, PairHash> DestToSource;
+//    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, float, PairHash> Source;//(nodeA,nodeB)->fwd
+//    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, Source, PairHash> DestToSource;
+    typedef std::unordered_map<u_int64_t, float> Source;//(nodeA,nodeB)->fwd
+    typedef std::unordered_map<u_int64_t, Source> DestToSource;
 /*
     class AvailableParentStatePair {
 //        std::vector<NodePair > nextAvailableStatePair;//marker/availablePair
@@ -266,25 +266,36 @@ public:
 */
     struct FwdBwdLocalParameter {
         int states;
-//        std::vector<ChildToSource> genuienParents;
         //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
         std::vector<DestToSource> parentsNodeVec;
-//        AvailableParentStatePair availablePair;//available parents at each site
 
         std::vector<float> fwdValueSum;
         std::vector<std::unordered_map<int, float> > fwdValueNode1Sum;
         std::vector<std::unordered_map<int, float> > fwdValueNode2Sum;
         std::vector<bool> isRec;
 
-        FwdBwdLocalParameter() {
+        FwdBwdLocalParameter(int individuals, int markers) {
             DestToSource dummy;
             dummy.reserve(HASH_RESERVE);
-            parentsNodeVec.assign(50930, dummy);
+            parentsNodeVec.assign(markers, dummy);
+        }
+        inline u_int64_t MakePair(StateIndex first, StateIndex second)
+        {
+            return (u_int64_t)first<<32|second;
         }
 
+        inline StateIndex GetFirst(u_int64_t pair)
+        {
+            return (StateIndex)(pair>>32);
+        }
+
+        inline StateIndex GetSecond(u_int64_t pair)
+        {
+            return (StateIndex)(pair&0xffff);
+        }
         inline int FillParentsNodeVec(int i, StateIndex childNode1, StateIndex childNode2, StateIndex parentNode1, StateIndex parentNode2, float tmpFwdValue)
         {
-            parentsNodeVec[i][std::make_pair(childNode1, childNode2)][std::make_pair(parentNode1, parentNode2)] = tmpFwdValue;
+            parentsNodeVec[i][MakePair(childNode1, childNode2)][MakePair(parentNode1, parentNode2)] = tmpFwdValue;
             return 0;
         }
 
