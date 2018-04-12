@@ -714,7 +714,7 @@ public:
         fprintf(stderr,"Hap matrix:\n");
         for (int i = 0; i < M; ++i) {
             for (int j = 0; j < N; ++j) {
-                std::cerr<<(ushort)a[b[i]][j]<<"\t";
+                std::cerr<<(unsigned short)a[b[i]][j]<<"\t";
             }
             std::cerr<<std::endl;
         }

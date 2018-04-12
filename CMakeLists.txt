@@ -24,7 +24,7 @@ if(NOT LIBRMATH OR NOT LIBRMATH_INCLUDE)
             SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/pbwtWrapper/libRmath
             CONFIGURE_COMMAND ""
             BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/pbwtWrapper/libRmath
-            BUILD_COMMAND make
+            BUILD_COMMAND make #CXX="/usr/local/Cellar/gcc/7.3.0_1/bin/g++-7" CXXFLAGS='-fpermissive'
             INSTALL_COMMAND ""
             )
 
@@ -56,7 +56,7 @@ if(NOT LIBSTATGEN)
             SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen
             CONFIGURE_COMMAND ""
             BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen
-            BUILD_COMMAND make opt
+            BUILD_COMMAND make opt #CC="/usr/local/Cellar/gcc/7.3.0_1/bin/g++-7"
             INSTALL_COMMAND ""
             )
     set(LIBSTATGEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen/include)

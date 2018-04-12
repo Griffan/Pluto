@@ -194,25 +194,29 @@ public:
     float GetRecombRate(int marker);
     //HMM version two
 
-    struct pairhash {
+    struct PairHash {
     public:
         template<typename T, typename U>
+//        long operator()(const std::pair<T, U> &x) const//Cantor pairing function:
+//        {
+//            int a = std::hash<T>()(x.first);
+//            int b = std::hash<U>()(x.second);
+//            unsigned long A = (unsigned long) (a >= 0 ? 2 * (long) a : -2 * (long) a - 1);
+//            unsigned long B = (unsigned long) (b >= 0 ? 2 * (long) b : -2 * (long) b - 1);
+//            long C = (long) ((A >= B ? A * A + A + B : A + B * B) / 2);
+//            return a < 0 && b < 0 || a >= 0 && b >= 0 ? C : -C - 1;
+//        }
         long operator()(const std::pair<T, U> &x) const//Cantor pairing function:
         {
-            int a = std::hash<T>()(x.first);
-            int b = std::hash<U>()(x.second);
-            unsigned long A = (unsigned long) (a >= 0 ? 2 * (long) a : -2 * (long) a - 1);
-            unsigned long B = (unsigned long) (b >= 0 ? 2 * (long) b : -2 * (long) b - 1);
-            long C = (long) ((A >= B ? A * A + A + B : A + B * B) / 2);
-            return a < 0 && b < 0 || a >= 0 && b >= 0 ? C : -C - 1;
+            return x.first<<(sizeof(StateIndex)*32)|x.second;
         }
     };
 
-    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, float, pairhash> Source;//(nodeA,nodeB)->fwd
-    typedef std::unordered_set<std::pair<StateIndex, StateIndex>, pairhash> NodePair;//(nodeA,nodeB)
+    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, float, PairHash> Source;//(nodeA,nodeB)->fwd
+    typedef std::unordered_set<std::pair<StateIndex, StateIndex>, PairHash> NodePair;//(nodeA,nodeB)
 //    typedef std::unordered_map<StateIndex, std::unordered_map<StateIndex, Source> > ChildToSource;
-    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, Source, pairhash> DestToSource;
-
+    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, Source, PairHash> DestToSource;
+/*
     class AvailableParentStatePair {
 //        std::vector<NodePair > nextAvailableStatePair;//marker/availablePair
         NodePair::iterator nextAvailableStatePairIter;
@@ -259,7 +263,7 @@ public:
             nextAvailableStatePair[MarkerIndex] = PairHash;
         }
     };
-
+*/
     struct FwdBwdLocalParameter {
         int states;
 //        std::vector<ChildToSource> genuienParents;
@@ -275,7 +279,13 @@ public:
         FwdBwdLocalParameter() {
             DestToSource dummy;
             dummy.reserve(HASH_RESERVE);
-            parentsNodeVec.assign(10000, dummy);
+            parentsNodeVec.assign(50930, dummy);
+        }
+
+        inline int FillParentsNodeVec(int i, StateIndex childNode1, StateIndex childNode2, StateIndex parentNode1, StateIndex parentNode2, float tmpFwdValue)
+        {
+            parentsNodeVec[i][std::make_pair(childNode1, childNode2)][std::make_pair(parentNode1, parentNode2)] = tmpFwdValue;
+            return 0;
         }
 
         inline float SumFwdValueFromOriginVec(const Source &a) const {
