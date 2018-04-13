@@ -214,9 +214,18 @@ public:
 
 //    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, float, PairHash> Source;//(nodeA,nodeB)->fwd
 //    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, Source, PairHash> DestToSource;
-    typedef std::unordered_map<u_int64_t, float> Source;//(nodeA,nodeB)->fwd
-    typedef std::unordered_map<u_int64_t, Source> DestToSource;
-/*
+
+//    typedef std::unordered_map<u_int64_t, float> Source;//(nodeA,nodeB)->fwd
+//    typedef std::unordered_map<u_int64_t, Source> DestToSource;
+
+    typedef u_int64_t NodePair;
+    typedef std::vector<u_int64_t> SourceVec;
+    typedef std::vector<std::vector<u_int64_t> > Index2SourceVec;
+    typedef std::vector<float> FwdVec;
+    typedef std::vector<std::vector<float> > Index2FwdVec;
+    typedef std::unordered_map<u_int64_t, int> Dest2SourceVecIndex;
+
+    /*
     class AvailableParentStatePair {
 //        std::vector<NodePair > nextAvailableStatePair;//marker/availablePair
         NodePair::iterator nextAvailableStatePairIter;
@@ -267,7 +276,11 @@ public:
     struct FwdBwdLocalParameter {
         int states;
         //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
-        std::vector<DestToSource> parentsNodeVec;
+//        std::vector<DestToSource> parentsNodeVec;
+
+        std::vector<Dest2SourceVecIndex> parentsNodeVec;
+        std::vector<Index2SourceVec > megaSourceVec;
+        std::vector<Index2FwdVec> megaFwdVec;
 
         std::vector<float> fwdValueSum;
         std::vector<std::unordered_map<int, float> > fwdValueNode1Sum;
@@ -275,9 +288,21 @@ public:
         std::vector<bool> isRec;
 
         FwdBwdLocalParameter(int individuals, int markers) {
-            DestToSource dummy;
+//            DestToSource dummy;
+//            dummy.reserve(HASH_RESERVE);
+//            parentsNodeVec.assign(markers, dummy);
+            Dest2SourceVecIndex dummy;
             dummy.reserve(HASH_RESERVE);
-            parentsNodeVec.assign(markers, dummy);
+            parentsNodeVec.assign(markers,dummy);
+
+            Index2SourceVec dummy2;
+            dummy2.reserve(HASH_RESERVE);
+            megaSourceVec.assign(markers, dummy2);
+
+            Index2FwdVec dummy3;
+            dummy3.reserve(HASH_RESERVE);
+            megaFwdVec.assign(markers, dummy3);
+
         }
         inline u_int64_t MakePair(StateIndex first, StateIndex second)
         {
@@ -295,15 +320,70 @@ public:
         }
         inline int FillParentsNodeVec(int i, StateIndex childNode1, StateIndex childNode2, StateIndex parentNode1, StateIndex parentNode2, float tmpFwdValue)
         {
-            parentsNodeVec[i][MakePair(childNode1, childNode2)][MakePair(parentNode1, parentNode2)] = tmpFwdValue;
+//            parentsNodeVec[i][MakePair(childNode1, childNode2)][MakePair(parentNode1, parentNode2)] = tmpFwdValue;
+            u_int64_t index = std::numeric_limits<u_int64_t >::max();
+            if(parentsNodeVec[i].find(MakePair(childNode1, childNode2)) != parentsNodeVec[i].end())//Dest already exists
+            {
+                index = parentsNodeVec[i][MakePair(childNode1, childNode2)];
+                megaFwdVec[i][index].push_back(tmpFwdValue);
+                megaSourceVec[i][index].push_back(MakePair(parentNode1, parentNode2));
+            }
+            else
+            {
+                index = megaFwdVec[i].size();
+                parentsNodeVec[i][MakePair(childNode1, childNode2)] = index;
+
+                FwdVec dummyFwdVec(1, tmpFwdValue);
+                dummyFwdVec.reserve(HASH_RESERVE/2.0);
+                megaFwdVec[i].push_back(dummyFwdVec);
+
+                SourceVec dummySourceVec(1, MakePair(parentNode1,parentNode2));
+                dummySourceVec.reserve(HASH_RESERVE/2.0);
+                megaSourceVec[i].push_back(dummySourceVec);
+            }
             return 0;
         }
 
-        inline float SumFwdValueFromOriginVec(const Source &a) const {
+        inline FwdVec & GetFwdVec(int i, int destIndex)
+        {
+            return megaFwdVec[i][destIndex];
+        }
+
+        inline FwdVec & GetFwdVec(int i, StateIndex A, StateIndex B)
+        {
+            return GetFwdVec(i,parentsNodeVec[i][MakePair(A,B)]);
+        }
+
+        inline float GetFwd(int i, int destIndex, int sourceIndex)
+        {
+            return megaFwdVec[i][destIndex][sourceIndex];
+        }
+
+        inline SourceVec & GetSourceVec(int i,  int destIndex)
+        {
+            return megaSourceVec[i][destIndex];
+        }
+
+        inline SourceVec & GetSourceVec(int i, StateIndex A, StateIndex B)
+        {
+            return GetSourceVec(i,parentsNodeVec[i][MakePair(A,B)]);
+        }
+
+        inline u_int64_t GetSource(int i, int destIndex, int sourceIndex)
+        {
+            return megaSourceVec[i][destIndex][sourceIndex];
+        }
+
+        inline int GetDestIndex(int i, StateIndex A, StateIndex B)
+        {
+            return parentsNodeVec[i][MakePair(A,B)];
+        }
+
+        inline float SumFwdValueFromOriginVec(const FwdVec &a) const {
             if (a.size() == 0) return 0.f;
             float sum(0.f);
             for (auto kv:a) {
-                sum += kv.second;
+                sum += kv;
             }
             return sum;
         }

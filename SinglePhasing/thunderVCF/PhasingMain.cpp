@@ -339,7 +339,7 @@ void UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &
         //fprintf(stderr, "we got %d samples\n", nSamples);
         // build map of personID -> sampleIndex
         std::map<std::string, int> pedMap;
-        for (int i = 0; i < (engine.individuals - engine.phased)/*ped.count*/; ++i) {
+        for (int i = 0; i < (engine.individuals)/*ped.count*/; ++i) {
             pedMap[ped[i].pid.c_str()] = i;
             //fprintf(stderr,"Adding (%s,%d)\n", ped[i].pid.c_str(), i);
         }
