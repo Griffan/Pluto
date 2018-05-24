@@ -1909,7 +1909,7 @@ int PBWTHaplotyper::BackwardAlgorithmRec(int sampleIndex, char **sampledHaps,
     float recRate(0.f);
     int sampled = 0;
 
-    choice = rand->Uniform(0, 1);
+//    choice = rand->Uniform(0, 1);
     int count = 0;
     for (auto iter = localParameter.parentsNodeVec[markers - 1].begin();
          iter != localParameter.parentsNodeVec[markers - 1].end(); ++iter) {
@@ -1948,7 +1948,7 @@ int PBWTHaplotyper::BackwardAlgorithmRec(int sampleIndex, char **sampledHaps,
     }
     INIT_SAMPLE_BREAK:
 
-    ImputeAlleles(markers - 1, sampledChild0, sampledChild1, rand, sampleIndex, sampledHaps);
+//    ImputeAlleles(markers - 1, sampledChild0, sampledChild1, rand, sampleIndex, sampledHaps);
 
     float testSum(0.f);
 
@@ -1973,8 +1973,8 @@ int PBWTHaplotyper::BackwardAlgorithmRec(int sampleIndex, char **sampledHaps,
         sum = 0.f;
         testSum = 0.f;
 
-        ImputeAlleles(i, sampledParent0, sampledParent1, rand, sampleIndex, sampledHaps);
-        choice = rand->Uniform(0, sampledFwd);
+//        ImputeAlleles(i, sampledParent0, sampledParent1, rand, sampleIndex, sampledHaps);
+//        choice = rand->Uniform(0, sampledFwd);
 
         gl0 = GetGL(sampleIndex, i + 1, GetAllele(i + 1, sampledChild0), GetAllele(i + 1, sampledChild1));
 
@@ -2005,7 +2005,7 @@ int PBWTHaplotyper::BackwardAlgorithmRec(int sampleIndex, char **sampledHaps,
             recRate = GetRecombRate(i);//start from marker 1 but store at index 0
             for (auto kv:localParameter.parentsNodeVec[i]) {// node pair at site i - 1, sampled (first0,second0) for i
 
-                u_int64_t parentNodePair = kv.first;
+                uint64_t parentNodePair = kv.first;
                 np1 = GetHapProbAt(i, localParameter.GetFirst(parentNodePair));
                 np2 = GetHapProbAt(i, localParameter.GetSecond(parentNodePair));
                 subSum = 0.;
@@ -2060,7 +2060,7 @@ int PBWTHaplotyper::BackwardAlgorithmRec(int sampleIndex, char **sampledHaps,
         }
     }
 
-    ImputeAlleles(0, sampledParent0, sampledParent1, rand, sampleIndex, sampledHaps);
+//    ImputeAlleles(0, sampledParent0, sampledParent1, rand, sampleIndex, sampledHaps);
     return 0;
 }
 
