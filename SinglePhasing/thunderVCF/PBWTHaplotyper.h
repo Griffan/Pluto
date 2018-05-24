@@ -207,7 +207,7 @@ public:
 //        }
         long operator()(const std::pair<T, U> &x) const//Cantor pairing function:
         {
-            return x.first << (sizeof(StateIndex) * 32) | x.second;
+            return x.first << ((sizeof(StateIndex) -1) * 32+31) | x.second;
         }
     };
 
@@ -306,11 +306,11 @@ public:
         }
 
         inline uint64_t MakePair(StateIndex first, StateIndex second) {
-            return first << 32 | second;
+            return static_cast<uint64_t>(first) << 31 |  static_cast<uint64_t>(second);
         }
 
         inline StateIndex GetFirst(uint64_t pair) {
-            return (StateIndex) (pair >> 32);
+            return (StateIndex) (pair >> 31);
         }
 
         inline StateIndex GetSecond(uint64_t pair) {
@@ -319,8 +319,7 @@ public:
 
         inline int FillParentsNodeVec(int i, StateIndex childNode1, StateIndex childNode2, StateIndex parentNode1,
                                       StateIndex parentNode2, float tmpFwdValue) {
-//            parentsNodeVec[i][MakePair(childNode1, childNode2)][MakePair(parentNode1, parentNode2)] = tmpFwdValue;
-            int index = std::numeric_limits<uint64_t>::max();
+            int index;
             if (parentsNodeVec[i].find(MakePair(childNode1, childNode2)) !=
                 parentsNodeVec[i].end())//Dest already exists
             {

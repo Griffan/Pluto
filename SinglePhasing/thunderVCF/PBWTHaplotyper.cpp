@@ -1685,8 +1685,8 @@ int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &loca
                 int first = localParameter.GetFirst(localParameter.GetSourceVec(0, kv.second).at(j));
                 int second = localParameter.GetSecond(localParameter.GetSourceVec(0, kv.second).at(j));
                 fprintf(stderr,
-                        "foward marker:%d\tfwdValueSum:%g\tpair:(%d,%d)=(%d,%d)\tcurrentFwd:%g\tnormalized currentFwd:%g\tfrom:(%d,%d)\n",
-                        0, localParameter.fwdValueSum[0], tmpNode1, tmpNode2,
+                        "foward marker:%d\tfwdValueSum:%g\tpair:%d(%d,%d)=(%d,%d)\tcurrentFwd:%g\tnormalized currentFwd:%g\tfrom:(%d,%d)\n",
+                        0, localParameter.fwdValueSum[0], kv.first,tmpNode1, tmpNode2,
                         GetAllele(0, tmpNode1), GetAllele(0, tmpNode2), localParameter.GetFwdVec(0, kv.second).at(j),
                         tmpFwd, first, second);
             }
