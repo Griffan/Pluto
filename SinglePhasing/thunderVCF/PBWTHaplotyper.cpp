@@ -2033,8 +2033,8 @@ int PBWTHaplotyper::BackwardAlgorithmRec(int sampleIndex, char **sampledHaps,
                     if (sum > choice) {
                         sampledChild0 = localParameter.GetFirst(parentNodePair);//previous correct parents rejuvenate
                         sampledChild1 = localParameter.GetSecond(parentNodePair);
-                        ImputeAlleles(i, sampledChild0, sampledChild1, rand, sampleIndex,
-                                      sampledHaps);//override no-rec Imputation
+//                        ImputeAlleles(i, sampledChild0, sampledChild1, rand, sampleIndex,
+//                                      sampledHaps);//override no-rec Imputation
                         sampledParent0 = localParameter.GetFirst(
                                 localParameter.GetSource(i, destIndex, grandParentsIndex));
                         sampledParent1 = localParameter.GetSecond(
@@ -2182,7 +2182,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
             recRate = GetRecombRate(i);//start from marker 1 but store at index 0
             for (auto kv:localParameter.parentsNodeVec[i]) {// node pair at site i - 1, sampled (first0,second0) for i
 
-                u_int64_t parentNodePair = kv.first;
+                uint64_t parentNodePair = kv.first;
                 np1 = GetHapProbAt(i, localParameter.GetFirst(parentNodePair));
                 np2 = GetHapProbAt(i, localParameter.GetSecond(parentNodePair));
                 subSum = 0.;
