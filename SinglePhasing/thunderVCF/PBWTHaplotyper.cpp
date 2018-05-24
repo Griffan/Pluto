@@ -683,8 +683,6 @@ void PBWTHaplotyper::FillPath(int haplotype, int fromMarker, int toMarker, int s
 //HMM version two
 
 double PBWTHaplotyper::GetGL(int individual, int marker, uchar allele1, uchar allele2) {
-//    std::cerr<<individual<<"\t"<<marker<<"\t"<<(int)allele1<<"\t"<<(int)allele2<<std::endl;
-
     return phred2prob[(size_t) genotypes[individual][3 * marker + allele1 + allele2]];
 }
 
@@ -1761,7 +1759,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                         fitPair++;
                         tmpFwdValue = prevFwdValue * GetTransitionProb(i - 1, parentNode1, childNode1) *
                                       GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
-                        fprintf(stderr, "debug (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\n", parentNode1, parentNode2,
+                        if (DEBUG)fprintf(stderr, "debug (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\n", parentNode1, parentNode2,
                                 prevFwdValue, GetTransitionProb(i - 1, parentNode1, childNode1),
                                 GetTransitionProb(i - 1, parentNode2, childNode2));
                         localParameter.fwdValueSum[i] += tmpFwdValue;
@@ -1825,6 +1823,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
 //                                                                             tmpParentNode2)]);//sum over all the parents of current parents that lead to a child pair
                             } else
                                 prevFwdValue = 0.f;
+
                             baseProb = GetTransitionProb(i - 1, tmpParentNode1, childNode1) *
                                        GetTransitionProb(i - 1, tmpParentNode2, childNode2) * gl;
 

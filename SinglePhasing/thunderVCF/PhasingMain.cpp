@@ -1188,9 +1188,9 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, PBWTHapl
                         error("Negative PL or Positive GL observed");
                     }
 
-                    if (phred11 > 255) phred11 = 255;
-                    if (phred12 > 255) phred12 = 255;
-                    if (phred22 > 255) phred22 = 255;
+                    if (phred11 > 127) phred11 = 127;
+                    if (phred12 > 127) phred12 = 127;
+                    if (phred22 > 127) phred22 = 127;
 //
 //                    printf("phred scores are %f, %f, %f;\tphred11/12/22 %d, %d, %d\n", phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble(),phred11,phred12,phred22);
 
