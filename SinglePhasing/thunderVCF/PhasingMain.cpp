@@ -1160,7 +1160,7 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, PBWTHapl
                         phred12=static_cast<int>(-10. * phred[idx12].AsDouble());
                         phred22=static_cast<int>(-10. * phred[idx22].AsDouble());
                     }
-                    if(GTidx >=0)//found GT
+                    else if(GTidx >=0)//found GT
                     {
                         phred.ReplaceTokens(pMarker->asSampleValues[GTidx + i * formatLength], "|/");
                         long geno=phred[0].AsInteger()+phred[1].AsInteger();

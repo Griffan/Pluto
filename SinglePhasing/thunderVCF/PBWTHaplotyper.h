@@ -15,6 +15,7 @@
 #define PHASE 2
 #define ITERATIVE 4
 #define HASH_RESERVE 4096
+
 class PBWTHaplotyper : public ShotgunHaplotyper {
 public:
     std::string loadGraph = "Empty";//indicate if build graph from previously built graph
@@ -26,12 +27,15 @@ public:
     int nThread = 0;
 
     GeneticDistanceMap GDMap;
-
+/*!PBWTHaplotyper
+ * Consturctor
+ * @param nhaps number of haplotypes
+ * @param nsnps number of snp markers
+ */
     PBWTHaplotyper(int nhaps, int nsnps);
 
     PBWTHaplotyper();
 
-//	void InitAuxillary();
     ~PBWTHaplotyper();
 
     /*!InitialHaplotypeByConsensus
@@ -51,26 +55,25 @@ public:
 
     void InitialSampleCopy(Random *rand);
 
-//    void RandomSetup(Random * rand);
     void SwapIndividuals(int a, int b);
 
     void PrepareRefSetPBWTWrapper();
 
-    int LoopThroughChromosomesHighPrecision();
 
-    int LoopThroughChromosomesRecomb(Pedigree &ped);
+    int LoopThroughChromosomesHighPrecision();
 
     int LoopThroughChromosomesSingleRound();
 
-
     int LoopThroughChromosomesViaPBWTWithHeterOnly();
 
-//	void Transpose(int site, float * source, float * dest);
+    /*!LoopThroughChromosomesRecomb
+     * Phasing Algorithm
+     * @param ped pedigree information
+     * @return
+     */
+    int LoopThroughChromosomesRecomb(Pedigree &ped);
 
     virtual void RandomSetup(Random *rand = NULL);
-//    virtual void ScoreLeftConditional();
-
-//    virtual void ConditionOnData(float * matrix, int marker, char phred11, char phred12, char phred22);
 
     virtual void ImputeAlleles(int marker, int state1, int state2, Random *rand, int currentIndividual, char **haps);
 
@@ -127,10 +130,6 @@ public:
     bool SetErrorAndTheta(std::vector<float> &holderError, std::vector<float> &holderTheta);
 
     bool AllocateMemory(int nIndividuals, int nMarkers);
-//    virtual void EstimateMemoryInfo(int Individuals, int Markers, int States, bool Compact, bool Phased);
-//    virtual void RetrieveMemoryBlock(int marker);
-
-
 
     virtual bool ForceMemoryAllocation();
 
@@ -161,7 +160,7 @@ public:
         return Wrapper->Graph.GetEdgeProbFromParentNode(site, from, allele);//
     }
 
-    inline uchar GetAllele(int site, StateIndex state)const {
+    inline uchar GetAllele(int site, StateIndex state) const {
         return Wrapper->GetAllele(site, state);
     }
 
@@ -208,22 +207,22 @@ public:
 //        }
         long operator()(const std::pair<T, U> &x) const//Cantor pairing function:
         {
-            return x.first<<(sizeof(StateIndex)*32)|x.second;
+            return x.first << (sizeof(StateIndex) * 32) | x.second;
         }
     };
 
 //    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, float, PairHash> Source;//(nodeA,nodeB)->fwd
 //    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, Source, PairHash> DestToSource;
 
-//    typedef std::unordered_map<u_int64_t, float> Source;//(nodeA,nodeB)->fwd
-//    typedef std::unordered_map<u_int64_t, Source> DestToSource;
+//    typedef std::unordered_map<uint64_t, float> Source;//(nodeA,nodeB)->fwd
+//    typedef std::unordered_map<uint64_t, Source> DestToSource;
 
-    typedef u_int64_t NodePair;
-    typedef std::vector<u_int64_t> SourceVec;
-    typedef std::vector<std::vector<u_int64_t> > Index2SourceVec;
+    typedef uint64_t NodePair;
+    typedef std::vector<uint64_t> SourceVec;
+    typedef std::vector<std::vector<uint64_t> > Index2SourceVec;
     typedef std::vector<float> FwdVec;
     typedef std::vector<std::vector<float> > Index2FwdVec;
-    typedef std::unordered_map<u_int64_t, int> Dest2SourceVecIndex;
+    typedef std::unordered_map<uint64_t, int> Dest2SourceVecIndex;
 
     /*
     class AvailableParentStatePair {
@@ -279,7 +278,7 @@ public:
 //        std::vector<DestToSource> parentsNodeVec;
 
         std::vector<Dest2SourceVecIndex> parentsNodeVec;
-        std::vector<Index2SourceVec > megaSourceVec;
+        std::vector<Index2SourceVec> megaSourceVec;
         std::vector<Index2FwdVec> megaFwdVec;
 
         std::vector<float> fwdValueSum;
@@ -288,12 +287,13 @@ public:
         std::vector<bool> isRec;
 
         FwdBwdLocalParameter(int individuals, int markers) {
+            states = -1;
 //            DestToSource dummy;
 //            dummy.reserve(HASH_RESERVE);
 //            parentsNodeVec.assign(markers, dummy);
             Dest2SourceVecIndex dummy;
             dummy.reserve(HASH_RESERVE);
-            parentsNodeVec.assign(markers,dummy);
+            parentsNodeVec.assign(markers, dummy);
 
             Index2SourceVec dummy2;
             dummy2.reserve(HASH_RESERVE);
@@ -304,79 +304,70 @@ public:
             megaFwdVec.assign(markers, dummy3);
 
         }
-        inline u_int64_t MakePair(StateIndex first, StateIndex second)
-        {
-            return (u_int64_t)first<<32|second;
+
+        inline uint64_t MakePair(StateIndex first, StateIndex second) {
+            return first << 32 | second;
         }
 
-        inline StateIndex GetFirst(u_int64_t pair)
-        {
-            return (StateIndex)(pair>>32);
+        inline StateIndex GetFirst(uint64_t pair) {
+            return (StateIndex) (pair >> 32);
         }
 
-        inline StateIndex GetSecond(u_int64_t pair)
-        {
-            return (StateIndex)(pair&0xffff);
+        inline StateIndex GetSecond(uint64_t pair) {
+            return (StateIndex) (pair & 0xffff);
         }
-        inline int FillParentsNodeVec(int i, StateIndex childNode1, StateIndex childNode2, StateIndex parentNode1, StateIndex parentNode2, float tmpFwdValue)
-        {
+
+        inline int FillParentsNodeVec(int i, StateIndex childNode1, StateIndex childNode2, StateIndex parentNode1,
+                                      StateIndex parentNode2, float tmpFwdValue) {
 //            parentsNodeVec[i][MakePair(childNode1, childNode2)][MakePair(parentNode1, parentNode2)] = tmpFwdValue;
-            u_int64_t index = std::numeric_limits<u_int64_t >::max();
-            if(parentsNodeVec[i].find(MakePair(childNode1, childNode2)) != parentsNodeVec[i].end())//Dest already exists
+            int index = std::numeric_limits<uint64_t>::max();
+            if (parentsNodeVec[i].find(MakePair(childNode1, childNode2)) !=
+                parentsNodeVec[i].end())//Dest already exists
             {
                 index = parentsNodeVec[i][MakePair(childNode1, childNode2)];
                 megaFwdVec[i][index].push_back(tmpFwdValue);
                 megaSourceVec[i][index].push_back(MakePair(parentNode1, parentNode2));
-            }
-            else
-            {
+            } else {
                 index = megaFwdVec[i].size();
                 parentsNodeVec[i][MakePair(childNode1, childNode2)] = index;
 
                 FwdVec dummyFwdVec(1, tmpFwdValue);
-                dummyFwdVec.reserve(HASH_RESERVE/2.0);
+                dummyFwdVec.reserve(HASH_RESERVE);
                 megaFwdVec[i].push_back(dummyFwdVec);
 
-                SourceVec dummySourceVec(1, MakePair(parentNode1,parentNode2));
-                dummySourceVec.reserve(HASH_RESERVE/2.0);
+                SourceVec dummySourceVec(1, MakePair(parentNode1, parentNode2));
+                dummySourceVec.reserve(HASH_RESERVE);
                 megaSourceVec[i].push_back(dummySourceVec);
             }
             return 0;
         }
 
-        inline FwdVec & GetFwdVec(int i, int destIndex)
-        {
+        inline FwdVec &GetFwdVec(int i, int destIndex) {
             return megaFwdVec[i][destIndex];
         }
 
-        inline FwdVec & GetFwdVec(int i, StateIndex A, StateIndex B)
-        {
-            return GetFwdVec(i,parentsNodeVec[i][MakePair(A,B)]);
+        inline FwdVec &GetFwdVec(int i, StateIndex A, StateIndex B) {
+            return GetFwdVec(i, parentsNodeVec[i][MakePair(A, B)]);
         }
 
-        inline float GetFwd(int i, int destIndex, int sourceIndex)
-        {
+        inline float GetFwd(int i, int destIndex, int sourceIndex) {
             return megaFwdVec[i][destIndex][sourceIndex];
         }
 
-        inline SourceVec & GetSourceVec(int i,  int destIndex)
-        {
+        inline SourceVec &GetSourceVec(int i, int destIndex) {
             return megaSourceVec[i][destIndex];
         }
 
-        inline SourceVec & GetSourceVec(int i, StateIndex A, StateIndex B)
-        {
-            return GetSourceVec(i,parentsNodeVec[i][MakePair(A,B)]);
+        inline SourceVec &GetSourceVec(int i, StateIndex A, StateIndex B) {
+            return GetSourceVec(i, parentsNodeVec[i][MakePair(A, B)]);
         }
 
-        inline u_int64_t GetSource(int i, int destIndex, int sourceIndex)
-        {
+        inline uint64_t GetSource(int i, int destIndex, int sourceIndex) {
             return megaSourceVec[i][destIndex][sourceIndex];
         }
 
-        inline int GetDestIndex(int i, StateIndex A, StateIndex B)
-        {
-            return parentsNodeVec[i][MakePair(A,B)];
+        inline int GetDestIndex(int i, StateIndex A, StateIndex B) {
+            return parentsNodeVec[i][MakePair(A, B)];
         }
 
         inline float SumFwdValueFromOriginVec(const FwdVec &a) const {
@@ -416,7 +407,23 @@ public:
     int BackwardSamplingRecBeagle(Random *rand, int SampleIndex, char **sampledHaps);
 #endif
 
+    /*!ForwardAlgorithmRec
+     * Calculate Forward Marginal Probability
+     * @param sampleIndex
+     * @param localParameter
+     * @return
+     */
     int ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &localParameter);
+
+    /*!BackwardAlgorithmRec
+     * Calculate Backward Marginal Probability
+     * @param sampleIndex
+     * @param sampledHaps
+     * @param localParameter
+     * @return
+     */
+    int BackwardAlgorithmRec(int sampleIndex, char **sampledHaps,
+                             FwdBwdLocalParameter &localParameter);
 
     /*!BackwardSamplingRec()
      * sampling haplotype while backward algorithm with recombination model added
