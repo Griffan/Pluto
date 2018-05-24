@@ -6,6 +6,7 @@
 #include "MemoryAllocators.h"
 
 //debug related
+#define DEBUG true
 static const float UNDERFLOW_MIN = std::numeric_limits<float>::min() * 100;
 
 static void printLeftMatrix(float *probability, int numStates) {
@@ -470,17 +471,17 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWTWithHeterOnly() {
             Wrapper->CursorBackwards();//calculate backwards order of suffix
             Wrapper->CursorForwards();
 
-#ifdef DEBUG
-            {
-                Wrapper->PrintHap(tmpHaps, Wrapper->a[0]);
-
-                // Wrapper->PrintHap(tmpHaps,Wrapper->a[6]);
-                Wrapper->PrintHap(tmpHaps, Wrapper->a[Wrapper->N - 1]);
-                // Wrapper->PrintMatrix(Wrapper->a,"a array matrix");
-                Wrapper->PrintMatrix(Wrapper->d, "d array");
-                //Wrapper->PrintVector(Wrapper->a[Wrapper->N-7],"last a array");
-            }
-#endif
+//#ifdef DEBUG
+//            {
+//                Wrapper->PrintHap(tmpHaps, Wrapper->a[0]);
+//
+//                // Wrapper->PrintHap(tmpHaps,Wrapper->a[6]);
+//                Wrapper->PrintHap(tmpHaps, Wrapper->a[Wrapper->N - 1]);
+//                // Wrapper->PrintMatrix(Wrapper->a,"a array matrix");
+//                Wrapper->PrintMatrix(Wrapper->d, "d array");
+//                //Wrapper->PrintVector(Wrapper->a[Wrapper->N-7],"last a array");
+//            }
+//#endif
             printf("%d markers used for individual %d\n", markers, i);
             clock_t t1 = clock();
             printf("build model time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
@@ -1742,7 +1743,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                         fitPair++;
                         tmpFwdValue = prevFwdValue * GetTransitionProb(i - 1, parentNode1, childNode1) *
                                       GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
-//                        fprintf(stderr,"debug (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\n",parentNode1, parentNode2, prevFwdValue,GetTransitionProb(i - 1, parentNode1, childNode1),GetTransitionProb(i - 1, parentNode2, childNode2));
+                        fprintf(stderr,"debug (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\n",parentNode1, parentNode2, prevFwdValue,GetTransitionProb(i - 1, parentNode1, childNode1),GetTransitionProb(i - 1, parentNode2, childNode2));
                         localParameter.fwdValueSum[i] += tmpFwdValue;
                         //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
 //                        localParameter.parentsNodeVec[i][std::make_pair(childNode1, childNode2)][std::make_pair(parentNode1,
@@ -1872,14 +1873,25 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
             StateIndex tmpNode1 = localParameter.GetFirst(kv.first);
             StateIndex tmpNode2 = localParameter.GetSecond(kv.first);
             float tmp(0.f), tmp2(0.f);
-            for (auto &tmpFwd: localParameter.GetFwdVec(i, kv.second)) {
+
+//below is debug code
+            if(DEBUG)
+            for (int j = 0; j< localParameter.GetFwdVec(i, kv.second).size(); ++j) {
+                float & tmpFwd = localParameter.GetFwdVec(i, kv.second).at(j);
                 tmpFwd /= localParameter.fwdValueSum[i];
                 tmp += tmpFwd;
-//                fprintf(stderr, "foward marker:%d\tfwdValueSum:%g\tpair:(%d,%d)=(%d,%d)\tcurrentFwd:%g\tnormalized currentFwd:%g\tfrom:(%d,%d)\n",
-//                        i, localParameter.fwdValueSum[i], tmpNode1, tmpNode2,
-//                        GetAllele(i, tmpNode1), GetAllele(i, tmpNode2), tmp2, tmp, iter3->first.first,
-//                        iter3->first.second);
+                int first = localParameter.GetFirst(localParameter.GetSourceVec(i, kv.second).at(j));
+                int second = localParameter.GetSecond(localParameter.GetSourceVec(i, kv.second).at(j));
+                fprintf(stderr, "foward marker:%d\tfwdValueSum:%g\tpair:(%d,%d)=(%d,%d)\tcurrentFwd:%g\tnormalized currentFwd:%g\tfrom:(%d,%d)\n",
+                        i, localParameter.fwdValueSum[i], tmpNode1, tmpNode2,
+                        GetAllele(i, tmpNode1), GetAllele(i, tmpNode2), tmp2, tmp, first, second);
             }
+            else
+                for (auto &tmpFwd: localParameter.GetFwdVec(i, kv.second)) {
+                tmpFwd /= localParameter.fwdValueSum[i];
+                tmp += tmpFwd;
+                }
+
             localParameter.fwdValueNode1Sum[i][tmpNode1] += tmp;
             localParameter.fwdValueNode2Sum[i][tmpNode2] += tmp;
         }
@@ -2092,7 +2104,9 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
          iter != localParameter.parentsNodeVec[markers - 1].end(); ++iter) {
         count++;
         sampledFwd = localParameter.SumFwdValueFromOriginVec(localParameter.GetFwdVec(markers - 1, iter->second));
-//            fprintf(stderr,"(%d,%d)\tvalue:%g\tcount:%d\n",iter->first.first,iter->first.second,sampledFwd,count);
+        if(DEBUG)
+            fprintf(stderr,"(%d,%d)\tvalue:%g\tcount:%d\n",localParameter.GetFirst(iter->first),
+                    localParameter.GetSecond(iter->second),sampledFwd,count);
 
     }
 
@@ -2101,8 +2115,9 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
         for (int sourceIndex = 0;
              sourceIndex < localParameter.GetSourceVec(markers - 1, destIndex).size(); ++sourceIndex) {
             sum += localParameter.GetFwd(markers - 1, destIndex, sourceIndex);
-//            fprintf(stderr, "sampling last marker:(%d,%d) with sum:%g, recRate:%g\n",
-//                    kv.first.first, kv.first.second, sum, recRate);
+            if(DEBUG)
+            fprintf(stderr, "sampling last marker:(%d,%d) with sum:%g, recRate:%g\n",
+                    localParameter.GetFirst(kv.first), localParameter.GetFirst(kv.second), sum, recRate);
             if (sum > choice) {
                 sampledChild0 = localParameter.GetFirst(kv.first);
                 sampledChild1 = localParameter.GetSecond(kv.first);
@@ -2144,8 +2159,8 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
 //            fprintf(stderr, "marker:%d\tpair:(%d,%d)\ttestSum:%g\n", i, kv.first.first, kv.first.second, kv.second);
 //        }
 //        }
-
-//        fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\n",i,sum,choice,sampledParent0,sampledParent1,sampledFwd);
+        if(DEBUG)
+        fprintf(stderr,"marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\n",i,sum,choice,sampledParent0,sampledParent1,sampledFwd);
 
         sum = 0.f;
         testSum = 0.f;

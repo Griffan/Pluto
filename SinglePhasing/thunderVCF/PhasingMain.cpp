@@ -1202,6 +1202,8 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, PBWTHapl
             }
         }
 
+        int nMissing = 0;
+        int nTotal = 0;
         for (std::unordered_map<std::string, bool>::const_iterator iter = unifiedMarkerSet.begin();
              iter != unifiedMarkerSet.end(); ++iter) {
             if (iter->second == false)// if this marker not shown in unphased set but in reference set
@@ -1214,9 +1216,11 @@ void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, PBWTHapl
                     engine.genotypes[i][genoindex + 1] = 0;
                     engine.genotypes[i][genoindex + 2] = 0;
                 }
+                nMissing++;
             }
+            nTotal++;
         }
-
+        fprintf(stderr,"%d out of %d SNPs not present in target file.\n",nMissing,nTotal);
         delete pVcf;
     }
     catch (VcfFileException e) {
@@ -1675,6 +1679,8 @@ int PhaseByRefGraph(int argc, char **argv) {
     return 0;
 }
 
+
+/* do not delete
 int PhasingMain(int argc, char **argv) {
 
 
@@ -1805,20 +1811,20 @@ int PhasingMain(int argc, char **argv) {
     LoadPidToBeIncluded(pidIncludeFromUnphased, pidIncludeFromPhased);
     LoadPidToBeExcluded(pidExcludeFromUnphased, pidExcludeFromPhased);
 
-    /*We add unphased individuals first*/
+    //We add unphased individuals first
     int numUnphased(0);
     LoadSamples(ped, unphasedfile, pidIncludedInUnphasedVcf, pidExcludedInUnphasedVcf, numUnphased);
     std::cerr << "Load unphased individuals:" << numUnphased << std::endl;
     if (ped.count < 1) {
         error("SinglePhasing requires more than 0 sample.");
     }
-    /*now loading phased individuals*/
+    //now loading phased individuals
     // here unphasedfile is the vcf file, here vcf is used for filling up the first five column of PED file(check the PED format).
     if (phasedfile != "Empty")
         LoadSamples(ped, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf, engine.phased);
     std::cerr << "Load phased individuals:" << engine.phased << std::endl;
 
-    /*Notice that now we adding markers as subset of phased markers*/
+    //Notice that now we adding markers as subset of phased markers
     // here only extracted site information only, used for site check
 
     SetCrashExplanation("loading information for polymorphic sites");
@@ -1985,3 +1991,4 @@ int PhasingMain(int argc, char **argv) {
     printf("Total time:%.2f sec\n", (float) (clock() - t) / CLOCKS_PER_SEC);
     return 0;
 }
+*/
