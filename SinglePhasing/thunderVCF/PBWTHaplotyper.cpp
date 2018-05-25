@@ -1759,9 +1759,9 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                         fitPair++;
                         tmpFwdValue = prevFwdValue * GetTransitionProb(i - 1, parentNode1, childNode1) *
                                       GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
-                        if (DEBUG)fprintf(stderr, "debug (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\n", parentNode1, parentNode2,
+                        if (DEBUG)fprintf(stderr, "debug (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\t%g\n", parentNode1, parentNode2,
                                 prevFwdValue, GetTransitionProb(i - 1, parentNode1, childNode1),
-                                GetTransitionProb(i - 1, parentNode2, childNode2));
+                                GetTransitionProb(i - 1, parentNode2, childNode2), gl);
                         localParameter.fwdValueSum[i] += tmpFwdValue;
                         //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
 //                        localParameter.parentsNodeVec[i][std::make_pair(childNode1, childNode2)][std::make_pair(parentNode1,
@@ -2138,7 +2138,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
             sum += localParameter.GetFwd(markers - 1, destIndex, sourceIndex);
             if (DEBUG)
                 fprintf(stderr, "sampling last marker:(%d,%d) with sum:%g, recRate:%g\n",
-                        localParameter.GetFirst(kv.first), localParameter.GetFirst(kv.second), sum, recRate);
+                        localParameter.GetFirst(kv.first), localParameter.GetSecond(kv.first), sum, recRate);
             if (sum > choice) {
                 sampledChild0 = localParameter.GetFirst(kv.first);
                 sampledChild1 = localParameter.GetSecond(kv.first);
@@ -2181,8 +2181,8 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
 //        }
 //        }
         if (DEBUG)
-            fprintf(stderr, "marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\n", i, sum, choice, sampledParent0,
-                    sampledParent1, sampledFwd);
+            fprintf(stderr, "marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\tgl:%g\n", i, sum, choice, sampledParent0,
+                    sampledParent1, sampledFwd, gl0);
 
         sum = 0.f;
         testSum = 0.f;
