@@ -6,7 +6,7 @@
 #include "MemoryAllocators.h"
 
 //debug related
-#define DEBUG true
+#define DEBUG false
 static const float UNDERFLOW_MIN = std::numeric_limits<float>::min() * 100;
 
 static void printLeftMatrix(float *probability, int numStates) {
@@ -2127,7 +2127,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
         sampledFwd = localParameter.SumFwdValueFromOriginVec(localParameter.GetFwdVec(markers - 1, iter->second));
         if (DEBUG)
             fprintf(stderr, "(%d,%d)\tvalue:%g\tcount:%d\n", localParameter.GetFirst(iter->first),
-                    localParameter.GetSecond(iter->second), sampledFwd, count);
+                    localParameter.GetSecond(iter->first), sampledFwd, count);
 
     }
 
