@@ -392,7 +392,7 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
     omp_set_num_threads(nThread);
 #pragma omp parallel for
 #endif
-    for (int i = individuals - 1; i >= 0; i--) {
+    for (int i = individuals - phased - 1; i >= 0; i--) {
 //            SwapIndividuals(i, individuals - 1);
         fprintf(stderr, "[%s]phasing individual %d:%s...\n\n", __FUNCTION__, i, ped[i].pid.c_str());
         LocalForwadBackWard(i);
@@ -444,7 +444,7 @@ void PBWTHaplotyper::ConstructGraph() {
             Wrapper = nullptr;
         }
         Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, prefixLength);
-        Wrapper->SetHaps(haplotypes, 0, 2 * individuals, nullptr, 0, 0, thetas);
+        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
         Wrapper->CursorBackwards();//calculate backwards order of suffix
         Wrapper->CursorForwards();
         Wrapper->Graph.WriteContainer(outputPrefix + ".DAG");
@@ -701,7 +701,7 @@ void PBWTHaplotyper::RandomSetup(Random *rand) {
 
     for (int j = 0; j < markers; j++) {
         int markerindex = 3 * j;
-        for (int i = 0; i < individuals; i++) {
+        for (int i = 0; i < individuals - phased; i++) {
 
             int posterior_11 = genotypes[i][markerindex];
             int posterior_12 = genotypes[i][markerindex + 1];
@@ -1684,7 +1684,7 @@ int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &loca
                 int second = localParameter.GetSecond(localParameter.GetSourceVec(0, kv.second).at(j));
                 fprintf(stderr,
                         "foward marker:%d\tfwdValueSum:%g\tpair:%d(%d,%d)=(%d,%d)\tcurrentFwd:%g\tnormalized currentFwd:%g\tfrom:(%d,%d)\n",
-                        0, localParameter.fwdValueSum[0], kv.first,tmpNode1, tmpNode2,
+                        0, localParameter.fwdValueSum[0], kv.first, tmpNode1, tmpNode2,
                         GetAllele(0, tmpNode1), GetAllele(0, tmpNode2), localParameter.GetFwdVec(0, kv.second).at(j),
                         tmpFwd, first, second);
             }
@@ -1759,9 +1759,11 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                         fitPair++;
                         tmpFwdValue = prevFwdValue * GetTransitionProb(i - 1, parentNode1, childNode1) *
                                       GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
-                        if (DEBUG)fprintf(stderr, "debug (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\t%g\n", parentNode1, parentNode2,
-                                prevFwdValue, GetTransitionProb(i - 1, parentNode1, childNode1),
-                                GetTransitionProb(i - 1, parentNode2, childNode2), gl);
+                        if (DEBUG)
+                            fprintf(stderr, "debug (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\t%g\n", parentNode1,
+                                    parentNode2,
+                                    prevFwdValue, GetTransitionProb(i - 1, parentNode1, childNode1),
+                                    GetTransitionProb(i - 1, parentNode2, childNode2), gl);
                         localParameter.fwdValueSum[i] += tmpFwdValue;
                         //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
 //                        localParameter.parentsNodeVec[i][std::make_pair(childNode1, childNode2)][std::make_pair(parentNode1,
