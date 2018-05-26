@@ -388,11 +388,12 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
     ConstructGraph();
 
     clock_t t1 = clock();
+    int start = loadGraph != "Empty"? individuals -1: individuals - phased -1;
 #ifdef _OPENMP
     omp_set_num_threads(nThread);
 #pragma omp parallel for
 #endif
-    for (int i = individuals - phased - 1; i >= 0; i--) {
+    for (int i = start; i >= 0; i--) {
 //            SwapIndividuals(i, individuals - 1);
         fprintf(stderr, "[%s]phasing individual %d:%s...\n\n", __FUNCTION__, i, ped[i].pid.c_str());
         LocalForwadBackWard(i);
@@ -1714,7 +1715,7 @@ int PBWTHaplotyper::ResetFwdValues(FwdBwdLocalParameter &localParameter) {
 int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &localParameter) {
     float prevFwdValue(0.f);
     float tmpFwdValue(0.f), lowestFwd(0.f);
-    float gl(0.f);
+    float gl(0.f), glParents(0.f);
 
     int fitPair = 0;
     int numCrediablePair = 0;
@@ -1809,12 +1810,18 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                 for (childNode2 = 0; childNode2 < localParameter.states; ++childNode2) {//dest nodeB
                     gl = GetGL(sampleIndex, i, GetAllele(i, childNode1),
                                GetAllele(i, childNode2));//genotype of each childNode pair
-                    if (gl < 1e-1) continue;
-                    for (auto tmpParentNode1:GetParentNodes(i, childNode1)) {
-                        for (auto tmpParentNode2:GetParentNodes(i, childNode2)) {
-                            if (GetGL(sampleIndex, i - 1, GetAllele(i - 1, tmpParentNode1),
-                                      GetAllele(i - 1, tmpParentNode2)) < 1e-1)
-                                continue;//genotype of all possible parentNode pair of childNode
+                    if(DEBUG) fprintf(stderr,"dest:(%d,%d) gl:%g\t",childNode1,childNode2,gl);
+                    if (gl < 1e-1)
+                    {
+                        if(DEBUG) fprintf(stderr,"skip\n");
+                        continue;
+                    }
+                    for (auto tmpParentNode1:GetParentNodes(i, childNode1)) {//each parent of nodeA
+                        for (auto tmpParentNode2:GetParentNodes(i, childNode2)) {//each parent of nodeB
+                            glParents = GetGL(sampleIndex, i - 1, GetAllele(i - 1, tmpParentNode1),
+                                              GetAllele(i - 1, tmpParentNode2));
+                            if(DEBUG) fprintf(stderr,"from:(%d,%d) gl:%g\n",tmpParentNode1,tmpParentNode2,glParents);
+                            if (glParents < 1e-1) continue;//genotype of all possible parentNode pair of childNode
                             fitPair++;
                             if (localParameter.parentsNodeVec[i - 1].find(
                                     localParameter.MakePair(tmpParentNode1, tmpParentNode2)) !=

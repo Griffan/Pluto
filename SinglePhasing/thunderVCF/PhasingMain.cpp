@@ -197,12 +197,12 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
             pMarker = pVcf->getLastMarker();
             markerName.printf("%s:%d:%s", pMarker->sChrom.c_str(), pMarker->nPos,
                               pMarker->asAlts[0].c_str());//assume tri-alleles was divided into two lines
-
-            if (unifiedMarkerSet[std::string(markerName.c_str())] ==
-                true) {//if unphase also has this marker, update content otherwise remains as before
+            //if unphase also has this marker, update content otherwise remains as before
+            if (unifiedMarkerSet[std::string(markerName.c_str())] == 2) {
 //                doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
 
-                ////fprintf(stderr,"foo1\n");
+                pMarker->asInfoKeys.Clear();
+                pMarker->asInfoValues.Clear();
                 int nInfo = pMarker->asInfoKeys.Find("LDAF");
                 if (nInfo < 0) {
                     sprintf(sDose, "%.4f", 1. - freq);
@@ -252,7 +252,10 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
 
                 int GTidx = pMarker->asFormatKeys.Find("GT");
                 if (GTidx < 0) {
-                    throw VcfFileException("Cannot recognize GT key in FORMAT field");
+//                        throw VcfFileException("Cannot recognize GT key in FORMAT field");
+                    pMarker->asFormatKeys.Clear();
+                    pMarker->asFormatKeys.Add("GT");
+                    GTidx = 0;
                 }
 
                 int nFormats = pMarker->asFormatKeys.Length();
@@ -280,7 +283,7 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
         //delete pMarker;
         ifclose(outVCF);
     }
-    catch (VcfFileException e) {
+    catch (VcfFileException& e) {
         error(e.what());
     }
 }
@@ -387,18 +390,15 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
                 altAlleles.push_back(pMarker->asAlts[0][0]);
 
             for (auto alt:altAlleles) {
-                markerName.printf("%s:%d:%c", pMarker->sChrom.c_str(), pMarker->nPos,
-                                  alt);//assume tri-alleles was divided into two lines
+                //assume tri-alleles was divided into two lines
+                markerName.printf("%s:%d:%c", pMarker->sChrom.c_str(), pMarker->nPos, alt);
                 if (unifiedMarkerSet.find(std::string(markerName.c_str())) != unifiedMarkerSet.end() &&
-                    unifiedMarkerSet[std::string(markerName.c_str())] ==
-                    true) {//if unphase also has this marker i.e. shared marker, update content otherwise remains as before
-
+                    unifiedMarkerSet[std::string(markerName.c_str())] == 2)
+                {//if unphase also has this marker i.e. shared marker, update content otherwise remains as before
                     markerIndex = refMarkerIdx[std::string(markerName.c_str())];
-
 //                doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
-
-//                fprintf(stderr,"foo1,marker:%d\t%f\t%f\t%f\t%f\n",m,freq,maf,avgPost,rsq);
-
+                    pMarker->asInfoKeys.Clear();
+                    pMarker->asInfoValues.Clear();
                     int nInfo = pMarker->asInfoKeys.Find("LDAF");
                     if (nInfo < 0) {
                         sprintf(sDose, "%.4f", 1. - freq);
@@ -450,7 +450,10 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
 
                     int GTidx = pMarker->asFormatKeys.Find("GT");
                     if (GTidx < 0) {
-                        throw VcfFileException("Cannot recognize GT key in FORMAT field");
+//                        throw VcfFileException("Cannot recognize GT key in FORMAT field");
+                        pMarker->asFormatKeys.Clear();
+                        pMarker->asFormatKeys.Add("GT");
+                        GTidx = 0;
                     }
 
                     int nFormats = pMarker->asFormatKeys.Length();
@@ -481,7 +484,7 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
         //delete pMarker;
         ifclose(outVCF);
     }
-    catch (VcfFileException e) {
+    catch (VcfFileException &e) {
         error(e.what());
     }
 }
@@ -594,8 +597,8 @@ void LoadSamples(Pedigree &ped, const String &filename, std::unordered_map<std::
                     DuplicatedIndividualPair.end())//never showed before
                 {
                     ped.AddPerson(pVcf->vpVcfInds[i]->sIndID, pVcf->vpVcfInds[i]->sIndID, "0", "0", 1, 1);
-                    DuplicatedIndividualPair[std::string(pVcf->vpVcfInds[i]->sIndID.c_str())] = std::make_pair(i,
-                                                                                                               -1);
+                    DuplicatedIndividualPair[std::string(pVcf->vpVcfInds[i]->sIndID.c_str())]
+                            = std::make_pair(i, -1);
                     //std::cerr << "Never saw" << pVcf->vpVcfInds[i]->sIndID << std::endl;
                 } else {
                     warning("Individual %s duplicated!", pVcf->vpVcfInds[i]->sIndID.c_str());
@@ -982,7 +985,7 @@ namespace ReadGraph {
                 transRateHolder.push_back(atof(transRate.c_str()));
             }
         }
-        catch (VcfFileException e) {
+        catch (VcfFileException& e) {
             error(e.what());
         }
     }
@@ -1020,7 +1023,6 @@ namespace ReadGraph {
                 if (idx != -1) {//find index of this sample in current vcf
                     personIndices[idx] = i;//map index in current vcf to index in ped file
                 }
-
             }
 
             int markerindex = 0;
@@ -1149,7 +1151,7 @@ namespace ReadGraph {
             fprintf(stderr, "%d out of %d SNPs not present in target file.\n", nMissing, nTotal);
             delete pVcf;
         }
-        catch (VcfFileException e) {
+        catch (VcfFileException& e) {
             error(e.what());
         }
     }
