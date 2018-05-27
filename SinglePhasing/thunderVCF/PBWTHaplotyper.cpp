@@ -1770,6 +1770,9 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                                     parentNode2, childNode1, childNode2,
                                     prevFwdValue, GetTransitionProb(i - 1, parentNode1, childNode1),
                                     GetTransitionProb(i - 1, parentNode2, childNode2), gl);
+                        if (tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0) {
+                            tmpFwdValue = UNDERFLOW_MIN;
+                        }
                         localParameter.fwdValueSum[i] += tmpFwdValue;
                         //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
 //                        localParameter.parentsNodeVec[i][std::make_pair(childNode1, childNode2)][std::make_pair(parentNode1,
@@ -1859,6 +1862,9 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                                            GetHapProbAt(i - 1, tmpParentNode1) * baseProb * recRate * recRate;
 //                        fprintf(stderr,"tmp output4 tmpFwdValue:%g\n",tmpFwdValue);
 
+                            if (tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0) {
+                                tmpFwdValue = UNDERFLOW_MIN;
+                            }
                             if (numCrediablePair < 50) {
                                 EdgePairList.push(
                                         EdgePair(childNode1, childNode2, tmpParentNode1, tmpParentNode2, tmpFwdValue));
@@ -1911,6 +1917,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
             if (DEBUG)
                 for (int j = 0; j < localParameter.GetFwdVec(i, kv.second).size(); ++j) {
                     float &tmpFwd = localParameter.GetFwdVec(i, kv.second).at(j);
+                    float notNormalized = tmpFwd;
                     tmpFwd /= localParameter.fwdValueSum[i];
                     tmp += tmpFwd;
                     int first = localParameter.GetFirst(localParameter.GetSourceVec(i, kv.second).at(j));
@@ -1919,7 +1926,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                             "foward marker:%d\tfwdValueSum:%g\tpair:(%d,%d)=(%d,%d)\tcurrentFwd:%g\tnormalized currentFwd:%g\tfrom:(%d,%d)\n",
                             i, localParameter.fwdValueSum[i], tmpNode1, tmpNode2,
                             GetAllele(i, tmpNode1), GetAllele(i, tmpNode2),
-                            localParameter.GetFwdVec(i, kv.second).at(j), tmpFwd, first, second);
+                            notNormalized, tmpFwd, first, second);
                 }
             else
                 for (auto &tmpFwd: localParameter.GetFwdVec(i, kv.second)) {
