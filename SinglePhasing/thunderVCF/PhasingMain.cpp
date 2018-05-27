@@ -1400,7 +1400,8 @@ namespace PhaseIntersect {
                 pMarker = pVcf->getLastMarker();
                 markerName.printf("%s:%d:%s", pMarker->sChrom.c_str(), pMarker->nPos,
                                   pMarker->asAlts[0].c_str());//assume tri-alleles was divided into two lines
-                if (unifiedMarkerSet.find(std::string(markerName.c_str())) != unifiedMarkerSet.end()) {
+                if (unifiedMarkerSet.find(std::string(markerName.c_str())) != unifiedMarkerSet.end()
+                        and unifiedMarkerSet[std::string(markerName.c_str())] == 2) {
                     int marker = Pedigree::GetMarkerID(
                             markerName);// that's where we fill up marker numbers for ped file
                     //initialize flag map to allocate memory equals to marker number in ref set
