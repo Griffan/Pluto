@@ -1810,19 +1810,16 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                 for (childNode2 = 0; childNode2 < localParameter.states; ++childNode2) {//dest nodeB
                     gl = GetGL(sampleIndex, i, GetAllele(i, childNode1),
                                GetAllele(i, childNode2));//genotype of each childNode pair
-                    if(DEBUG) fprintf(stderr,"dest:(%d,%d) gl:%g\t",childNode1,childNode2,gl);
                     if (gl < 1e-1)
                     {
-                        if(DEBUG) fprintf(stderr,"skip\n");
+                        if(DEBUG) fprintf(stderr,"dest:(%d,%d) gl:%g\tskip\n",childNode1,childNode2,gl);
                         continue;
                     }
                     for (auto tmpParentNode1:GetParentNodes(i, childNode1)) {//each parent of nodeA
                         for (auto tmpParentNode2:GetParentNodes(i, childNode2)) {//each parent of nodeB
                             glParents = GetGL(sampleIndex, i - 1, GetAllele(i - 1, tmpParentNode1),
                                               GetAllele(i - 1, tmpParentNode2));
-                            if(DEBUG) fprintf(stderr,"from:(%d,%d) gl:%g\n",tmpParentNode1,tmpParentNode2,glParents);
                             if (glParents < 1e-1) continue;//genotype of all possible parentNode pair of childNode
-                            fitPair++;
                             if (localParameter.parentsNodeVec[i - 1].find(
                                     localParameter.MakePair(tmpParentNode1, tmpParentNode2)) !=
                                 localParameter.parentsNodeVec[i - 1].end()) {
@@ -1831,7 +1828,9 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
 //                                        (localParameter.parentsNodeVec[i - 1][localParameter.MakePair(tmpParentNode1,
 //                                                                             tmpParentNode2)]);//sum over all the parents of current parents that lead to a child pair
                             } else
-                                prevFwdValue = 0.f;
+                                continue;
+                            if(DEBUG) fprintf(stderr,"dest:(%d,%d) gl:%g\tfrom:(%d,%d) gl:%g\n",childNode1,childNode2,gl,tmpParentNode1,tmpParentNode2,glParents);
+                            fitPair++;
 
                             baseProb = GetTransitionProb(i - 1, tmpParentNode1, childNode1) *
                                        GetTransitionProb(i - 1, tmpParentNode2, childNode2) * gl;
