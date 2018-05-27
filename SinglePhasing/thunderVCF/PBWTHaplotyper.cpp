@@ -386,9 +386,8 @@ class SamplingException : public std::exception {
 int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
 
     ResetCrossovers();
-
+    if (isRev) ReverseInput();
     ConstructGraph();
-
     clock_t t1 = clock();
     int nTarget = loadGraph != "Empty"? individuals: individuals - phased;
 #ifdef _OPENMP
@@ -416,8 +415,6 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
 }
 
 void PBWTHaplotyper::ConstructGraph() {
-    if (isRev) ReverseInput();
-
     if (loadGraph != "Empty") {
         clock_t t = clock();
         if (Wrapper != nullptr) {
@@ -447,8 +444,10 @@ void PBWTHaplotyper::ConstructGraph() {
             delete Wrapper;
             Wrapper = nullptr;
         }
-        Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, prefixLength);
-        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
+//        Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, prefixLength);
+//        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
+        Wrapper = new PBWTWrapper(2 * individuals, markers, PvalueMatrix, prefixLength);
+        Wrapper->SetHaps(haplotypes, 0, 2 * individuals, nullptr, 0, 0, thetas);
         Wrapper->CursorBackwards();//calculate backwards order of suffix
         Wrapper->CursorForwards();
         Wrapper->Graph.WriteContainer(outputPrefix + ".DAG");
@@ -605,7 +604,7 @@ PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *rand, 
     if (r < posterior_11)//homo ref alleles
     {
         if (copied1 != copied2 || copied1 != 0)
-            fprintf(stdout, "individual: %d,Homo ref Marker:%d from else (%d,%d) and orginal gl:(%d,%d,%d)\n",
+            fprintf(stdout, "[posterior_11]individual: %d,Homo ref Marker:%d from else (%d,%d) and orginal gl:(%d,%d,%d)\n",
                     currentIndividual, marker, copied1, copied2, ph11, ph12, ph22);
 
         haps[currentHap1][marker] = 0;
@@ -613,7 +612,7 @@ PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *rand, 
     } else if (r < posterior_11 + posterior_22)//home alt alleles
     {
         if (copied1 != copied2 || copied1 != 1)
-            fprintf(stdout, "individual: %d,Homo alt Marker:%d from else (%d,%d) and orginal gl:(%d,%d,%d)\n",
+            fprintf(stdout, "[posterior_22]individual: %d,Homo alt Marker:%d from else (%d,%d) and orginal gl:(%d,%d,%d)\n",
                     currentIndividual, marker, copied1, copied2, ph11, ph12, ph22);
         haps[currentHap1][marker] = 1;
         haps[currentHap2][marker] = 1;
@@ -635,8 +634,10 @@ PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *rand, 
                 currentIndividual, marker, copied1, copied2, ph11, ph12, ph22);
         bool bit = rand->Binary();
 
-        haps[currentHap1][marker] = bit;
-        haps[currentHap2][marker] = bit ^ 1;
+//        haps[currentHap1][marker] = bit;
+//        haps[currentHap2][marker] = bit ^ 1;
+        haps[currentHap1][marker] = copied1;
+        haps[currentHap2][marker] = copied2;
     }
 
     int imputed1 = haps[currentHap1][marker];

@@ -276,8 +276,9 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                                                                              haplotypes[pi * 2 + 1][m] + 1);
                     }
                 }
+                pMarker->printVCFMarker(outVCF, false); // print marker to output file
             }
-            pMarker->printVCFMarker(outVCF, false); // print marker to output file
+//            pMarker->printVCFMarker(outVCF, false); // print marker to output file
         }
         delete pVcf;
         //delete pMarker;
@@ -476,8 +477,9 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
                                                                                                    1][markerIndex] + 1);
                         }
                     }
+                    pMarker->printVCFMarker(outVCF, false); // print marker to output file
                 }
-                pMarker->printVCFMarker(outVCF, false); // print marker to output file
+//                pMarker->printVCFMarker(outVCF, false); // print marker to output file
             }
         }
         delete pVcf;
@@ -1772,7 +1774,7 @@ namespace PhaseIntersect {
         double errorRate = 0.01;
         double transRate = 0.01;
         int seed = 123456, warmup = 0, states = 0, weightedStates = 0;
-        int burnin = 5, rounds = 10, polling = 0, samples = 0, samplingRounds = 1;
+        int burnin = 2, rounds = 4, polling = 0, samples = 0, samplingRounds = 1;
         int maxPhred = 255;
 
         int prefixLength = 120;
@@ -2017,16 +2019,20 @@ namespace PhaseIntersect {
 
         SetCrashExplanation("phasing procedure");
 
+        for (int i = 0; i < rounds; i++) {
+            engine.SetUseRev(i%2);
+            engine.LoopThroughChromosomesRecomb(ped);
 
-        engine.LoopThroughChromosomesRecomb(ped);
-
-        if (!fixTrans) engine.UpdateThetas();
-        errorRate = engine.UpdateErrorRate();
-
-        if (OutputManager::outputHaplotypes) {
+            if (!fixTrans) engine.UpdateThetas();
+            errorRate = engine.UpdateErrorRate();
+            printf("Markov Chain iteration %d [%d mosaic crossovers]\n",
+                   i + 1, engine.TotalCrossovers());
+            if (i < burnin)
+                continue;
+            if (OutputManager::outputHaplotypes) {
                 consensus.Store(engine.haplotypes);
+            }
         }
-
 
         SetCrashExplanation("outputing solution");
         // If we did multiple rounds of haplotyping, then generate consensus
