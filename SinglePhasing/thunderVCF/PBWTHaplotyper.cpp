@@ -216,6 +216,7 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
     for (int l = 0; l < nSampleCopy * (individuals - phased) * 2; ++l) {
         sampledHaps[l] = new char[markers];
     }
+    int nTarget = loadGraph != "Empty"? individuals -1: individuals - phased -1;
 
     for (int j = 0; j < markers; j++) {
         double mac = 0;
@@ -225,7 +226,6 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
         double hyperprior12 = 2.0 * freq1s[j] * (1.0 - freq1s[j]);
         double hyperprior22 = (1.0 - freq1s[j]) * (1.0 - freq1s[j]);
 
-        int nTarget = loadGraph != "Empty"? individuals -1: individuals - phased -1;
 
         for (int i = 0; i <= nTarget; i++) {
             double post11 = hyperprior11 * phred2prob[(size_t) genotypes[i][markerindex]];
@@ -429,6 +429,7 @@ void PBWTHaplotyper::ConstructGraph() {
         Wrapper = new PBWTWrapper(2 * phased, markers);
         Wrapper->SetHaps(haplotypes, 0, 0, nullptr, 0, 0, thetas);
         Wrapper->Graph.ReadContainer(loadGraph);
+        Wrapper->PrintSummary();
         //for debug
 //        loadGraph="reference.panel.DAG";
 //        Wrapper->Graph.WriteContainer(loadGraph);
@@ -701,10 +702,11 @@ void PBWTHaplotyper::RandomSetup(Random *rand) {
         rand = &globalRandom;
 
     CalculatePhred2Prob();
+    int nTarget = loadGraph != "Empty"? individuals -1: individuals - phased -1;
 
     for (int j = 0; j < markers; j++) {
         int markerindex = 3 * j;
-        for (int i = 0; i < individuals - phased; i++) {
+        for (int i = 0; i <= nTarget; i++) {
 
             int posterior_11 = genotypes[i][markerindex];
             int posterior_12 = genotypes[i][markerindex + 1];

@@ -1835,7 +1835,7 @@ namespace PhaseIntersect {
                         LONG_PARAMETER("probs", &OutputManager::outputProbabilities)
                         LONG_PARAMETER("mle", &mle)
                         LONG_PARAMETER_GROUP("Output Files")
-                        LONG_STRINGPARAMETER("prefix", &outfile)
+                        LONG_STRINGPARAMETER("outPrefix", &outfile)
                         LONG_PARAMETER("phase", &OutputManager::outputHaplotypes)
                         LONG_PARAMETER("uncompressed", &OutputManager::uncompressed)
                         LONG_PARAMETER("mldetails", &mledetails)
