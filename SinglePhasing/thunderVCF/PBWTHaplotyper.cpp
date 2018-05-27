@@ -1655,7 +1655,7 @@ int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &loca
     float tmpFwdValue(0.f), gl(0.f);
 
     for (StateIndex i = 0; i < localParameter.states; ++i) {
-        for (StateIndex j = 0; j < localParameter.states; ++j) {
+        for (StateIndex j = 0; j <= i; ++j) {
             int allele1 = GetAllele(0, i);
             int allele2 = GetAllele(0, j);
             gl = GetGL(sampleIndex, 0, allele1, allele2);
@@ -1754,7 +1754,8 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                 //i child of i-1 child state
                 for (allele2 = 0; allele2 < 2; ++allele2) {
                     childNode2 = GetChildNode(i - 1, parentNode2, allele2);
-                    if (childNode2 == -1) continue;
+                    if (childNode2 == -1 ) continue;
+                    if (parentNode2 == parentNode1 and childNode2 > childNode1) continue;
                     gl = GetGL(sampleIndex, i, allele1, allele2);
                     if (gl > 1e-1 || i < 20) {
                         fitPair++;
@@ -1807,7 +1808,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
             localParameter.isRec[i - 1] = true;
             localParameter.states = GetStateNumFrom(i);
             for (childNode1 = 0; childNode1 < localParameter.states; ++childNode1) {//dest nodeA
-                for (childNode2 = 0; childNode2 < localParameter.states; ++childNode2) {//dest nodeB
+                for (childNode2 = 0; childNode2 <= childNode1; ++childNode2) {//dest nodeB
                     gl = GetGL(sampleIndex, i, GetAllele(i, childNode1),
                                GetAllele(i, childNode2));//genotype of each childNode pair
                     if (gl < 1e-1)
@@ -1820,6 +1821,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                             glParents = GetGL(sampleIndex, i - 1, GetAllele(i - 1, tmpParentNode1),
                                               GetAllele(i - 1, tmpParentNode2));
                             if (glParents < 1e-1) continue;//genotype of all possible parentNode pair of childNode
+                            if (parentNode2 > parentNode1 and childNode2 == childNode1) continue;
                             if (localParameter.parentsNodeVec[i - 1].find(
                                     localParameter.MakePair(tmpParentNode1, tmpParentNode2)) !=
                                 localParameter.parentsNodeVec[i - 1].end()) {
@@ -1828,7 +1830,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
 //                                        (localParameter.parentsNodeVec[i - 1][localParameter.MakePair(tmpParentNode1,
 //                                                                             tmpParentNode2)]);//sum over all the parents of current parents that lead to a child pair
                             } else
-                                continue;
+                                prevFwdValue = 0.f;
                             if(DEBUG) fprintf(stderr,"dest:(%d,%d) gl:%g\tfrom:(%d,%d) gl:%g\n",childNode1,childNode2,gl,tmpParentNode1,tmpParentNode2,glParents);
                             fitPair++;
 
