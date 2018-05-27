@@ -216,7 +216,7 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
     for (int l = 0; l < nSampleCopy * (individuals - phased) * 2; ++l) {
         sampledHaps[l] = new char[markers];
     }
-    int nTarget = loadGraph != "Empty"? individuals -1: individuals - phased -1;
+    int nTarget = loadGraph != "Empty"? individuals : individuals - phased;
 
     for (int j = 0; j < markers; j++) {
         double mac = 0;
@@ -227,7 +227,7 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
         double hyperprior22 = (1.0 - freq1s[j]) * (1.0 - freq1s[j]);
 
 
-        for (int i = 0; i <= nTarget; i++) {
+        for (int i = 0; i < nTarget; i++) {
             double post11 = hyperprior11 * phred2prob[(size_t) genotypes[i][markerindex]];
             double post12 = hyperprior12 * phred2prob[(size_t) genotypes[i][markerindex + 1]];
             double post22 = hyperprior22 * phred2prob[(size_t) genotypes[i][markerindex + 2]];
@@ -390,15 +390,15 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
     ConstructGraph();
 
     clock_t t1 = clock();
-    int nTarget = loadGraph != "Empty"? individuals -1: individuals - phased -1;
+    int nTarget = loadGraph != "Empty"? individuals: individuals - phased;
 #ifdef _OPENMP
     omp_set_num_threads(nThread);
 #pragma omp parallel for
 #endif
-    for (int i = nTarget; i >= 0; i--) {
+    for (int i = nTarget - 1; i >= 0; i--) {
 //            SwapIndividuals(i, individuals - 1);
         fprintf(stderr, "[%s]phasing individual %d:%s...\n\n", __FUNCTION__, i, ped[i].pid.c_str());
-        LocalForwadBackWard(i);
+        LocalForwardBackWard(i);
 #ifdef _DEBUG
         if (!SanityCheck())
            {
@@ -605,7 +605,7 @@ PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *rand, 
     if (r < posterior_11)//homo ref alleles
     {
         if (copied1 != copied2 || copied1 != 0)
-            fprintf(stdout, "individidual: %d,Homo ref Marker:%d from else (%d,%d) and orginal gl:(%d,%d,%d)\n",
+            fprintf(stdout, "individual: %d,Homo ref Marker:%d from else (%d,%d) and orginal gl:(%d,%d,%d)\n",
                     currentIndividual, marker, copied1, copied2, ph11, ph12, ph22);
 
         haps[currentHap1][marker] = 0;
@@ -702,11 +702,11 @@ void PBWTHaplotyper::RandomSetup(Random *rand) {
         rand = &globalRandom;
 
     CalculatePhred2Prob();
-    int nTarget = loadGraph != "Empty"? individuals -1: individuals - phased -1;
+    int nTarget = loadGraph != "Empty"? individuals : individuals - phased;
 
     for (int j = 0; j < markers; j++) {
         int markerindex = 3 * j;
-        for (int i = 0; i <= nTarget; i++) {
+        for (int i = 0; i < nTarget; i++) {
 
             int posterior_11 = genotypes[i][markerindex];
             int posterior_12 = genotypes[i][markerindex + 1];
@@ -1766,8 +1766,8 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                         tmpFwdValue = prevFwdValue * GetTransitionProb(i - 1, parentNode1, childNode1) *
                                       GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
                         if (DEBUG)
-                            fprintf(stderr, "debug (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\t%g\n", parentNode1,
-                                    parentNode2,
+                            fprintf(stderr, "debug from (%d,%d) to (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\t%g\n", parentNode1,
+                                    parentNode2, childNode1, childNode2,
                                     prevFwdValue, GetTransitionProb(i - 1, parentNode1, childNode1),
                                     GetTransitionProb(i - 1, parentNode2, childNode2), gl);
                         localParameter.fwdValueSum[i] += tmpFwdValue;
@@ -2292,7 +2292,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
     return 0;
 }
 
-int PBWTHaplotyper::LocalForwadBackWard(int sampleIndex) {
+int PBWTHaplotyper::LocalForwardBackWard(int sampleIndex) {
     FwdBwdLocalParameter localParameter(individuals, markers);
     InitialFwdValues(sampleIndex, localParameter);
     try {

@@ -24,7 +24,7 @@ public:
     int runningModel = 0;
     int prefixLength = 0;
 //    int phasedForByRef = 0;
-    int nThread = 0;
+    int nThread = 1;
 
     GeneticDistanceMap GDMap;
 /*!PBWTHaplotyper
@@ -383,7 +383,7 @@ public:
 
     int ResetFwdValues(FwdBwdLocalParameter &localParameter);
 
-    int LocalForwadBackWard(int sampleIndex);
+    int LocalForwardBackWard(int sampleIndex);
 
     //without recombination
     int ForwardAlgorithm(int sampleIndex, FwdBwdLocalParameter &localParameter);
