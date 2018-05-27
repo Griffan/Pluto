@@ -225,7 +225,9 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
         double hyperprior12 = 2.0 * freq1s[j] * (1.0 - freq1s[j]);
         double hyperprior22 = (1.0 - freq1s[j]) * (1.0 - freq1s[j]);
 
-        for (int i = 0; i < individuals; i++) {
+        int nTarget = loadGraph != "Empty"? individuals -1: individuals - phased -1;
+
+        for (int i = 0; i <= nTarget; i++) {
             double post11 = hyperprior11 * phred2prob[(size_t) genotypes[i][markerindex]];
             double post12 = hyperprior12 * phred2prob[(size_t) genotypes[i][markerindex + 1]];
             double post22 = hyperprior22 * phred2prob[(size_t) genotypes[i][markerindex + 2]];
@@ -246,7 +248,7 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
         double prior_22 = freq * freq;
 
 
-        for (int i = 0; i < individuals - phased; i++) {
+        for (int i = 0; i < nTarget; i++) {
 
             double posterior_11 = prior_11 * phred2prob[(size_t) genotypes[i][markerindex]];
             double posterior_12 = prior_12 * phred2prob[(size_t) genotypes[i][markerindex + 1]];
@@ -388,12 +390,12 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
     ConstructGraph();
 
     clock_t t1 = clock();
-    int start = loadGraph != "Empty"? individuals -1: individuals - phased -1;
+    int nTarget = loadGraph != "Empty"? individuals -1: individuals - phased -1;
 #ifdef _OPENMP
     omp_set_num_threads(nThread);
 #pragma omp parallel for
 #endif
-    for (int i = start; i >= 0; i--) {
+    for (int i = nTarget; i >= 0; i--) {
 //            SwapIndividuals(i, individuals - 1);
         fprintf(stderr, "[%s]phasing individual %d:%s...\n\n", __FUNCTION__, i, ped[i].pid.c_str());
         LocalForwadBackWard(i);

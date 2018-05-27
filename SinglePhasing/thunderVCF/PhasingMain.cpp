@@ -1376,7 +1376,7 @@ namespace PhaseIntersect {
             }
             delete pVcf;
         }
-        catch (VcfFileException e) {
+        catch (VcfFileException& e) {
             error(e.what());
         }
     }
@@ -1867,7 +1867,7 @@ namespace PhaseIntersect {
         engine.nSampleCopy = samplingRounds;
         engine.geneticMapAvailable = false;
         engine.prefixLength = prefixLength;
-        engine.outputPrefix = std::string(phasedfile.c_str());
+        engine.outputPrefix = std::string(outfile.c_str());
 
 
         SetCrashExplanation("loading Pvalue Matrix");
