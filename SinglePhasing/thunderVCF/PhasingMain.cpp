@@ -252,12 +252,19 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                         pMarker->asInfoValues[nInfo].printf("%.4f", nthetas ? thetas[m - 1] / nthetas : 0);
                 }
 
+                pMarker->asFormatKeys.Clear();
                 int GTidx = pMarker->asFormatKeys.Find("GT");
                 if (GTidx < 0) {
 //                        throw VcfFileException("Cannot recognize GT key in FORMAT field");
-                    pMarker->asFormatKeys.Clear();
                     pMarker->asFormatKeys.Add("GT");
                     GTidx = 0;
+                }
+
+                int PLidx = pMarker->asFormatKeys.Find("PL");
+                if (PLidx < 0) {
+//                        throw VcfFileException("Cannot recognize GT key in FORMAT field");
+                    pMarker->asFormatKeys.Add("PL");
+                    PLidx = 1;
                 }
 
                 int nFormats = pMarker->asFormatKeys.Length();
@@ -273,6 +280,10 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                     if (pMarker->asAlts.Length() == 1) {
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][markerIndex],
                                                                              haplotypes[pi * 2 + 1][markerIndex]);
+                        pMarker->asSampleValues[nFormats * i + PLidx].printf("%d,%d,%d",
+                                                                             engine.genotypes[pi][markerIndex],
+                                                                             engine.genotypes[pi][markerIndex + 1],
+                                                                             engine.genotypes[pi][markerIndex + 2]);
                     } else {
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][markerIndex] + 1,
                                                                              haplotypes[pi * 2 + 1][markerIndex] + 1);
@@ -451,12 +462,19 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
                             pMarker->asInfoValues[nInfo].printf("%.4f", nthetas ? thetas[m - 1] / nthetas : 0);
                     }
 
+                    pMarker->asFormatKeys.Clear();
                     int GTidx = pMarker->asFormatKeys.Find("GT");
                     if (GTidx < 0) {
 //                        throw VcfFileException("Cannot recognize GT key in FORMAT field");
-                        pMarker->asFormatKeys.Clear();
                         pMarker->asFormatKeys.Add("GT");
                         GTidx = 0;
+                    }
+
+                    int PLidx = pMarker->asFormatKeys.Find("PL");
+                    if (PLidx < 0) {
+//                        throw VcfFileException("Cannot recognize GT key in FORMAT field");
+                        pMarker->asFormatKeys.Add("PL");
+                        PLidx = 1;
                     }
 
                     int nFormats = pMarker->asFormatKeys.Length();
@@ -471,13 +489,18 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
                                                                                  engine.haplotypes[pi * 2][markerIndex],
                                                                                  engine.haplotypes[pi * 2 +
                                                                                                    1][markerIndex]);
-                        } else {
-                            pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d",
-                                                                                 engine.haplotypes[pi *
-                                                                                                   2][markerIndex] + 1,
-                                                                                 engine.haplotypes[pi * 2 +
-                                                                                                   1][markerIndex] + 1);
+                            pMarker->asSampleValues[nFormats * i + PLidx].printf("%d,%d,%d",
+                                                                                 engine.genotypes[pi][markerIndex],
+                                                                                 engine.genotypes[pi][markerIndex + 1],
+                                                                                 engine.genotypes[pi][markerIndex + 2]);
                         }
+//                        else {
+//                            pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d",
+//                                                                                 engine.haplotypes[pi *
+//                                                                                                   2][markerIndex] + 1,
+//                                                                                 engine.haplotypes[pi * 2 +
+//                                                                                                   1][markerIndex] + 1);
+//                        }
                     }
                     pMarker->printVCFMarker(outVCF, false); // print marker to output file
                 }
