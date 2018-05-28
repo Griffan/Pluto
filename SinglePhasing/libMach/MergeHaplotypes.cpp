@@ -192,8 +192,8 @@ void ConsensusBuilder::Merge()
                best = j;
 
          // Assign it to the consensus
-         consensus[h][i] = best / 2;
-         consensus[h + 1][i] = best % 2;
+         consensus[h][i] = static_cast<char>(best / 2);
+         consensus[h + 1][i] = static_cast<char>(best % 2);
 
          // Count number of samples with an alternative solutions
          int alternative_solution_weight = (best == 0 || best == 3) ?

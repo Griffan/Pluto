@@ -191,6 +191,7 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
         char sDose[255];
         double freq(0.), maf(0.), avgPost(0.), rsq(0.);
         String markerName;
+        int markerIndex(0);
         for (int m = 0; pVcf->iterateMarker(); ++m) {
             //fprintf(stderr,"m=%d\n",m);
 
@@ -200,6 +201,7 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
             //if unphase also has this marker, update content otherwise remains as before
             if (unifiedMarkerSet[std::string(markerName.c_str())] == 2) {
 //                doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
+                markerIndex = refMarkerIdx[std::string(markerName.c_str())];
 
                 pMarker->asInfoKeys.Clear();
                 pMarker->asInfoValues.Clear();
@@ -269,11 +271,11 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                     int pi = vcf2ped[i];
                     // modify GT values;
                     if (pMarker->asAlts.Length() == 1) {
-                        pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][m],
-                                                                             haplotypes[pi * 2 + 1][m]);
+                        pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][markerIndex],
+                                                                             haplotypes[pi * 2 + 1][markerIndex]);
                     } else {
-                        pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][m] + 1,
-                                                                             haplotypes[pi * 2 + 1][m] + 1);
+                        pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][markerIndex] + 1,
+                                                                             haplotypes[pi * 2 + 1][markerIndex] + 1);
                     }
                 }
                 pMarker->printVCFMarker(outVCF, false); // print marker to output file
@@ -612,9 +614,7 @@ void LoadSamples(Pedigree &ped, const String &filename, std::unordered_map<std::
                 }
                 num++;
             }
-
         }
-
         delete pVcf;
     }
     catch (VcfFileException& e) {
@@ -822,7 +822,7 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
         refVCFSite.close();
         delete pVcf;
     }
-    catch (VcfFileException e) {
+    catch (VcfFileException &e) {
         error(e.what());
     }
 }
@@ -986,6 +986,7 @@ namespace ReadGraph {
                 errorRateHolder.push_back(atof(errorRate.c_str()));
                 transRateHolder.push_back(atof(transRate.c_str()));
             }
+            fin.close();
         }
         catch (VcfFileException& e) {
             error(e.what());
@@ -1150,7 +1151,7 @@ namespace ReadGraph {
                 }
                 nTotal++;
             }
-            fprintf(stderr, "%d out of %d SNPs not present in target file.\n", nMissing, nTotal);
+            fprintf(stderr, "%d out of %d SNPs are not present in target file.\n", nMissing, nTotal);
             delete pVcf;
         }
         catch (VcfFileException& e) {
@@ -1410,6 +1411,7 @@ namespace PhaseIntersect {
                     refMarkerIdx[std::string(markerName.c_str())] = marker;
                 }
             }
+            delete pVcf;
         }
         catch (VcfFileException &e) {
             error(e.what());
