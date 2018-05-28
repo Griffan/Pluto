@@ -424,7 +424,7 @@ void PBWTHaplotyper::ConstructGraph() {
         //Wrapper = new PBWTWrapper(2 * phasedForByRef, markers, PvalueMatrix, prefixLength);
         //Wrapper->ReleaseWrapperMemory();
         Wrapper = new PBWTWrapper(2 * phased, markers);
-        Wrapper->SetHaps(haplotypes, 0, 0, nullptr, 0, 0, thetas);
+        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
         Wrapper->Graph.ReadContainer(loadGraph);
         Wrapper->PrintSummary();
         //for debug
@@ -634,10 +634,8 @@ PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *rand, 
                 currentIndividual, marker, copied1, copied2, ph11, ph12, ph22);
         bool bit = rand->Binary();
 
-//        haps[currentHap1][marker] = bit;
-//        haps[currentHap2][marker] = bit ^ 1;
-        haps[currentHap1][marker] = copied1;
-        haps[currentHap2][marker] = copied2;
+        haps[currentHap1][marker] = bit;
+        haps[currentHap2][marker] = bit ^ 1;
     }
 
     int imputed1 = haps[currentHap1][marker];
