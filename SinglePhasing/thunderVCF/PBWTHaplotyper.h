@@ -306,11 +306,11 @@ public:
         }
 
         inline uint64_t MakePair(StateIndex first, StateIndex second) {
-            return static_cast<uint64_t>(first) << 31 |  static_cast<uint64_t>(second);
+            return static_cast<uint64_t>(first) << 32 |  static_cast<uint64_t>(second);
         }
 
         inline StateIndex GetFirst(uint64_t pair) {
-            return (StateIndex) (pair >> 31);
+            return (StateIndex) (pair >> 32);
         }
 
         inline StateIndex GetSecond(uint64_t pair) {

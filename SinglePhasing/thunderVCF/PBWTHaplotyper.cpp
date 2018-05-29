@@ -7,7 +7,9 @@
 
 //debug related
 #define DEBUG false
+
 static const float UNDERFLOW_MIN = std::numeric_limits<float>::min() * 100;
+static const float GENO_MIN = 0.3;
 
 static void printLeftMatrix(float *probability, int numStates) {
     for (int i = 0; i < numStates; ++i) {
@@ -424,7 +426,7 @@ void PBWTHaplotyper::ConstructGraph() {
         //Wrapper = new PBWTWrapper(2 * phasedForByRef, markers, PvalueMatrix, prefixLength);
         //Wrapper->ReleaseWrapperMemory();
         Wrapper = new PBWTWrapper(2 * phased, markers);
-        Wrapper->SetHaps(haplotypes, 2*(individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
+        Wrapper->SetHaps(haplotypes, 0, 0, nullptr, 0, 0, thetas);
         Wrapper->Graph.ReadContainer(loadGraph);
         Wrapper->PrintSummary();
         //for debug
@@ -633,16 +635,15 @@ PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *rand, 
         fprintf(stdout, "individual: %d, Heter Marker:%d from else (%d,%d) and orginal gl:(%d,%d,%d)\n",
                 currentIndividual, marker, copied1, copied2, ph11, ph12, ph22);
         bool bit = rand->Binary();
-
         haps[currentHap1][marker] = bit;
         haps[currentHap2][marker] = bit ^ 1;
     }
-    int phred_11 = static_cast<int>(std::floor(-10.0*log10(posterior_11)));
-    int phred_12 = static_cast<int>(std::floor(-10.0*log10(1.f - (posterior_22 + posterior_11))));
-    int phred_22 = static_cast<int>(std::floor(-10.0*log10(posterior_22)));
-    genotypes[currentIndividual][markerindex] = phred_11 > 127? 127 : phred_11;
-    genotypes[currentIndividual][markerindex + 1] = phred_12 > 127? 127 : phred_12;
-    genotypes[currentIndividual][markerindex + 2] = phred_22 > 127? 127 : phred_22;
+//    int phred_11 = static_cast<int>(std::floor(-10.0*log10(posterior_11)));
+//    int phred_12 = static_cast<int>(std::floor(-10.0*log10(1.f - (posterior_22 + posterior_11))));
+//    int phred_22 = static_cast<int>(std::floor(-10.0*log10(posterior_22)));
+//    genotypes[currentIndividual][markerindex] = phred_11 > 127? 127 : phred_11;
+//    genotypes[currentIndividual][markerindex + 1] = phred_12 > 127? 127 : phred_12;
+//    genotypes[currentIndividual][markerindex + 2] = phred_22 > 127? 127 : phred_22;
 
     int imputed1 = haps[currentHap1][marker];
     int imputed2 = haps[currentHap2][marker];
@@ -707,7 +708,11 @@ void PBWTHaplotyper::RandomSetup(Random *rand) {
         rand = &globalRandom;
 
     CalculatePhred2Prob();
-    int nTarget = loadGraph != "Empty"? individuals : individuals - phased;
+
+    int nTarget = 0;
+
+    if(runningModel & PHASE) nTarget = individuals;
+    if(runningModel & ITERATIVE) nTarget = individuals - phased;
 
     for (int j = 0; j < markers; j++) {
         int markerindex = 3 * j;
@@ -1668,8 +1673,9 @@ int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &loca
             int allele1 = GetAllele(0, i);
             int allele2 = GetAllele(0, j);
             gl = GetGL(sampleIndex, 0, allele1, allele2);
-            if (gl > 1e-1) {
+            if (gl > GENO_MIN) {
                 tmpFwdValue = prior * gl;
+                if(i == j) tmpFwdValue *= 0.5;
                 if (tmpFwdValue < UNDERFLOW_MIN) {
                     tmpFwdValue = UNDERFLOW_MIN;
                 }
@@ -1693,7 +1699,7 @@ int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &loca
                 int first = localParameter.GetFirst(localParameter.GetSourceVec(0, kv.second).at(j));
                 int second = localParameter.GetSecond(localParameter.GetSourceVec(0, kv.second).at(j));
                 fprintf(stderr,
-                        "foward marker:%d\tfwdValueSum:%g\tpair:%d(%d,%d)=(%d,%d)\tcurrentFwd:%g\tnormalized currentFwd:%g\tfrom:(%d,%d)\n",
+                        "Init forward marker:%d\tfwdValueSum:%g\tpair:%lld(%d,%d)=(%d,%d)\tcurrentFwd:%g\tnormalized currentFwd:%g\tfrom:(%d,%d)\n",
                         0, localParameter.fwdValueSum[0], kv.first, tmpNode1, tmpNode2,
                         GetAllele(0, tmpNode1), GetAllele(0, tmpNode2), localParameter.GetFwdVec(0, kv.second).at(j),
                         tmpFwd, first, second);
@@ -1766,29 +1772,40 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                     if (childNode2 == -1 ) continue;
                     if (parentNode2 == parentNode1 and childNode2 > childNode1) continue;
                     gl = GetGL(sampleIndex, i, allele1, allele2);
-                    if (gl > 1e-1 || i < 20) {
+                    if (gl > GENO_MIN ){//|| i < 20) {
                         fitPair++;
                         tmpFwdValue = prevFwdValue * GetTransitionProb(i - 1, parentNode1, childNode1) *
                                       GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
-                        if (DEBUG)
-                            fprintf(stderr, "debug from (%d,%d) to (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\t%g\n", parentNode1,
+                        if(childNode1 == childNode2) tmpFwdValue *= 0.5;
+
+                        if (DEBUG && i >= 448 && i <450)
+                            fprintf(stderr, "debug from (%d,%d) to (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\t%g(%d,%d)\n", parentNode1,
                                     parentNode2, childNode1, childNode2,
                                     prevFwdValue, GetTransitionProb(i - 1, parentNode1, childNode1),
-                                    GetTransitionProb(i - 1, parentNode2, childNode2), gl);
+                                    GetTransitionProb(i - 1, parentNode2, childNode2), gl, allele1, allele2);
+
                         if (tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0) {
                             tmpFwdValue = UNDERFLOW_MIN;
                         }
                         localParameter.fwdValueSum[i] += tmpFwdValue;
                         //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
-//                        localParameter.parentsNodeVec[i][std::make_pair(childNode1, childNode2)][std::make_pair(parentNode1,
-//                                                                                                 parentNode2)] = tmpFwdValue;
+
                         localParameter.FillParentsNodeVec(i, childNode1, childNode2, parentNode1, parentNode2,
                                                           tmpFwdValue);
                     } else if (reenter) {
+                        localParameter.isRec[i - 1] = false;
+                        fitPair++;
                         tmpFwdValue = prevFwdValue *
                                       GetTransitionProb(i - 1, parentNode1, childNode1) *
                                       GetTransitionProb(i - 1, parentNode2, childNode2) *
                                       gl;//i fwdValueSum
+                        if(childNode1 == childNode2) tmpFwdValue *= 0.5;
+
+                        if (DEBUG && i >= 2764 && i <=2764)
+                            fprintf(stderr, "debug from (%d,%d) to (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\t%g(%d,%d)\n", parentNode1,
+                                    parentNode2, childNode1, childNode2,
+                                    prevFwdValue, GetTransitionProb(i - 1, parentNode1, childNode1),
+                                    GetTransitionProb(i - 1, parentNode2, childNode2), gl, allele1, allele2);
                         if (tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0) {
                             tmpFwdValue = UNDERFLOW_MIN;
                         }
@@ -1823,16 +1840,16 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                 for (childNode2 = 0; childNode2 <= childNode1; ++childNode2) {//dest nodeB
                     gl = GetGL(sampleIndex, i, GetAllele(i, childNode1),
                                GetAllele(i, childNode2));//genotype of each childNode pair
-                    if (gl < 1e-1)
+                    if (gl < GENO_MIN)
                     {
-                        if(DEBUG) fprintf(stderr,"dest:(%d,%d) gl:%g\tskip\n",childNode1,childNode2,gl);
+                        if(DEBUG&&0) fprintf(stderr,"dest:(%d,%d) gl:%g\tskip\n",childNode1,childNode2,gl);
                         continue;
                     }
                     for (auto tmpParentNode1:GetParentNodes(i, childNode1)) {//each parent of nodeA
                         for (auto tmpParentNode2:GetParentNodes(i, childNode2)) {//each parent of nodeB
                             glParents = GetGL(sampleIndex, i - 1, GetAllele(i - 1, tmpParentNode1),
                                               GetAllele(i - 1, tmpParentNode2));
-                            if (glParents < 1e-1) continue;//genotype of all possible parentNode pair of childNode
+                            if (glParents < GENO_MIN) continue;//genotype of all possible parentNode pair of childNode
                             if (parentNode2 > parentNode1 and childNode2 == childNode1) continue;
                             if (localParameter.parentsNodeVec[i - 1].find(
                                     localParameter.MakePair(tmpParentNode1, tmpParentNode2)) !=
@@ -1843,7 +1860,9 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
 //                                                                             tmpParentNode2)]);//sum over all the parents of current parents that lead to a child pair
                             } else
                                 prevFwdValue = 0.f;
-                            if(DEBUG) fprintf(stderr,"dest:(%d,%d) gl:%g\tfrom:(%d,%d) gl:%g\n",childNode1,childNode2,gl,tmpParentNode1,tmpParentNode2,glParents);
+                            if(DEBUG && i >= 448 && i <450) fprintf(stderr,"dest:(%d,%d) gl:%g(%d,%d)\tfrom:(%d,%d) gl:%g(%d,%d)\n",
+                                                 childNode1,childNode2,gl,GetAllele(i, childNode1), GetAllele(i, childNode2),
+                                                 tmpParentNode1,tmpParentNode2, glParents, GetAllele(i - 1, tmpParentNode1), GetAllele(i - 1, tmpParentNode2));
                             fitPair++;
 
                             baseProb = GetTransitionProb(i - 1, tmpParentNode1, childNode1) *
@@ -1867,6 +1886,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                                            GetHapProbAt(i - 1, tmpParentNode1) * baseProb * recRate * recRate;
 //                        fprintf(stderr,"tmp output4 tmpFwdValue:%g\n",tmpFwdValue);
 
+                            if(childNode1 == childNode2) tmpFwdValue *= 0.5;
                             if (tmpFwdValue < UNDERFLOW_MIN && prevFwdValue > 0) {
                                 tmpFwdValue = UNDERFLOW_MIN;
                             }
@@ -1898,15 +1918,17 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
             reenter = true;
             goto REENTRY;
         }
+        if(fitPair == 0)
+        {
+            fprintf(stderr, "[%s] sample %d mutate and recombine failed at marker %d\n", __FUNCTION__, sampleIndex, i);
+            exit(EXIT_FAILURE);
+        }
 
 
         while (not EdgePairList.empty()) {
             EdgePair tmpEdgePair = EdgePairList.top();
             EdgePairList.pop();
             if (tmpEdgePair.fwd > 0.f) {
-//                localParameter.parentsNodeVec[i][std::make_pair(tmpEdgePair.childNode1, tmpEdgePair.childNode2)][std::make_pair(
-//                        tmpEdgePair.parentNode1,
-//                        tmpEdgePair.parentNode2)] = tmpEdgePair.fwd;
                 localParameter.FillParentsNodeVec(i, tmpEdgePair.childNode1, tmpEdgePair.childNode2,
                                                   tmpEdgePair.parentNode1, tmpEdgePair.parentNode2, tmpEdgePair.fwd);
                 localParameter.fwdValueSum[i] += tmpEdgePair.fwd;
@@ -1928,7 +1950,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                     int first = localParameter.GetFirst(localParameter.GetSourceVec(i, kv.second).at(j));
                     int second = localParameter.GetSecond(localParameter.GetSourceVec(i, kv.second).at(j));
                     fprintf(stderr,
-                            "foward marker:%d\tfwdValueSum:%g\tpair:(%d,%d)=(%d,%d)\tcurrentFwd:%g\tnormalized currentFwd:%g\tfrom:(%d,%d)\n",
+                            "forward marker:%d\tfwdValueSum:%g\tpair:(%d,%d)=(%d,%d)\tcurrentFwd:%g\tnormalized currentFwd:%g\tfrom:(%d,%d)\n",
                             i, localParameter.fwdValueSum[i], tmpNode1, tmpNode2,
                             GetAllele(i, tmpNode1), GetAllele(i, tmpNode2),
                             notNormalized, tmpFwd, first, second);
@@ -2140,6 +2162,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
 
     StateIndex sampledParent0(0), sampledChild0(0);
     StateIndex sampledParent1(0), sampledChild1(0);
+    StateIndex tmpSampledParent0(0), tmpSampledParent1(0);
     double sampledFwd(0.f);
 
     float recRate(0.f);
@@ -2187,7 +2210,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
     }
     INIT_SAMPLE_BREAK:
 
-    ImputeAlleles(markers - 1, sampledChild0, sampledChild1, rand, sampleIndex, sampledHaps);
+    ImputeAlleles(markers - 1, sampledChild0, sampledChild1, rand, sampleIndex, sampledHaps);//fill in last marker
 
     float testSum(0.f);
 
@@ -2206,6 +2229,8 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
 //            fprintf(stderr, "marker:%d\tpair:(%d,%d)\ttestSum:%g\n", i, kv.first.first, kv.first.second, kv.second);
 //        }
 //        }
+        gl0 = GetGL(sampleIndex, i + 1, GetAllele(i + 1, sampledChild0), GetAllele(i + 1, sampledChild1));
+
         if (DEBUG)
             fprintf(stderr, "marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\tgl:%g\n", i, sum, choice, sampledParent0,
                     sampledParent1, sampledFwd, gl0);
@@ -2216,18 +2241,16 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
         ImputeAlleles(i, sampledParent0, sampledParent1, rand, sampleIndex, sampledHaps);
         choice = rand->Uniform(0, sampledFwd);
 
-        gl0 = GetGL(sampleIndex, i + 1, GetAllele(i + 1, sampledChild0), GetAllele(i + 1, sampledChild1));
 
         if (!localParameter.isRec[i]) {//normal hap match without rec
-            double choice0 = choice / (GetTransitionProb(i, sampledParent0, sampledChild0) *
-                                       GetTransitionProb(i, sampledParent1, sampledChild1) * gl0);
-//            for (auto grandParents:localParameter.parentsNodeVec[i][localParameter.MakePair(sampledParent0, sampledParent1)])//we are actually sampling i-1's states
-            int destIndex = localParameter.GetDestIndex(i, sampledParent0, sampledParent1);
+            baseProb= GetTransitionProb(i, sampledParent0, sampledChild0) *
+                      GetTransitionProb(i, sampledParent1, sampledChild1) * gl0;
+            int destIndex = localParameter.GetDestIndex(i, sampledParent0, sampledParent1);//we are actually sampling i-1's states
             for (int grandParentsIndex = 0; grandParentsIndex < localParameter.GetSourceVec(i, sampledParent0,
                                                                                             sampledParent1).size(); ++grandParentsIndex) {
 
-                sum += localParameter.GetFwd(i, destIndex, grandParentsIndex);//kv.second is normalized
-                if (sum > choice0) {
+                sum += baseProb*localParameter.GetFwd(i, destIndex, grandParentsIndex);//kv.second is normalized
+                if (sum > choice) {
                     sampledChild0 = sampledParent0;
                     sampledChild1 = sampledParent1;
                     sampledParent0 = localParameter.GetFirst(localParameter.GetSource(i, destIndex, grandParentsIndex));
@@ -2243,38 +2266,42 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
 
             baseProb = edgeProb0 * edgeProb1 * gl0;//site i
             recRate = GetRecombRate(i);//start from marker 1 but store at index 0
-            for (auto kv:localParameter.parentsNodeVec[i]) {// node pair at site i - 1, sampled (first0,second0) for i
+            for (auto kv:localParameter.parentsNodeVec[i]) {// node pair at site i, sampled (sampledParent0,sampledParent1) for i
 
                 uint64_t parentNodePair = kv.first;
                 np1 = GetHapProbAt(i, localParameter.GetFirst(parentNodePair));
                 np2 = GetHapProbAt(i, localParameter.GetSecond(parentNodePair));
                 subSum = 0.;
 
-                if (localParameter.GetFirst(parentNodePair) == sampledParent0 &&
-                    localParameter.GetSecond(parentNodePair) == sampledParent1)//no recomb
+                tmpSampledParent0 = localParameter.GetFirst(parentNodePair);
+                tmpSampledParent1 = localParameter.GetSecond(parentNodePair);
+                if (tmpSampledParent0 == sampledParent0 && tmpSampledParent1 == sampledParent1)//no recomb
                     subSum += (1 - recRate) * (1 - recRate) * baseProb / (np1 * np2);
 
-                if (localParameter.GetFirst(parentNodePair) == sampledParent0)//noJump for first
+                if (tmpSampledParent0 == sampledParent0)//noJump for first
                     subSum += (1 - recRate) * recRate * baseProb / np1;
 
-                if (localParameter.GetSecond(parentNodePair) == sampledParent1)//noJump for second
+                if (tmpSampledParent1 == sampledParent1)//noJump for second
                     subSum += (1 - recRate) * recRate * baseProb / np2;
 
                 subSum += recRate * recRate * baseProb;
 
                 int destIndex = kv.second;
-                for (int grandParentsIndex = 0; grandParentsIndex < localParameter.GetSourceVec(i,
-                                                                                                destIndex).size(); ++grandParentsIndex) {//all grandParents ending at parentNodePair.first and parentNodePair.second
-//                    sum += subSum *
-//                           grandParents.second;//grandParents.second is the fwd value at site i-1, contributed by grandParents at site i-2
+                for (int grandParentsIndex = 0; grandParentsIndex <
+                        localParameter.GetSourceVec(i, destIndex).size(); ++grandParentsIndex)
+                {//all grandParents ending at parentNodePair.first and parentNodePair.second
+
                     sum += subSum *
                            localParameter.GetFwd(i, destIndex,
-                                                 grandParentsIndex);//grandParents.second is the fwd value at site i-1, contributed by grandParents at site i-2
+                                                 grandParentsIndex);//GetFwd is the fwd value at site i-1, contributed by grandParents at site i-2
                     if (sum > choice) {
-                        sampledChild0 = localParameter.GetFirst(parentNodePair);//previous correct parents rejuvenate
-                        sampledChild1 = localParameter.GetSecond(parentNodePair);
+                        sampledChild0 = tmpSampledParent0;//previous correct parents rejuvenate
+                        sampledChild1 = tmpSampledParent1;
                         ImputeAlleles(i, sampledChild0, sampledChild1, rand, sampleIndex,
                                       sampledHaps);//override no-rec Imputation
+                        if (DEBUG)
+                            fprintf(stderr, "marker:%d\tsum:%g\tchoice:%g\t(%d,%d)\tvalue:%g\tgl:%g\n", i, sum, choice, sampledChild0,
+                                    sampledChild1, sampledFwd, gl0);
                         sampledParent0 = localParameter.GetFirst(
                                 localParameter.GetSource(i, destIndex, grandParentsIndex));
                         sampledParent1 = localParameter.GetSecond(
@@ -2283,7 +2310,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
                         edgeProb1 = GetEdgeProbAt(i - 1, sampledParent1, GetAllele(i, sampledChild1));
                         sampledFwd =
                                 localParameter.GetFwd(i, destIndex, grandParentsIndex) * localParameter.fwdValueSum[i];
-                        testSum = localParameter.GetFwd(i, destIndex, grandParentsIndex);
+//                        testSum = localParameter.GetFwd(i, destIndex, grandParentsIndex);
                         goto SAMPLE_BREAK;
                     }
                 }
@@ -2422,11 +2449,14 @@ bool PBWTHaplotyper::AllocateMemory(int persons, int m)//for GraphSeperated, onl
 {
     individuals = persons;
     markers = m;
-    if (runningModel & PHASE) {//enter from phase by ref
+    if ((runningModel & PHASE)||(runningModel & ITERATIVE)) {//enter from phase by ref
         thetas = new float[markers - 1];
         for (int i = 0; i < markers - 1; i++)
             thetas[i] = 0.01;
-        genotypes = AllocateCharMatrix(individuals, markers * 3);
+        if(runningModel & ITERATIVE)
+            genotypes = AllocateCharMatrix(individuals - phased, markers * 3);
+        else
+            genotypes = AllocateCharMatrix(individuals, markers * 3);
         penetrances = new float[markers * 9];
         error_models = new Errors[markers];
         freq1s = new double[markers];

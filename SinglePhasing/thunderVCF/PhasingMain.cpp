@@ -410,6 +410,8 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
                     unifiedMarkerSet[std::string(markerName.c_str())] == 2)
                 {//if unphase also has this marker i.e. shared marker, update content otherwise remains as before
                     markerIndex = refMarkerIdx[std::string(markerName.c_str())];
+
+//                    if(markerIndex >8096 and markerIndex < 8099) fprintf(stderr,"%s:%d:%c\n", pMarker->sChrom.c_str(), pMarker->nPos, alt);
 //                doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
                     pMarker->asInfoKeys.Clear();
                     pMarker->asInfoValues.Clear();
@@ -1285,7 +1287,7 @@ namespace ReadGraph {
         if (phasedfile != "Empty") {
             Pedigree tmpPed;//we don't alloc memory for phased samples
             LoadSamples(tmpPed, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf,
-                        engine.phased);//keep engine.phased==0 while knowing the ref size
+                        engine.phased);
         }
         std::cerr << "Detected phased individuals in reference panel:" << engine.phased << std::endl;
 
@@ -1305,10 +1307,8 @@ namespace ReadGraph {
 
         SetCrashExplanation("allocating memory for haplotype engine");
 
-//    engine.EstimateMemoryInfo(ped.count, ped.markerCount, states, compact, false);
         engine.AllocateMemory(ped.count, ped.markerCount);
         engine.SetErrorAndTheta(errorRateHolder, transRateHolder);
-//    engine.InitAuxillary();
 
         SetCrashExplanation("loading genotype");
 //    fprintf(stderr,"Done loading unphased genotypes into haplotyping engine\n\n");
@@ -1891,7 +1891,7 @@ namespace PhaseIntersect {
         if (rounds < burnin) burnin = 0;
 
         PBWTHaplotyper engine;//declaration of engine, also will call default constructor
-        engine.runningModel |= PHASE;
+        engine.runningModel |= ITERATIVE;
         engine.nSampleCopy = samplingRounds;
         engine.geneticMapAvailable = false;
         engine.prefixLength = prefixLength;
@@ -1983,7 +1983,7 @@ namespace PhaseIntersect {
 
         SetCrashExplanation("allocating memory for haplotype engine and consensus builder");
 
-        engine.economyMode = compact;
+//        engine.economyMode = compact;
 
 //        engine.EstimateMemoryInfo(ped.count, ped.markerCount, states, compact, false);
         engine.AllocateMemory(ped.count, ped.markerCount);
@@ -2045,7 +2045,7 @@ namespace PhaseIntersect {
         SetCrashExplanation("phasing procedure");
 
         for (int i = 0; i < rounds; i++) {
-            engine.SetUseRev(i%2);
+            if (i < burnin) engine.SetUseRev(i%2);
             engine.LoopThroughChromosomesRecomb(ped);
 
             if (!fixTrans) engine.UpdateThetas();
