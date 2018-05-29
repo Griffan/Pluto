@@ -1763,15 +1763,15 @@ namespace PhaseIntersect {
                             error("Negative PL or Positive GL observed");
                         }
 
-                        //printf("phred scores are %d, %d, %d, %d, %d\n", phred11, phred12, phred22,i, ped.count );
-
-                        if (phred11 > 127) phred11 = 127;
-                        if (phred12 > 127) phred12 = 127;
-                        if (phred22 > 127) phred22 = 127;
-
-                        engine.genotypes[personIndices[i]][genoindex] = static_cast<char>(phred11);
-                        engine.genotypes[personIndices[i]][genoindex + 1] = static_cast<char>(phred12);
-                        engine.genotypes[personIndices[i]][genoindex + 2] = static_cast<char>(phred22);
+//                        fprintf(stderr,"phred scores are %d, %d, %d, %d, %d of index %d\n", phred11, phred12, phred22,i, ped.count,personIndices[i] );
+//
+//                        if (phred11 > 127) phred11 = 127;
+//                        if (phred12 > 127) phred12 = 127;
+//                        if (phred22 > 127) phred22 = 127;
+//
+//                        engine.genotypes[personIndices[i]][genoindex] = static_cast<char>(phred11);
+//                        engine.genotypes[personIndices[i]][genoindex + 1] = static_cast<char>(phred12);
+//                        engine.genotypes[personIndices[i]][genoindex + 2] = static_cast<char>(phred22);
                     }
                 }
                 //printf("reading vcf 4\n\n");

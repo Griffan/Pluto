@@ -9,7 +9,7 @@
 #define DEBUG false
 
 static const float UNDERFLOW_MIN = std::numeric_limits<float>::min() * 100;
-static const float GENO_MIN = 0.3;
+static const float GENO_MIN = 0.1;
 
 static void printLeftMatrix(float *probability, int numStates) {
     for (int i = 0; i < numStates; ++i) {
@@ -71,140 +71,17 @@ PBWTHaplotyper::~PBWTHaplotyper() {
     if (Wrapper != nullptr)
         delete Wrapper;
 
-    ReleaseMemoryBlock();
+    if (genotypes) {
+        for (int i = 0; i < individuals - phased; i++) {
+            if (genotypes[i]) delete[] genotypes[i];
+        }
+        delete[] genotypes;
+        genotypes = nullptr;
+    }
+
     DestroyPvalueMatrix();
 }
 
-//memory management
-void PBWTHaplotyper::ReleaseMemoryBlock() {
-    for (std::unordered_map<int, std::vector<float *> >::iterator iter = memoryBlockList.begin();
-         iter != memoryBlockList.end(); ++iter) {
-        for (size_t i = 0; i < iter->second.size(); i++) {
-            if (iter->second[i] != nullptr) delete[] iter->second[i];
-        }
-    }
-}
-
-void PBWTHaplotyper::GetMemoryBlock(int marker) {
-    if (!economyMode || marker == 0 || marker > stack[stackPtr] + gridSize) {
-        stack[++stackPtr] = marker;
-        leftMatrices[marker] = GetLargeBlock();
-
-        ResetReuseablePool();
-    } else
-        leftMatrices[marker] = GetReuseableBlock();
-}
-
-float *PBWTHaplotyper::GetLargeBlock() {
-    int blockSize = orderedGenotypes ? states * states : states * (states + 1) / 2;
-    if (numInUse.find(blockSize) == numInUse.end()) {
-        numInUse[blockSize] = 0;
-        memoryBlockList[blockSize] = std::vector<float *>(0, nullptr);
-    }
-    if (numInUse[blockSize] < (int) memoryBlockList[blockSize].size()) {
-        numInUse[blockSize]++;
-        return memoryBlockList[blockSize][numInUse[blockSize] - 1];
-    } else {
-        memoryBlockList[blockSize].push_back(AllocateMemoryBlock());
-        numInUse[blockSize]++;
-        return memoryBlockList[blockSize][numInUse[blockSize] - 1];
-    }
-}
-
-float *PBWTHaplotyper::GetReuseableBlock() {
-    int blockSize = orderedGenotypes ? states * states : states * (states + 1) / 2;
-    if (numInUse.find(blockSize) == numInUse.end()) {
-        numInUse[blockSize] = 0;
-        memoryBlockList[blockSize] = std::vector<float *>(0, nullptr);
-    }
-    if (numInUse[blockSize] < (int) memoryBlockList[blockSize].size()) {
-        numInUse[blockSize]++;//TODO::reset needed
-        return memoryBlockList[blockSize][numInUse[blockSize] - 1];
-    } else {
-        memoryBlockList[blockSize].push_back(AllocateMemoryBlock());
-        numInUse[blockSize]++;
-        return memoryBlockList[blockSize][numInUse[blockSize] - 1];
-    }
-
-}
-
-void PBWTHaplotyper::ResetMemoryPool() {
-    nextAvailable = nextSmallAvailable = 0;
-    nextReuseable = markers - 1;
-    stackPtr = -1;
-    for (std::unordered_map<int, int>::iterator iter = numInUse.begin(); iter != numInUse.end(); ++iter) {
-        iter->second = 0;
-    }
-}
-
-void PBWTHaplotyper::ResetReuseablePool() {
-    nextReuseable = markers - 1;
-}
-
-/*
-void PBWTHaplotyper::RetrieveMemoryBlock(int marker) {
-    if (stack[stackPtr] <= marker) {
-//        fprintf(stderr, "%d out from RetrieveMemory\n",marker);
-        return;
-    } else {
-        ResetReuseablePool();
-
-        float *from = leftMatrices[stack[--stackPtr]];
-
-        for (int i = stack[stackPtr] + 1; i <= marker; i++) {
-            int markerindex = i * 3;
-            {
-                leftMatrices[i] = GetReuseableBlock();
-
-                Transpose(i, from, leftMatrices[i]);
-                ConditionOnData(leftMatrices[i], i, genotypes[states / 2][markerindex],
-                                genotypes[states / 2][markerindex + 1], genotypes[states / 2][markerindex + 2]);
-
-                from = leftMatrices[i];
-            }
-        }
-    }
-}
-*/
-bool PBWTHaplotyper::ForceMemoryAllocation() {
-    // Cycle through individuals, with the exact same steps as the actual
-    // haplotyper and request memory ... by requesting all memory upfront,
-    // we force crashes to happen early.
-    for (int i = 0; i < individuals - phased; i++) {
-        ResetMemoryPool();
-        GetMemoryBlock(0);
-
-        if (leftMatrices[0] == nullptr)
-            return false;
-
-        int skipped = 0;
-        for (int j = 1; j < markers; j++)
-            //if (genotypes[i][j] != GENOTYPE_MISSING || j == markers - 1)
-        {
-            GetMemoryBlock(j);
-
-            if (leftMatrices[j] == nullptr)
-                return false;
-        }
-        //else
-        //skipped++;
-
-        if (skipped == 0) break;
-    }
-
-    if (!phased)
-        return true;
-
-    ResetMemoryPool();
-    for (int j = 0; j < markers; j++) {
-        GetSmallMemoryBlock(j);
-
-        if (leftMatrices[j] == nullptr)
-            return false;
-    }
-
-    return true;
-}
 
 //random setup
 void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
@@ -545,12 +422,13 @@ bool PBWTHaplotyper::ReverseInput() {
             //haplotypes
             std::swap(haplotypes[i * 2][begin], haplotypes[i * 2][end]);
             std::swap(haplotypes[i * 2 + 1][begin], haplotypes[i * 2 + 1][end]);
+        }
+        for (int i = 0; i < individuals-phased; ++i) {
             //genotypes
             std::swap(genotypes[i][begin * 3], genotypes[i][end * 3]);
             std::swap(genotypes[i][begin * 3 + 1], genotypes[i][end * 3 + 1]);
             std::swap(genotypes[i][begin * 3 + 2], genotypes[i][end * 3 + 2]);
         }
-
         for (int i = 0; i < (individuals - phased) * nSampleCopy; ++i) {
             //haplotypes
             std::swap(sampledHaps[i * 2][begin], sampledHaps[i * 2][end]);
@@ -1772,7 +1650,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                     if (childNode2 == -1 ) continue;
                     if (parentNode2 == parentNode1 and childNode2 > childNode1) continue;
                     gl = GetGL(sampleIndex, i, allele1, allele2);
-                    if (gl > GENO_MIN ){//|| i < 20) {
+                    if (gl > GENO_MIN || i < 20) {
                         fitPair++;
                         tmpFwdValue = prevFwdValue * GetTransitionProb(i - 1, parentNode1, childNode1) *
                                       GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
@@ -2453,10 +2331,8 @@ bool PBWTHaplotyper::AllocateMemory(int persons, int m)//for GraphSeperated, onl
         thetas = new float[markers - 1];
         for (int i = 0; i < markers - 1; i++)
             thetas[i] = 0.01;
-        if(runningModel & ITERATIVE)
-            genotypes = AllocateCharMatrix(individuals - phased, markers * 3);
-        else
-            genotypes = AllocateCharMatrix(individuals, markers * 3);
+        genotypes = AllocateCharMatrix(individuals - phased, markers * 3);
+//        genotypes = AllocateCharMatrix(individuals, markers * 3);
         penetrances = new float[markers * 9];
         error_models = new Errors[markers];
         freq1s = new double[markers];

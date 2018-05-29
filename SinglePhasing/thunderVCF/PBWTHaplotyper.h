@@ -131,8 +131,6 @@ public:
 
     bool AllocateMemory(int nIndividuals, int nMarkers);
 
-    virtual bool ForceMemoryAllocation();
-
     //inline section
     inline float GetTransitionProb(int site, StateIndex from, StateIndex to) {
         uchar allele = GetAllele(site + 1, to);
@@ -535,21 +533,6 @@ protected:
 
     bool isRev = false;
     bool onlyGT;
-
-    //memory management related
-    std::unordered_map<int, std::vector<float *> > memoryBlockList;//size and list of address
-    std::unordered_map<int, int> numInUse;//size and list of address
-    int totalBlockNum;
-
-    void GetMemoryBlock(int marker);//revise GetMemoryBlock function
-    float *GetReuseableBlock();//revise GetReuseableBlock function
-    float *GetLargeBlock();
-
-    void ResetMemoryPool();
-
-    void ResetReuseablePool();
-
-    void ReleaseMemoryBlock();
 
 };
 
