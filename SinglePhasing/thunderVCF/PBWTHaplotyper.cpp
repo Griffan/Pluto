@@ -62,7 +62,7 @@ PBWTHaplotyper::~PBWTHaplotyper() {
 #endif
 
     if (sampledHaps != nullptr) {
-        for (int l = 0; l < nSampleCopy * (individuals - phased) * 2; ++l) {
+        for (int l = 0; l < nSampleCopy * GetUnphasedNum() * 2; ++l) {
             delete[] sampledHaps[l];
         }
         delete[] sampledHaps;
@@ -72,11 +72,21 @@ PBWTHaplotyper::~PBWTHaplotyper() {
         delete Wrapper;
 
     if (genotypes) {
-        for (int i = 0; i < individuals - phased; i++) {
+        for (int i = 0; i < GetUnphasedNum(); i++) {
             if (genotypes[i]) delete[] genotypes[i];
         }
         delete[] genotypes;
         genotypes = nullptr;
+    }
+
+    if (haplotypes) {
+        int nTarget = runningModel&PHASE? GetUnphasedNum():individuals;
+        for (int i = 0; i < nTarget; i++) {
+            if (haplotypes[i * 2]) delete[] haplotypes[i * 2];
+            if (haplotypes[i * 2] + 1) delete[] haplotypes[i * 2 + 1];
+        }
+        delete[] haplotypes;
+        haplotypes = nullptr;
     }
 
     DestroyPvalueMatrix();
@@ -91,11 +101,11 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
     CalculatePhred2Prob();
 
     if (nSampleCopy == 0) return;
-    sampledHaps = new char *[nSampleCopy * (individuals - phased) * 2];
-    for (int l = 0; l < nSampleCopy * (individuals - phased) * 2; ++l) {
+    sampledHaps = new char *[nSampleCopy * GetUnphasedNum() * 2];
+    for (int l = 0; l < nSampleCopy * GetUnphasedNum() * 2; ++l) {
         sampledHaps[l] = new char[markers];
     }
-    int nTarget = loadGraph != "Empty"? individuals : individuals - phased;
+    int nTarget = GetUnphasedNum();
 
     for (int j = 0; j < markers; j++) {
         double mac = 0;
@@ -120,7 +130,7 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
         }
 
         //here, each person contributes two alleles
-        double freq = 0.5 * mac / (double) individuals;
+        double freq = 0.5 * mac / (double) nTarget;
 
         double prior_11 = (1.0 - freq) * (1.0 - freq);
         double prior_12 = 2.0 * freq * (1.0 - freq);
@@ -171,8 +181,8 @@ void PBWTHaplotyper::SwapIndividuals(int a, int b) {
     Swap(haplotypes[a * 2 + 1], haplotypes[b * 2 + 1]);
 
     if (nSampleCopy > 0) {
-        Swap(sampledHaps[a * 2], sampledHaps[(individuals - phased - 1) * 2]);
-        Swap(sampledHaps[a * 2 + 1], sampledHaps[(individuals - phased - 1) * 2 + 1]);
+        Swap(sampledHaps[a * 2], sampledHaps[(GetUnphasedNum() - 1) * 2]);
+        Swap(sampledHaps[a * 2 + 1], sampledHaps[(GetUnphasedNum() - 1) * 2 + 1]);
     }
     if (diseaseCount) {
         Swap(diseaseStatus[a], diseaseStatus[b]);
@@ -265,10 +275,10 @@ class SamplingException : public std::exception {
 int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
 
     ResetCrossovers();
-    if (isRev) ReverseInput();
+    if (isRev and not (runningModel&PHASE)) ReverseInput();
     ConstructGraph();
     clock_t t1 = clock();
-    int nTarget = loadGraph != "Empty"? individuals: individuals - phased;
+    int nTarget = GetUnphasedNum();
 #ifdef _OPENMP
     omp_set_num_threads(nThread);
 #pragma omp parallel for
@@ -289,7 +299,7 @@ int PBWTHaplotyper::LoopThroughChromosomesRecomb(Pedigree &ped) {
     clock_t t = clock();
     fprintf(stderr, "[%s]forward algorithm and sampling time:%.2f sec\n\n", __FUNCTION__,
             (float) (t - t1) / CLOCKS_PER_SEC);
-    if (isRev) ReverseInput();
+    if (isRev and not (runningModel&PHASE)) ReverseInput();
     return 0;
 }
 
@@ -414,22 +424,23 @@ int PBWTHaplotyper::LoopThroughChromosomesViaPBWTWithHeterOnly() {
 }
 #endif
 
-bool PBWTHaplotyper::ReverseInput() {
+bool PBWTHaplotyper::ReverseInput() {//ensure this function only called by ITERATIVE
     int begin = 0;
     int end = markers - 1;
     for (; begin < end; ++begin, --end) {
-        for (int i = 0; i < individuals; ++i) {
+        int nTarget = runningModel & PHASE? GetUnphasedNum():individuals;
+        for (int i = 0; i < nTarget; ++i) {
             //haplotypes
             std::swap(haplotypes[i * 2][begin], haplotypes[i * 2][end]);
             std::swap(haplotypes[i * 2 + 1][begin], haplotypes[i * 2 + 1][end]);
         }
-        for (int i = 0; i < individuals-phased; ++i) {
+        for (int i = 0; i < GetUnphasedNum(); ++i) {
             //genotypes
             std::swap(genotypes[i][begin * 3], genotypes[i][end * 3]);
             std::swap(genotypes[i][begin * 3 + 1], genotypes[i][end * 3 + 1]);
             std::swap(genotypes[i][begin * 3 + 2], genotypes[i][end * 3 + 2]);
         }
-        for (int i = 0; i < (individuals - phased) * nSampleCopy; ++i) {
+        for (int i = 0; i < GetUnphasedNum() * nSampleCopy; ++i) {
             //haplotypes
             std::swap(sampledHaps[i * 2][begin], sampledHaps[i * 2][end]);
             std::swap(sampledHaps[i * 2 + 1][begin], sampledHaps[i * 2 + 1][end]);
@@ -587,14 +598,9 @@ void PBWTHaplotyper::RandomSetup(Random *rand) {
 
     CalculatePhred2Prob();
 
-    int nTarget = 0;
-
-    if(runningModel & PHASE) nTarget = individuals;
-    if(runningModel & ITERATIVE) nTarget = individuals - phased;
-
     for (int j = 0; j < markers; j++) {
         int markerindex = 3 * j;
-        for (int i = 0; i < nTarget; i++) {
+        for (int i = 0; i < GetUnphasedNum(); i++) {
 
             int posterior_11 = genotypes[i][markerindex];
             int posterior_12 = genotypes[i][markerindex + 1];
@@ -1656,7 +1662,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                                       GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
                         if(childNode1 == childNode2) tmpFwdValue *= 0.5;
 
-                        if (DEBUG && i >= 448 && i <450)
+                        if (DEBUG && i >= 9407 && i <=9409)
                             fprintf(stderr, "debug from (%d,%d) to (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\t%g(%d,%d)\n", parentNode1,
                                     parentNode2, childNode1, childNode2,
                                     prevFwdValue, GetTransitionProb(i - 1, parentNode1, childNode1),
@@ -1670,7 +1676,8 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
 
                         localParameter.FillParentsNodeVec(i, childNode1, childNode2, parentNode1, parentNode2,
                                                           tmpFwdValue);
-                    } else if (reenter) {
+                    } else if (reenter)// and gl > 0)
+                    {
                         localParameter.isRec[i - 1] = false;
                         fitPair++;
                         tmpFwdValue = prevFwdValue *
@@ -1679,7 +1686,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                                       gl;//i fwdValueSum
                         if(childNode1 == childNode2) tmpFwdValue *= 0.5;
 
-                        if (DEBUG && i >= 2764 && i <=2764)
+                        if (DEBUG && i >= 9407 && i <=9409)
                             fprintf(stderr, "debug from (%d,%d) to (%d,%d) prevFwdValue:%g\ttp1:%g\ttp2:%g\t%g(%d,%d)\n", parentNode1,
                                     parentNode2, childNode1, childNode2,
                                     prevFwdValue, GetTransitionProb(i - 1, parentNode1, childNode1),
@@ -1738,7 +1745,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
 //                                                                             tmpParentNode2)]);//sum over all the parents of current parents that lead to a child pair
                             } else
                                 prevFwdValue = 0.f;
-                            if(DEBUG && i >= 448 && i <450) fprintf(stderr,"dest:(%d,%d) gl:%g(%d,%d)\tfrom:(%d,%d) gl:%g(%d,%d)\n",
+                            if(DEBUG && i >= 9407 && i <=9409) fprintf(stderr,"dest:(%d,%d) gl:%g(%d,%d)\tfrom:(%d,%d) gl:%g(%d,%d)\n",
                                                  childNode1,childNode2,gl,GetAllele(i, childNode1), GetAllele(i, childNode2),
                                                  tmpParentNode1,tmpParentNode2, glParents, GetAllele(i - 1, tmpParentNode1), GetAllele(i - 1, tmpParentNode2));
                             fitPair++;
@@ -2210,7 +2217,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
 }
 
 int PBWTHaplotyper::LocalForwardBackWard(int sampleIndex) {
-    FwdBwdLocalParameter localParameter(individuals, markers);
+    FwdBwdLocalParameter localParameter(markers);
     InitialFwdValues(sampleIndex, localParameter);
     try {
         ForwardAlgorithmRec(sampleIndex, localParameter);
@@ -2331,8 +2338,7 @@ bool PBWTHaplotyper::AllocateMemory(int persons, int m)//for GraphSeperated, onl
         thetas = new float[markers - 1];
         for (int i = 0; i < markers - 1; i++)
             thetas[i] = 0.01;
-        genotypes = AllocateCharMatrix(individuals - phased, markers * 3);
-//        genotypes = AllocateCharMatrix(individuals, markers * 3);
+        genotypes = AllocateCharMatrix(GetUnphasedNum(), markers * 3);
         penetrances = new float[markers * 9];
         error_models = new Errors[markers];
         freq1s = new double[markers];
@@ -2346,7 +2352,11 @@ bool PBWTHaplotyper::AllocateMemory(int persons, int m)//for GraphSeperated, onl
         freq1s = nullptr;
         crossovers = nullptr;
     }
-    haplotypes = AllocateCharMatrix(individuals * 2, markers);
+    if(runningModel & PHASE)
+        haplotypes = AllocateCharMatrix(GetUnphasedNum() * 2, markers);
+    else
+        haplotypes = AllocateCharMatrix(individuals * 2, markers);
+
     Wrapper = nullptr;
     marginals = nullptr;
 

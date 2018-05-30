@@ -159,7 +159,7 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
 
         // build map of personID -> sampleIndex
         std::map<std::string, int> pedMap;
-        for (int i = 0; i < (engine.individuals - engine.phased)/*ped.count*/; ++i) {
+        for (int i = 0; i < engine.individuals-engine.phased/*ped.count*/; ++i) {
 //            fprintf(stderr,"Adding (%s,%d)\n", ped[i].pid.c_str(), i);
             pedMap[ped[i].pid.c_str()] = i;
 
@@ -366,7 +366,7 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
         //fprintf(stderr, "we got %d samples\n", nSamples);
         // build map of personID -> sampleIndex
         std::map<std::string, int> pedMap;
-        for (int i = 0; i < (engine.individuals)/*ped.count*/; ++i) {
+        for (int i = 0; i < engine.individuals - engine.phased/*ped.count*/; ++i) {
             pedMap[ped[i].pid.c_str()] = i;
             //fprintf(stderr,"Adding (%s,%d)\n", ped[i].pid.c_str(), i);
         }
@@ -943,7 +943,7 @@ int BuildGraph(int argc, char **argv) {
     /*now loading phased individuals*/
     // here unphasedfile is the vcf file and is used for filling up the first five column of PED file(check the PED format).
     if (phasedfile != "Empty")
-        LoadSamples(ped, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf, engine.phased);
+        LoadSamples(ped, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf, engine.phased);//individuals == phased
     fprintf(stderr, "Done loading %d phased individuals.\n\n", engine.phased);
 
     /*Notice that now we adding markers as subset of phased markers*/
@@ -1023,6 +1023,7 @@ namespace ReadGraph {
                                 double defaultTransRate) {
         //printf("starting LoadGenotypeFromUnphasedVCF\n\n");
         try {
+            engine.CalculatePhred2Prob();
             VcfFile *pVcf = new VcfFile;
             pVcf->bSiteOnly = false;
             pVcf->bParseGenotypes = false;
@@ -1143,15 +1144,17 @@ namespace ReadGraph {
                                 error("Negative PL or Positive GL observed");
                             }
 
-                            if (phred11 > 127) phred11 = 127;
-                            if (phred12 > 127) phred12 = 127;
-                            if (phred22 > 127) phred22 = 127;
-//
-//                    printf("phred scores are %f, %f, %f;\tphred11/12/22 %d, %d, %d\n", phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble(),phred11,phred12,phred22);
+                            engine.FillGenotypeLikelihood(phred11, phred12, phred22, personIndices[i], genoindex);
 
-                            engine.genotypes[personIndices[i]][genoindex] = static_cast<char>(phred11);
-                            engine.genotypes[personIndices[i]][genoindex + 1] = static_cast<char>(phred12);
-                            engine.genotypes[personIndices[i]][genoindex + 2] = static_cast<char>(phred22);
+//                            if (phred11 > 127) phred11 = 127;
+//                            if (phred12 > 127) phred12 = 127;
+//                            if (phred22 > 127) phred22 = 127;
+////
+//                    fprintf(stderr,"marker:%d\tphred scores are %f, %f, %f;\tphred11/12/22 %d, %d, %d\n", markerindex, phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble(),phred11,phred12,phred22);
+//
+//                            engine.genotypes[personIndices[i]][genoindex] = static_cast<char>(phred11);
+//                            engine.genotypes[personIndices[i]][genoindex + 1] = static_cast<char>(phred12);
+//                            engine.genotypes[personIndices[i]][genoindex + 2] = static_cast<char>(phred22);
 //                    fprintf(stderr,"marker:%d\t%d\t%d\t%d\n",markerindex,engine.genotypes[personIndices[i]][genoindex],engine.genotypes[personIndices[i]][genoindex + 1],engine.genotypes[personIndices[i]][genoindex + 2] );
                         }
                     }
@@ -1166,7 +1169,7 @@ namespace ReadGraph {
                 {
                     markerindex = refMarkerIdx[iter->first];
                     int genoindex = markerindex * 3;
-                    for (int i = 0; i < (engine.individuals); i++)//for each unphased individual
+                    for (int i = 0; i < (engine.individuals - engine.phased); i++)//for each unphased individual
                     {
                         engine.genotypes[i][genoindex] = 1;
                         engine.genotypes[i][genoindex + 1] = 1;
@@ -1279,14 +1282,12 @@ namespace ReadGraph {
         int numUnphased(0);
         LoadSamples(ped, unphasedfile, pidIncludedInUnphasedVcf, pidExcludedInUnphasedVcf, numUnphased);
         fprintf(stderr, "Done loading unphased individuals:%d\n\n", numUnphased);
-        if (ped.count < 1) {
-            error("SinglePhasing requires more than 0 sample.");
-        }
+
 //        now loading phased individuals
         // here phasedfile is the refVcf file, here vcf is used for filling up the first five column of PED file(check the PED format).
         if (phasedfile != "Empty") {
-            Pedigree tmpPed;//we don't alloc memory for phased samples
-            LoadSamples(tmpPed, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf,
+//            Pedigree tmpPed;//we don't alloc memory for phased samples
+            LoadSamples(ped, phasedfile, pidIncludedInPhasedVcf, pidExcludedInPhasedVcf,
                         engine.phased);
         }
         std::cerr << "Detected phased individuals in reference panel:" << engine.phased << std::endl;
@@ -1478,6 +1479,7 @@ namespace PhaseIntersect {
     void LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, PBWTHaplotyper &engine) {
 //printf("starting LoadGenotypeFromUnphasedVCF\n\n");
         try {
+            engine.CalculatePhred2Prob();
             VcfFile *pVcf = new VcfFile;
             pVcf->bSiteOnly = false;
             pVcf->bParseGenotypes = false;
@@ -1501,8 +1503,7 @@ namespace PhaseIntersect {
                 person++;
             }
 
-            for (int i = 0; i < (engine.individuals -
-                                 engine.phased); i++) {//first N samples in ped, not necessary the unphased sample
+            for (int i = 0; i < engine.GetUnphasedNum(); i++) {//first N samples in ped, not necessary the unphased sample
                 if (originalPeople.Integer(ped[i].famid + "." + ped[i].pid) !=
                     -1) {//find index of this sample in current vcf
                     personIndices[originalPeople.Integer(
@@ -1583,16 +1584,17 @@ namespace PhaseIntersect {
                             error("Negative PL or Positive GL observed");
                         }
 
-                        if (phred11 > 127) phred11 = 127;
-                        if (phred12 > 127) phred12 = 127;
-                        if (phred22 > 127) phred22 = 127;
+                        engine.FillGenotypeLikelihood(phred11, phred12, phred22, personIndices[i], genoindex);
+//                        if (phred11 > 127) phred11 = 127;
+//                        if (phred12 > 127) phred12 = 127;
+//                        if (phred22 > 127) phred22 = 127;
+////
+////                    printf("phred scores are %f, %f, %f;\tphred11/12/22 %d, %d, %d\n", phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble(),phred11,phred12,phred22);
 //
-//                    printf("phred scores are %f, %f, %f;\tphred11/12/22 %d, %d, %d\n", phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble(),phred11,phred12,phred22);
-
-                        engine.genotypes[personIndices[i]][genoindex] = static_cast<char>(phred11);
-                        engine.genotypes[personIndices[i]][genoindex + 1] = static_cast<char>(phred12);
-                        engine.genotypes[personIndices[i]][genoindex + 2] = static_cast<char>(phred22);
-//                    fprintf(stderr,"marker:%d\t%d\t%d\t%d\n",markerindex,engine.genotypes[personIndices[i]][genoindex],engine.genotypes[personIndices[i]][genoindex + 1],engine.genotypes[personIndices[i]][genoindex + 2] );
+//                        engine.genotypes[personIndices[i]][genoindex] = static_cast<char>(phred11);
+//                        engine.genotypes[personIndices[i]][genoindex + 1] = static_cast<char>(phred12);
+//                        engine.genotypes[personIndices[i]][genoindex + 2] = static_cast<char>(phred22);
+////                    fprintf(stderr,"marker:%d\t%d\t%d\t%d\n",markerindex,engine.genotypes[personIndices[i]][genoindex],engine.genotypes[personIndices[i]][genoindex + 1],engine.genotypes[personIndices[i]][genoindex + 2] );
                     }
                 }
             }
@@ -1605,9 +1607,9 @@ namespace PhaseIntersect {
         }
     }
 
-    void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename, PBWTHaplotyper &engine,
-                                               double defaultErrorRate,
-                                               double defaultTransRate) {
+    void LoadHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename, PBWTHaplotyper &engine,
+                                    double defaultErrorRate,
+                                    double defaultTransRate) {
         //printf("starting LoadPhasedVcf\n\n");
 
         try {
@@ -2000,8 +2002,8 @@ namespace PhaseIntersect {
 
         if (phasedfile!="Empty") {
             fprintf(stderr, "Copy phased genotypes into haplotyping engine\n");
-            LoadGenotypeAndHaplotypeFromPhasedVCF(ped, phasedfile, engine, errorRate,
-                                                  transRate);//this is where we copy GL into genotype arrays
+            LoadHaplotypeFromPhasedVCF(ped, phasedfile, engine, errorRate,
+                                       transRate);//this is where we copy GL into genotype arrays
             fprintf(stderr, "Done loading phased genotype file\n\n");
         }
 
@@ -2293,7 +2295,7 @@ int PhasingMain(int argc, char **argv) {
 
     if (phasedfile!="Empty") {
         fprintf(stderr, "Copy phased genotypes into haplotyping engine\n");
-        LoadGenotypeAndHaplotypeFromPhasedVCF(ped, phasedfile, maxPhred, engine.phased, engine, errorRate,
+        LoadHaplotypeFromPhasedVCF(ped, phasedfile, maxPhred, engine.phased, engine, errorRate,
                                               transRate);//this is where we copy GL into genotype arrays
         fprintf(stderr, "Done loading phased genotype file\n\n");
     }

@@ -92,6 +92,36 @@ public:
 
     bool GetOnlyGT() { return onlyGT; }
 
+    void FillGenotypeLikelihood(long Phred11, long Phred12, long Phred22, int idv, int mkr)
+    {
+//        long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
+//        if(phred2prob[(size_t) minPhred] / phred2prob[(size_t) Phred11] >5000) Phred11 = 254;
+//        else if(phred2prob[(size_t) minPhred] / phred2prob[(size_t) Phred12] >5000) Phred12 = 254;
+//        else if(phred2prob[(size_t) minPhred] / phred2prob[(size_t) Phred22] >5000) Phred22 = 254;
+        if(Phred11 > 127) Phred11 =127;
+        if(Phred12 > 127) Phred12 =127;
+        if(Phred22 > 127) Phred22 =127;
+
+        genotypes[idv][mkr] = static_cast<char>(Phred11);
+        genotypes[idv][mkr + 1] = static_cast<char>(Phred12);
+        genotypes[idv][mkr + 2] = static_cast<char>(Phred22);
+    }
+
+    int GetUnphasedNum()
+    {
+        int nTarget;
+        if(runningModel & INDEX) nTarget = individuals;
+        else if(runningModel & PHASE) nTarget = individuals - phased;
+        else if(runningModel & ITERATIVE) nTarget = individuals - phased;
+        else
+        {
+            fprintf(stderr,"Should not reach this code!\n");
+            exit(EXIT_FAILURE);
+        }
+
+        return nTarget;
+    }
+
 #ifdef HETERSITE
     bool onlyHeterSite=false;
     //subset markers related
@@ -284,7 +314,7 @@ public:
         std::vector<std::unordered_map<int, float> > fwdValueNode2Sum;
         std::vector<bool> isRec;
 
-        FwdBwdLocalParameter(int individuals, int markers) {
+        FwdBwdLocalParameter(int markers) {
             states = -1;
 //            DestToSource dummy;
 //            dummy.reserve(HASH_RESERVE);
