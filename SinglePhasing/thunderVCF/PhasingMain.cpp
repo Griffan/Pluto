@@ -1804,7 +1804,7 @@ namespace PhaseIntersect {
         int burnin = 2, rounds = 4, polling = 0, samples = 0, samplingRounds = 1;
         int maxPhred = 255;
 
-        int prefixLength = 120;
+        int prefixLength = 30;
 
         bool compact = false;
         bool mle = false, mledetails = false, uncompressed = false;
