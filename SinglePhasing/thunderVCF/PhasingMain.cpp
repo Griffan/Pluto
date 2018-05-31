@@ -707,20 +707,19 @@ void LoadRefPanelPolymorphicSites(const String &filename) {
         }
     }
 
-void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename, PBWTHaplotyper &engine,
-                                           double defaultErrorRate, double defaultTransRate) {
+void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename, PBWTHaplotyper &engine) {
     try {
         VcfFile *pVcf = new VcfFile;
         pVcf->bSiteOnly = false;
         pVcf->bParseGenotypes = false;
         pVcf->bParseDosages = false;
         pVcf->bParseValues = true;
-        pVcf->openForRead(filename.c_str());
+        pVcf->openForRead(engine.graphFilePrefix.c_str());
         std::ofstream refVCFSite(std::string(filename.c_str()) + ".site");
         // check the sanity of data
         if (pVcf->getSampleCount() == 0) {
             throw VcfFileException("No individual genotype information exist in the input VCF file %s",
-                                   filename.c_str());
+                                   engine.graphFilePrefix.c_str());
         }
         int nSamples = pVcf->getSampleCount();
 
@@ -765,10 +764,8 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
             } else {
                 //fprintf(stderr,"No ERATE or THETA tag found in input vcf, now using command line(--errorRate and --transRate)settings:\n Error Rate:%f\tTrans Rate(Theta):%f\n",defaultErrorRate, defaultTransRate);
                 if (markerindex != 0)
-                    tmpTransRate = defaultTransRate;
+                    tmpTransRate = 0.01;
             }
-            refVCFSite << pMarker->sChrom.c_str() << "\t" << pMarker->nPos << "\t" << pMarker->asAlts[0].c_str() << "\t"
-                       << defaultErrorRate << "\t" << tmpTransRate << std::endl;
 
             int PLidx = pMarker->asFormatKeys.Find("PL");
             int GLidx = pMarker->asFormatKeys.Find("GL");
@@ -776,6 +773,32 @@ void LoadGenotypeAndHaplotypeFromPhasedVCF(Pedigree &ped, const String &filename
             if (GTidx < 0) {
                 throw VcfFileException("Cannot recognize GT key in FORMAT field");
             }
+            int AFidx = pMarker->asInfoKeys.Find("AF");
+            if (AFidx == -1) {
+                pMarker->asInfoKeys.PrintLine();
+                pMarker->asInfoValues.PrintLine();
+            }
+            int idx11 = 0, idx12 = 1, idx22 = 2;
+            if (AFidx == -1) {
+                int ANidx = pMarker->asInfoKeys.Find("AN");
+                int ACidx = pMarker->asInfoKeys.Find("AC");
+                if ((ANidx < 0) || (ACidx < 0)) {
+                    //throw VcfFileException("Cannot recognize AF key in FORMAT field");
+                    engine.freq1s[markerindex] = 1e-6;
+                } else {
+                    engine.freq1s[markerindex] = 1. - (pMarker->asInfoValues[ACidx].AsDouble() + .5) /
+                                                      (pMarker->asInfoValues[ANidx].AsDouble() + 1.);
+                }
+            } else if (pMarker->asAlts.Length() == 1) {
+                engine.freq1s[markerindex] = (1. - pMarker->asInfoValues[AFidx].AsDouble());
+            } else {
+                // AF1,AF2 -- freq1s is AF1
+                engine.freq1s[markerindex] = pMarker->asInfoValues[AFidx].AsDouble();
+            }
+
+            refVCFSite << pMarker->sChrom.c_str() << "\t" << pMarker->nPos << "\t" << pMarker->sRef[0]<<"\t"<<pMarker->asAlts[0].c_str() << "\t"
+                       << engine.freq1s[markerindex] << std::endl;
+
             int formatLength = pMarker->asFormatKeys.Length();
 
             StringArray phred;
@@ -863,7 +886,7 @@ int BuildGraph(int argc, char **argv) {
     t = clock();
     int seed = 123456, samplingRounds = 1;
 
-    int prefixLength = 120;
+    int prefixLength = 50;
     double errorRate = 0.01;
     double transRate = 0.01;
     bool onlyHeterSite = false;
@@ -907,7 +930,7 @@ int BuildGraph(int argc, char **argv) {
     engine.runningModel |= INDEX;
     engine.nSampleCopy = samplingRounds;
     engine.prefixLength = prefixLength;
-    engine.outputPrefix = std::string(phasedfile.c_str());
+    engine.graphFilePrefix = std::string(phasedfile.c_str());
 
     SetCrashExplanation("loading Pvalue Matrix");
 
@@ -968,8 +991,7 @@ int BuildGraph(int argc, char **argv) {
 
     SetCrashExplanation("loading genotype");
 
-    LoadGenotypeAndHaplotypeFromPhasedVCF(ped, phasedfile, engine, errorRate,
-                                          transRate);//this is where we copy GL into genotype arrays
+    LoadGenotypeAndHaplotypeFromPhasedVCF(ped, phasedfile, engine);//this is where we copy GL into genotype arrays
     fprintf(stderr, "Done loading phased genotype file\n\n");
 
 
@@ -987,6 +1009,7 @@ namespace ReadGraph {
 //graph reading begin
     std::vector<float> errorRateHolder;
     std::vector<float> transRateHolder;
+    std::vector<float> freqHolder;
 
     void LoadRefPanelPolymorphicSites(const std::string &filename) {
         try {
@@ -994,13 +1017,14 @@ namespace ReadGraph {
             if (!fin.is_open()) {
                 fprintf(stderr, "Cannot open file %s.site! Make sure run index first", filename.c_str());
             }
-            std::string line, chrom, nPos, asAlt, errorRate, transRate;
+            std::string line, chrom, nPos, asRef,asAlt;
+            float freq;
             StringArray altalleles;
             String markerName;
 
             while (std::getline(fin, line)) {
                 std::stringstream ss(line);
-                ss >> chrom >> nPos >> asAlt >> errorRate >> transRate;
+                ss >> chrom >> nPos >> asRef >> asAlt >> freq;
                 markerName.printf("%s:%s:%s", chrom.c_str(), nPos.c_str(),
                                   asAlt.c_str());//assume tri-alleles was divided into two lines
                 int marker = Pedigree::GetMarkerID(markerName);// that's where we fill up marker numbers for ped file
@@ -1008,8 +1032,8 @@ namespace ReadGraph {
                 unifiedMarkerSet[std::string(markerName.c_str())] = 1;
                 refMarkerIdx[std::string(markerName.c_str())] = marker;
                 unphaseMarkerIdx[std::string(markerName.c_str())] = -1;
-                errorRateHolder.push_back(atof(errorRate.c_str()));
-                transRateHolder.push_back(atof(transRate.c_str()));
+                freqHolder.push_back(freq);
+//                fprintf(stderr,"markerName:%s\tmarkerIndex:%d\tfreq:%f\n",markerName.c_str(), marker, freq);
             }
             fin.close();
         }
@@ -1019,8 +1043,7 @@ namespace ReadGraph {
     }
 
     void
-    LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, PBWTHaplotyper &engine, double defaultErrorRate,
-                                double defaultTransRate) {
+    LoadGenotypeFromUnphasedVCF(Pedigree &ped, const String &filename, PBWTHaplotyper &engine) {
         //printf("starting LoadGenotypeFromUnphasedVCF\n\n");
         try {
             engine.CalculatePhred2Prob();
@@ -1096,6 +1119,10 @@ namespace ReadGraph {
                     if (PLidx < 0 && GLidx < 0 && GTidx < 0) {
                         throw VcfFileException("Cannot recognize GT, GL or PL key in FORMAT field");
                     }
+
+                    engine.freq1s[markerindex] = freqHolder[markerindex];//
+//                  if(markerindex >= 9952 && markerindex <=9955) fprintf(stderr,"in reading 1 markerIndex:%d\tfreq:%f\n",markerindex,engine.freq1s[markerindex]);
+
                     //printf("reading vcf 1\n\n");
                     int formatLength = pMarker->asFormatKeys.Length();
                     int idx11 = 0, idx12 = 1, idx22 = 2;
@@ -1104,6 +1131,7 @@ namespace ReadGraph {
                     int genoindex = markerindex * 3;
 
                     long phred11(-1), phred12(-1), phred22(-1);
+
                     for (int i = 0; i < nSamples; i++)//for each individual in current vcf
                     {
                         if (personIndices.find(i) !=
@@ -1158,6 +1186,7 @@ namespace ReadGraph {
 //                    fprintf(stderr,"marker:%d\t%d\t%d\t%d\n",markerindex,engine.genotypes[personIndices[i]][genoindex],engine.genotypes[personIndices[i]][genoindex + 1],engine.genotypes[personIndices[i]][genoindex + 2] );
                         }
                     }
+
                 }
             }
 
@@ -1168,6 +1197,7 @@ namespace ReadGraph {
                 if (iter->second == 1)// if this marker not shown in unphased set but in reference set
                 {
                     markerindex = refMarkerIdx[iter->first];
+                    engine.freq1s[markerindex] = freqHolder[markerindex];
                     int genoindex = markerindex * 3;
                     for (int i = 0; i < (engine.individuals - engine.phased); i++)//for each unphased individual
                     {
@@ -1202,7 +1232,7 @@ namespace ReadGraph {
         int burnin = 5, rounds = 10, polling = 0, samples = 0, samplingRounds = 0;
         int maxPhred = 255;
 
-        int prefixLength = 120;
+        int prefixLength = 50;
 
         bool compact = false;
         bool mle = false, mledetails = false, uncompressed = false;
@@ -1309,14 +1339,13 @@ namespace ReadGraph {
         SetCrashExplanation("allocating memory for haplotype engine");
 
         engine.AllocateMemory(ped.count, ped.markerCount);
-        engine.SetErrorAndTheta(errorRateHolder, transRateHolder);
+//        engine.SetErrorAndTheta(errorRateHolder, transRateHolder);
 
         SetCrashExplanation("loading genotype");
 //    fprintf(stderr,"Done loading unphased genotypes into haplotyping engine\n\n");
         // Copy genotypes into haplotyping engine
         if (engine.readyForUse)
-            LoadGenotypeFromUnphasedVCF(ped, unphasedfile, engine, errorRate,
-                                        transRate);//this is where we copy GL into genotype arrays
+            LoadGenotypeFromUnphasedVCF(ped, unphasedfile, engine);//this is where we copy GL into genotype arrays
 
         fprintf(stderr, "Done loading unphased genotype file\n\n");
         // Copy phased haplotypes into haplotyping engine, but we put phased haps in the end
@@ -1670,15 +1699,6 @@ namespace PhaseIntersect {
                 else
                     continue;
 
-
-
-//                engine.refalleles[markerindex] = pMarker->sRef[0];
-
-                int AFidx = pMarker->asInfoKeys.Find("AF");
-                if (AFidx == -1) {
-                    pMarker->asInfoKeys.PrintLine();
-                    pMarker->asInfoValues.PrintLine();
-                }
 //                setting error rate
 //            int ERidx = pMarker->asInfoKeys.Find("ERATE");
 //            int THidx = pMarker->asInfoKeys.Find("THETA");
@@ -1700,7 +1720,11 @@ namespace PhaseIntersect {
                     throw VcfFileException("Cannot recognize GT key in FORMAT field");
                 }
                 //printf("reading vcf 2\n\n");
-                int formatLength = pMarker->asFormatKeys.Length();
+                int AFidx = pMarker->asInfoKeys.Find("AF");
+                if (AFidx == -1) {
+                    pMarker->asInfoKeys.PrintLine();
+                    pMarker->asInfoValues.PrintLine();
+                }
                 int idx11 = 0, idx12 = 1, idx22 = 2;
                 if (AFidx == -1) {
                     int ANidx = pMarker->asInfoKeys.Find("AN");
@@ -1718,6 +1742,8 @@ namespace PhaseIntersect {
                     // AF1,AF2 -- freq1s is AF1
                     engine.freq1s[markerindex] = pMarker->asInfoValues[AFidx].AsDouble();
                 }
+
+                int formatLength = pMarker->asFormatKeys.Length();
 
                 StringArray phred;
                 int genoindex = markerindex * 3;
@@ -1897,7 +1923,7 @@ namespace PhaseIntersect {
         engine.nSampleCopy = samplingRounds;
         engine.geneticMapAvailable = false;
         engine.prefixLength = prefixLength;
-        engine.outputPrefix = std::string(outfile.c_str());
+        engine.graphFilePrefix = std::string(outfile.c_str());
 
 
         SetCrashExplanation("loading Pvalue Matrix");

@@ -19,7 +19,7 @@
 class PBWTHaplotyper : public ShotgunHaplotyper {
 public:
     std::string loadGraph = "Empty";//indicate if build graph from previously built graph
-    std::string outputPrefix = "Empty";
+    std::string graphFilePrefix = "Empty";
     bool geneticMapAvailable = false;
     int runningModel = 0;
     int prefixLength = 0;
@@ -105,6 +105,24 @@ public:
         genotypes[idv][mkr] = static_cast<char>(Phred11);
         genotypes[idv][mkr + 1] = static_cast<char>(Phred12);
         genotypes[idv][mkr + 2] = static_cast<char>(Phred22);
+    }
+
+    int CalculatePosteriorGL(int markerIndex, int sampleIndex, double * posterior)
+    {
+        double prior[3];
+        prior[0] = freq1s[markerIndex] * freq1s[markerIndex];
+        prior[1] = 2.0 * freq1s[markerIndex] * (1.0 - freq1s[markerIndex]);
+        prior[2] = (1.0 - freq1s[markerIndex]) * (1.0 - freq1s[markerIndex]);
+        posterior[0] = prior[0] * phred2prob[genotypes[sampleIndex][markerIndex*3]];
+        posterior[1] = prior[1] * phred2prob[genotypes[sampleIndex][markerIndex*3+1]];
+        posterior[2] = prior[2] * phred2prob[genotypes[sampleIndex][markerIndex*3+2]];
+        double sum = posterior[0] + posterior[1] + posterior[2];
+
+        posterior[0] /= sum;
+        posterior[1] /= sum;
+        posterior[2] /= sum;
+
+        return 0;
     }
 
     int GetUnphasedNum()
