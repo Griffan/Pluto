@@ -594,7 +594,7 @@ float PBWTHaplotyper::GetRecombRate(int marker) {
     return Wrapper->recomRate[marker];
 }
 
-void PBWTHaplotyper::RandomSetup(Random *rand) {
+/*void PBWTHaplotyper::RandomSetup(Random *rand) {
     if (rand == NULL)
         rand = &globalRandom;
 
@@ -655,7 +655,37 @@ void PBWTHaplotyper::RandomSetup(Random *rand) {
         }
     }
 }
+*/
+void PBWTHaplotyper::RandomSetup(Random *rand) {
+    if (rand == NULL)
+        rand = &globalRandom;
 
+    CalculatePhred2Prob();
+
+    for (int j = 0; j < markers; j++) {
+        int markerindex = 3 * j;
+        for (int i = 0; i < GetUnphasedNum(); i++) {
+
+            int posterior_11 = genotypes[i][markerindex];
+            int posterior_12 = genotypes[i][markerindex + 1];
+            int posterior_22 = genotypes[i][markerindex + 2];
+            int min = std::min(std::min(posterior_11, posterior_12), posterior_22);//phred score
+            if (min == posterior_11) {
+                haplotypes[i * 2][j] = 0;
+                haplotypes[i * 2 + 1][j] = 0;
+            } else if (min == posterior_12) {
+                bool bit = rand->Binary();
+
+                haplotypes[i * 2][j] = bit;
+                haplotypes[i * 2 + 1][j] = bit ^ 1;
+            } else {
+                haplotypes[i * 2][j] = 1;
+                haplotypes[i * 2 + 1][j] = 1;
+            }
+
+        }
+    }
+}
 //without recombination
 struct EdgePair {
     int childNode1;

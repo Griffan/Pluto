@@ -1824,15 +1824,15 @@ namespace PhaseIntersect {
 
         clock_t t;
         t = clock();
-        const double genoThresh[5] = {pow(10.0,-0.1*10),
-                                     pow(10.0,-0.1*11),
+        const double genoThresh[5] = {pow(10.0,-0.1*3),
+                                     pow(10.0,-0.1*6),
+                                     pow(10.0,-0.1*9),
                                      pow(10.0,-0.1*12),
-                                     pow(10.0,-0.1*13),
                                      pow(10.0,-0.1*16)};
         double errorRate = 0.01;
         double transRate = 0.01;
         int seed = 123456, warmup = 0, states = 0, weightedStates = 0;
-        int burnin = 2, rounds = 4, polling = 0, samples = 0, samplingRounds = 4;
+        int burnin = 2, rounds = 4, polling = 0, samples = 0, samplingRounds = 0;
         int maxPhred = 255;
 
         int prefixLength = 50;
