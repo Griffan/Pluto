@@ -1824,13 +1824,18 @@ namespace PhaseIntersect {
 
         clock_t t;
         t = clock();
+        const double genoThresh[5] = {pow(10.0,-0.1*10),
+                                     pow(10.0,-0.1*11),
+                                     pow(10.0,-0.1*12),
+                                     pow(10.0,-0.1*13),
+                                     pow(10.0,-0.1*16)};
         double errorRate = 0.01;
         double transRate = 0.01;
         int seed = 123456, warmup = 0, states = 0, weightedStates = 0;
-        int burnin = 2, rounds = 4, polling = 0, samples = 0, samplingRounds = 1;
+        int burnin = 2, rounds = 4, polling = 0, samples = 0, samplingRounds = 4;
         int maxPhred = 255;
 
-        int prefixLength = 30;
+        int prefixLength = 50;
 
         bool compact = false;
         bool mle = false, mledetails = false, uncompressed = false;
@@ -2073,7 +2078,12 @@ namespace PhaseIntersect {
         SetCrashExplanation("phasing procedure");
 
         for (int i = 0; i < rounds; i++) {
-            if (i < burnin) engine.SetUseRev(i%2);
+            if(i < 5)
+                engine.genoThresh = genoThresh[i];
+            else
+                engine.genoThresh = genoThresh[4];
+
+            engine.SetUseRev(i%2);
             engine.LoopThroughChromosomesRecomb(ped);
 
             if (!fixTrans) engine.UpdateThetas();
