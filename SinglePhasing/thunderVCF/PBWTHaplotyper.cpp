@@ -108,7 +108,7 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
 
     for (int j = 0; j < markers; j++) {
         double mac = 0;
-        int markerindex = 3 * j;
+        int markerIndex = 3 * j;
 
 //        double hyperprior11 = freq1s[j] * freq1s[j];
 //        double hyperprior12 = 2.0 * freq1s[j] * (1.0 - freq1s[j]);
@@ -116,9 +116,9 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
 //
 //
 //        for (int i = 0; i < nTarget; i++) {
-//            double post11 = hyperprior11 * phred2prob[(size_t) genotypes[i][markerindex]];
-//            double post12 = hyperprior12 * phred2prob[(size_t) genotypes[i][markerindex + 1]];
-//            double post22 = hyperprior22 * phred2prob[(size_t) genotypes[i][markerindex + 2]];
+//            double post11 = hyperprior11 * phred2prob[(size_t) genotypes[i][markerIndex]];
+//            double post12 = hyperprior12 * phred2prob[(size_t) genotypes[i][markerIndex + 1]];
+//            double post22 = hyperprior22 * phred2prob[(size_t) genotypes[i][markerIndex + 2]];
 //            double sumpost = post11 + post12 + post22;
 //            post11 /= sumpost;
 //            post12 /= sumpost;
@@ -141,9 +141,9 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
 
         for (int i = 0; i < nTarget; i++) {
 
-            double posterior_11 = prior_11 * phred2prob[(size_t) genotypes[i][markerindex]];
-            double posterior_12 = prior_12 * phred2prob[(size_t) genotypes[i][markerindex + 1]];
-            double posterior_22 = prior_22 * phred2prob[(size_t) genotypes[i][markerindex + 2]];
+            double posterior_11 = prior_11 * phred2prob[(size_t) genotypes[i][markerIndex]];
+            double posterior_12 = prior_12 * phred2prob[(size_t) genotypes[i][markerIndex + 1]];
+            double posterior_22 = prior_22 * phred2prob[(size_t) genotypes[i][markerIndex + 2]];
             double sum = posterior_11 + posterior_12 + posterior_22;
 
             if (sum == 0)
@@ -474,11 +474,11 @@ PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *rand, 
     int copied2 = GetAllele(marker, state2); //Wrapper->clusterAllele[marker][state2];//haplotypes[state2][marker];
 //    fprintf(stdout,"marker %d copied genotype: %d|%d\n",marker,copied1,copied2);
 
-    int markerindex = marker * 3;
+    int markerIndex = marker * 3;
 
-    int ph11 = (unsigned char) genotypes[currentIndividual][markerindex];
-    int ph12 = (unsigned char) genotypes[currentIndividual][markerindex + 1];
-    int ph22 = (unsigned char) genotypes[currentIndividual][markerindex + 2];
+    int ph11 = (unsigned char) genotypes[currentIndividual][markerIndex];
+    int ph12 = (unsigned char) genotypes[currentIndividual][markerIndex + 1];
+    int ph22 = (unsigned char) genotypes[currentIndividual][markerIndex + 2];
 
     CalculatePhred2Prob();
 
@@ -533,9 +533,9 @@ PBWTHaplotyper::ImputeAlleles(int marker, int state1, int state2, Random *rand, 
 //    int phred_11 = static_cast<int>(std::floor(-10.0*log10(posterior_11)));
 //    int phred_12 = static_cast<int>(std::floor(-10.0*log10(1.f - (posterior_22 + posterior_11))));
 //    int phred_22 = static_cast<int>(std::floor(-10.0*log10(posterior_22)));
-//    genotypes[currentIndividual][markerindex] = phred_11 > 127? 127 : phred_11;
-//    genotypes[currentIndividual][markerindex + 1] = phred_12 > 127? 127 : phred_12;
-//    genotypes[currentIndividual][markerindex + 2] = phred_22 > 127? 127 : phred_22;
+//    genotypes[currentIndividual][markerIndex] = phred_11 > 127? 127 : phred_11;
+//    genotypes[currentIndividual][markerIndex + 1] = phred_12 > 127? 127 : phred_12;
+//    genotypes[currentIndividual][markerIndex + 2] = phred_22 > 127? 127 : phred_22;
 
     int imputed1 = haps[currentHap1][marker];
     int imputed2 = haps[currentHap2][marker];
@@ -602,7 +602,7 @@ void PBWTHaplotyper::RandomSetup(Random *rand) {
     CalculatePhred2Prob();
 
     for (int j = 0; j < markers; j++) {
-        int markerindex = 3 * j;
+        int markerIndex = 3 * j;
 
         double prior_11 = freq1s[j] * freq1s[j];
         double prior_12 = 2.0 * freq1s[j] * (1.0 - freq1s[j]);
@@ -610,9 +610,9 @@ void PBWTHaplotyper::RandomSetup(Random *rand) {
 
         for (int i = 0; i < GetUnphasedNum(); i++) {
 
-            double posterior_11 = prior_11 * phred2prob[genotypes[i][markerindex]];
-            double posterior_12 = prior_12 * phred2prob[genotypes[i][markerindex+1]];
-            double posterior_22 = prior_22 * phred2prob[genotypes[i][markerindex+2]];
+            double posterior_11 = prior_11 * phred2prob[genotypes[i][markerIndex]];
+            double posterior_12 = prior_12 * phred2prob[genotypes[i][markerIndex+1]];
+            double posterior_22 = prior_22 * phred2prob[genotypes[i][markerIndex+2]];
             double sum = posterior_11 + posterior_12 + posterior_22;
 
             if (sum == 0)

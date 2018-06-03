@@ -94,7 +94,7 @@ public:
 
     bool GetOnlyGT() { return onlyGT; }
 
-    void FillGenotypeLikelihood(long Phred11, long Phred12, long Phred22, int idv, int mkr)
+    void FillGenotypeLikelihood(long Phred11, long Phred12, long Phred22, int idv, int genoIndex)
     {
 //        long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
 //        if( (Phred11 - minPhred) > 20) Phred11 = 127;
@@ -116,9 +116,9 @@ public:
 		if(Phred11 == minPhred) Phred22 = 127;
 		if(Phred22 == minPhred) Phred11 = 127;
 	}
-        genotypes[idv][mkr] = static_cast<char>(Phred11);
-        genotypes[idv][mkr + 1] = static_cast<char>(Phred12);
-        genotypes[idv][mkr + 2] = static_cast<char>(Phred22);
+        genotypes[idv][genoIndex] = static_cast<char>(Phred11);
+        genotypes[idv][genoIndex + 1] = static_cast<char>(Phred12);
+        genotypes[idv][genoIndex + 2] = static_cast<char>(Phred22);
     }
 
     int CalculatePosteriorGL(int markerIndex, int sampleIndex, double * posterior)

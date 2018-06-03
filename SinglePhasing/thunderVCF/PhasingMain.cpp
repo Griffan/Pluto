@@ -281,9 +281,9 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][markerIndex],
                                                                              haplotypes[pi * 2 + 1][markerIndex]);
                         pMarker->asSampleValues[nFormats * i + PLidx].printf("%d,%d,%d",
-                                                                             engine.genotypes[pi][markerIndex],
-                                                                             engine.genotypes[pi][markerIndex + 1],
-                                                                             engine.genotypes[pi][markerIndex + 2]);
+                                                                             engine.genotypes[pi][markerIndex*3],
+                                                                             engine.genotypes[pi][markerIndex*3 + 1],
+                                                                             engine.genotypes[pi][markerIndex*3 + 2]);
                     } else {
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][markerIndex] + 1,
                                                                              haplotypes[pi * 2 + 1][markerIndex] + 1);
@@ -411,7 +411,7 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
                 {//if unphase also has this marker i.e. shared marker, update content otherwise remains as before
                     markerIndex = refMarkerIdx[std::string(markerName.c_str())];
 
-//                    if(markerIndex >8096 and markerIndex < 8099) fprintf(stderr,"%s:%d:%c\n", pMarker->sChrom.c_str(), pMarker->nPos, alt);
+//                    if(markerIndex >91 and markerIndex < 93) fprintf(stderr,"%s:%d:%c\n", pMarker->sChrom.c_str(), pMarker->nPos, alt);
 //                doses.CalculateMarkerInfo(m, freq, maf, avgPost, rsq);
                     pMarker->asInfoKeys.Clear();
                     pMarker->asInfoValues.Clear();
@@ -492,9 +492,9 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
                                                                                  engine.haplotypes[pi * 2 +
                                                                                                    1][markerIndex]);
                             pMarker->asSampleValues[nFormats * i + PLidx].printf("%d,%d,%d",
-                                                                                 engine.genotypes[pi][markerIndex],
-                                                                                 engine.genotypes[pi][markerIndex + 1],
-                                                                                 engine.genotypes[pi][markerIndex + 2]);
+                                                                                 engine.genotypes[pi][markerIndex*3],
+                                                                                 engine.genotypes[pi][markerIndex*3 + 1],
+                                                                                 engine.genotypes[pi][markerIndex*3 + 2]);
                         }
 //                        else {
 //                            pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d",
@@ -1835,7 +1835,7 @@ namespace PhaseIntersect {
         int burnin = 2, rounds = 4, polling = 0, samples = 0, samplingRounds = 1;
         int maxPhred = 255;
 
-        int prefixLength = 50;
+        int prefixLength = 30;
 
         bool compact = false;
         bool mle = false, mledetails = false, uncompressed = false;
