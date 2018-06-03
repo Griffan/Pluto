@@ -97,13 +97,25 @@ public:
     void FillGenotypeLikelihood(long Phred11, long Phred12, long Phred22, int idv, int mkr)
     {
 //        long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
-//        if(phred2prob[(size_t) minPhred] / phred2prob[(size_t) Phred11] >5000) Phred11 = 254;
-//        else if(phred2prob[(size_t) minPhred] / phred2prob[(size_t) Phred12] >5000) Phred12 = 254;
-//        else if(phred2prob[(size_t) minPhred] / phred2prob[(size_t) Phred22] >5000) Phred22 = 254;
-        if(Phred11 > 127) Phred11 =127;
-        if(Phred12 > 127) Phred12 =127;
-        if(Phred22 > 127) Phred22 =127;
+//        if( (Phred11 - minPhred) > 20) Phred11 = 127;
+//        else if((Phred12 - minPhred) > 20) Phred12 = 127;
+//        else if((Phred22 - minPhred) > 20) Phred22 = 127;
 
+//        if(Phred11 > 127) Phred11 =127;
+//        if(Phred12 > 127) Phred12 =127;
+//        if(Phred22 > 127) Phred22 =127;
+
+	long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
+	if(minPhred == Phred12)
+	{
+		if((Phred11 - minPhred) > 50) Phred11 = 127;
+		if((Phred22 - minPhred) > 50) Phred22 = 127;
+	}
+	else
+	{
+		if(Phred11 == minPhred) Phred22 = 127;
+		if(Phred22 == minPhred) Phred11 = 127;
+	}
         genotypes[idv][mkr] = static_cast<char>(Phred11);
         genotypes[idv][mkr + 1] = static_cast<char>(Phred12);
         genotypes[idv][mkr + 2] = static_cast<char>(Phred22);
