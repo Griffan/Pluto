@@ -29,6 +29,7 @@ public:
 
 
     GeneticDistanceMap GDMap;
+
 /*!PBWTHaplotyper
  * Consturctor
  * @param nhaps number of haplotypes
@@ -79,6 +80,8 @@ public:
 
     virtual void ImputeAlleles(int marker, int state1, int state2, Random *rand, int currentIndividual, char **haps);
 
+    void ImputeAllelesGP(int marker, int state1, int state2, Random *rand, int currentIndividual, char **haps);
+
     virtual void ImputeAllelesRaw(int marker, int state1, int state2, Random *rand, int currentIndividual, char **haps);
 
     virtual void ImputeAllele(int haplotype, int marker, int state, char **haps);
@@ -94,8 +97,7 @@ public:
 
     bool GetOnlyGT() { return onlyGT; }
 
-    void FillGenotypeLikelihood(long Phred11, long Phred12, long Phred22, int idv, int genoIndex)
-    {
+    void FillGenotypeLikelihood(long Phred11, long Phred12, long Phred22, int idv, int genoIndex) {
 //        long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
 //        if( (Phred11 - minPhred) > 20) Phred11 = 127;
 //        else if((Phred12 - minPhred) > 20) Phred12 = 127;
@@ -105,31 +107,32 @@ public:
 //        if(Phred12 > 127) Phred12 =127;
 //        if(Phred22 > 127) Phred22 =127;
 
-	long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
-	if(minPhred == Phred12)
-	{
-		if((Phred11 - minPhred) > 50) Phred11 = 127;
-		if((Phred22 - minPhred) > 50) Phred22 = 127;
-	}
-	else
-	{
-		if(Phred11 == minPhred) Phred22 = 127;
-		if(Phred22 == minPhred) Phred11 = 127;
-	}
+        long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
+        if (minPhred == Phred12) {
+            if ((Phred11 - minPhred) > 50) Phred11 = 127;
+            if ((Phred22 - minPhred) > 50) Phred22 = 127;
+        } else {
+            if (Phred11 == minPhred) Phred22 = 127;
+            if (Phred22 == minPhred) Phred11 = 127;
+        }
         genotypes[idv][genoIndex] = static_cast<char>(Phred11);
         genotypes[idv][genoIndex + 1] = static_cast<char>(Phred12);
         genotypes[idv][genoIndex + 2] = static_cast<char>(Phred22);
+        if (genoProb) {
+            genoProb[idv][genoIndex] = 0.f;
+            genoProb[idv][genoIndex + 1] = 0.f;
+            genoProb[idv][genoIndex + 2] = 0.f;
+        }
     }
 
-    int CalculatePosteriorGL(int markerIndex, int sampleIndex, double * posterior)
-    {
+    int CalculatePosteriorGL(int markerIndex, int sampleIndex, double *posterior) {
         double prior[3];
         prior[0] = freq1s[markerIndex] * freq1s[markerIndex];
         prior[1] = 2.0 * freq1s[markerIndex] * (1.0 - freq1s[markerIndex]);
         prior[2] = (1.0 - freq1s[markerIndex]) * (1.0 - freq1s[markerIndex]);
-        posterior[0] = prior[0] * phred2prob[genotypes[sampleIndex][markerIndex*3]];
-        posterior[1] = prior[1] * phred2prob[genotypes[sampleIndex][markerIndex*3+1]];
-        posterior[2] = prior[2] * phred2prob[genotypes[sampleIndex][markerIndex*3+2]];
+        posterior[0] = prior[0] * phred2prob[genotypes[sampleIndex][markerIndex * 3]];
+        posterior[1] = prior[1] * phred2prob[genotypes[sampleIndex][markerIndex * 3 + 1]];
+        posterior[2] = prior[2] * phred2prob[genotypes[sampleIndex][markerIndex * 3 + 2]];
         double sum = posterior[0] + posterior[1] + posterior[2];
 
         posterior[0] /= sum;
@@ -139,15 +142,25 @@ public:
         return 0;
     }
 
-    int GetUnphasedNum()
+    int NormalizeGP(int markerIndex, int sampleIndex)
     {
+        float sum = 0.f;
+        sum = genoProb[sampleIndex][3 * markerIndex] +
+              genoProb[sampleIndex][3 * markerIndex + 1] +
+              genoProb[sampleIndex][3 * markerIndex + 2];
+        genoProb[sampleIndex][3 * markerIndex] /= sum;
+        genoProb[sampleIndex][3 * markerIndex + 1] /= sum;
+        genoProb[sampleIndex][3 * markerIndex + 2] /= sum;
+
+    }
+
+    int GetUnphasedNum() {
         int nTarget;
-        if(runningModel & INDEX) nTarget = individuals;
-        else if(runningModel & PHASE) nTarget = individuals - phased;
-        else if(runningModel & ITERATIVE) nTarget = individuals - phased;
-        else
-        {
-            fprintf(stderr,"Should not reach this code!\n");
+        if (runningModel & INDEX) nTarget = individuals;
+        else if (runningModel & PHASE) nTarget = individuals - phased;
+        else if (runningModel & ITERATIVE) nTarget = individuals - phased;
+        else {
+            fprintf(stderr, "Should not reach this code!\n");
             exit(EXIT_FAILURE);
         }
 
@@ -267,22 +280,25 @@ public:
 //        }
         long operator()(const std::pair<T, U> &x) const//Cantor pairing function:
         {
-            return x.first << ((sizeof(StateIndex) -1) * 32+31) | x.second;
+            return x.first << ((sizeof(StateIndex) - 1) * 32 + 31) | x.second;
         }
     };
 
 //    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, float, PairHash> Source;//(nodeA,nodeB)->fwd
 //    typedef std::unordered_map<std::pair<StateIndex, StateIndex>, Source, PairHash> DestToSource;
-
 //    typedef std::unordered_map<uint64_t, float> Source;//(nodeA,nodeB)->fwd
 //    typedef std::unordered_map<uint64_t, Source> DestToSource;
 
-    typedef uint64_t NodePair;
-    typedef std::vector<uint64_t> SourceVec;
-    typedef std::vector<std::vector<uint64_t> > Index2SourceVec;
-    typedef std::vector<float> FwdVec;
-    typedef std::vector<std::vector<float> > Index2FwdVec;
-    typedef std::unordered_map<uint64_t, int> Dest2SourceVecIndex;
+//    typedef uint64_t NodePair;
+//    typedef std::vector<uint64_t> SourceVec;
+//    typedef std::vector<std::vector<uint64_t> > Index2SourceHash;
+//    typedef std::vector<float> FwdVec;
+//    typedef std::vector<std::vector<float> > Index2ValueVec;
+//    typedef std::unordered_map<uint64_t, int> Dest2SourceVecIndex;
+
+    typedef std::unordered_map<uint64_t, float> SourceHash;//(nodeA,nodeB)->fwd
+    typedef std::vector<SourceHash> Index2SourceHash;
+    typedef std::unordered_map<uint64_t, int> Dest2SourceHashIndex;
 
     /*
     class AvailableParentStatePair {
@@ -337,36 +353,28 @@ public:
         //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
 //        std::vector<DestToSource> parentsNodeVec;
 
-        std::vector<Dest2SourceVecIndex> parentsNodeVec;
-        std::vector<Index2SourceVec> megaSourceVec;
-        std::vector<Index2FwdVec> megaFwdVec;
+        std::vector<Dest2SourceHashIndex> parentsNodeVec;//marker -> (destPair:childNode1,childNode2)->destIndex
+        std::vector<Index2SourceHash> megaSourceHashVec;//marker -> destIndex ->(sourcePair:parentNode1,parentNode2)->value
 
-        std::vector<float> fwdValueSum;
-        std::vector<std::unordered_map<int, float> > fwdValueNode1Sum;
-        std::vector<std::unordered_map<int, float> > fwdValueNode2Sum;
+        std::vector<float> ValueSum;
+        std::vector<std::unordered_map<int, float> > ValueNode1Sum;
+        std::vector<std::unordered_map<int, float> > ValueNode2Sum;
         std::vector<bool> isRec;
 
         FwdBwdLocalParameter(int markers) {
             states = -1;
-//            DestToSource dummy;
-//            dummy.reserve(HASH_RESERVE);
-//            parentsNodeVec.assign(markers, dummy);
-            Dest2SourceVecIndex dummy;
+
+            Dest2SourceHashIndex dummy;
             dummy.reserve(HASH_RESERVE);
             parentsNodeVec.assign(markers, dummy);
 
-            Index2SourceVec dummy2;
+            Index2SourceHash dummy2;
             dummy2.reserve(HASH_RESERVE);
-            megaSourceVec.assign(markers, dummy2);
-
-            Index2FwdVec dummy3;
-            dummy3.reserve(HASH_RESERVE);
-            megaFwdVec.assign(markers, dummy3);
-
+            megaSourceHashVec.assign(markers, dummy2);
         }
 
         inline uint64_t MakePair(StateIndex first, StateIndex second) {
-            return static_cast<uint64_t>(first) << 32 |  static_cast<uint64_t>(second);
+            return static_cast<uint64_t>(first) << 32 | static_cast<uint64_t>(second);
         }
 
         inline StateIndex GetFirst(uint64_t pair) {
@@ -384,62 +392,109 @@ public:
                 parentsNodeVec[i].end())//Dest already exists
             {
                 index = parentsNodeVec[i][MakePair(childNode1, childNode2)];
-                megaFwdVec[i][index].push_back(tmpFwdValue);
-                megaSourceVec[i][index].push_back(MakePair(parentNode1, parentNode2));
+                megaSourceHashVec[i][index][MakePair(parentNode1, parentNode2)] = tmpFwdValue;
             } else {
-                index = megaFwdVec[i].size();
+                index = megaSourceHashVec[i].size();
                 parentsNodeVec[i][MakePair(childNode1, childNode2)] = index;
 
-                FwdVec dummyFwdVec(1, tmpFwdValue);
-                dummyFwdVec.reserve(HASH_RESERVE);
-                megaFwdVec[i].push_back(dummyFwdVec);
-
-                SourceVec dummySourceVec(1, MakePair(parentNode1, parentNode2));
-                dummySourceVec.reserve(HASH_RESERVE);
-                megaSourceVec[i].push_back(dummySourceVec);
+                SourceHash dummySourceHash;
+                megaSourceHashVec[i].push_back(dummySourceHash);
+                megaSourceHashVec[i][index].reserve(HASH_RESERVE);
+                megaSourceHashVec[i][index][MakePair(parentNode1, parentNode2)] = tmpFwdValue;
+//                fprintf(stderr,"debug megaSourceHashVec:%f tmpFwdValue:%f\n",megaSourceHashVec[i][index][MakePair(parentNode1, parentNode2)],tmpFwdValue);
             }
             return 0;
         }
 
-        inline FwdVec &GetFwdVec(int i, int destIndex) {
-            return megaFwdVec[i][destIndex];
+        inline int Normalize(int i) {
+            float tmpBwdValue = 0.f;
+            for (auto kv:parentsNodeVec[i]) {
+                StateIndex tmpNode1 = GetFirst(kv.first);
+                StateIndex tmpNode2 = GetSecond(kv.first);
+                for (auto &kv: GetSourceHash(i, kv.second)) {
+                    kv.second /= ValueSum[i];
+                    tmpBwdValue += kv.second;
+                }
+                ValueNode1Sum[i][tmpNode1] += tmpBwdValue;
+                ValueNode2Sum[i][tmpNode2] += tmpBwdValue;
+            }
+            return 0;
         }
 
-        inline FwdVec &GetFwdVec(int i, StateIndex A, StateIndex B) {
-            return GetFwdVec(i, parentsNodeVec[i][MakePair(A, B)]);
+        inline SourceHash &GetSourceHash(int i, int destIndex) {
+            return megaSourceHashVec[i][destIndex];
         }
 
-        inline float GetFwd(int i, int destIndex, int sourceIndex) {
-            return megaFwdVec[i][destIndex][sourceIndex];
+        inline SourceHash &GetSourceHash(int i, StateIndex A, StateIndex B) {
+            return GetSourceHash(i, parentsNodeVec[i][MakePair(A, B)]);
         }
 
-        inline SourceVec &GetSourceVec(int i, int destIndex) {
-            return megaSourceVec[i][destIndex];
+//        inline FwdVec &GetValueVec(int i, int destIndex) {
+//            return megaSourceHashVec[i][destIndex];
+//        }
+//
+//        inline FwdVec &GetValueVec(int i, StateIndex A, StateIndex B) {
+//            return GetValueVec(i, parentsNodeVec[i][MakePair(A, B)]);
+//        }
+
+//        inline float GetValue(int i, int destIndex, int sourceIndex) {
+//            return megaValueVec[i][destIndex][sourceIndex];
+//        }
+
+        inline float GetValue(int i, StateIndex childA, StateIndex childB, StateIndex parentA, StateIndex parentB) {
+            int destIndex = parentsNodeVec[i][MakePair(childA, childB)];
+            return megaSourceHashVec[i][destIndex][MakePair(parentA, parentB)];
         }
 
-        inline SourceVec &GetSourceVec(int i, StateIndex A, StateIndex B) {
-            return GetSourceVec(i, parentsNodeVec[i][MakePair(A, B)]);
-        }
+//        inline SourceVec &GetSourceVec(int i, int destIndex) {
+//            return megaSourceHashVec[i][destIndex];
+//        }
+//
+//        inline SourceVec &GetSourceVec(int i, StateIndex A, StateIndex B) {
+//            return GetSourceVec(i, parentsNodeVec[i][MakePair(A, B)]);
+//        }
 
         inline uint64_t GetSource(int i, int destIndex, int sourceIndex) {
-            return megaSourceVec[i][destIndex][sourceIndex];
+            return megaSourceHashVec[i][destIndex][sourceIndex];
         }
 
         inline int GetDestIndex(int i, StateIndex A, StateIndex B) {
             return parentsNodeVec[i][MakePair(A, B)];
         }
 
-        inline float SumFwdValueFromOriginVec(const FwdVec &a) const {
+
+        inline float SumValueFromSource(int i, StateIndex A, StateIndex B) {
+            return SumValueFromSource(GetSourceHash(i, A, B));
+        }
+
+        inline float SumValueFromSource(int i, int destIndex) {
+            return SumValueFromSource(GetSourceHash(i, destIndex));
+        }
+
+        inline int ReleaseMemAt(int i) {
+            parentsNodeVec[i].clear();
+            megaSourceHashVec[i].clear();
+//            megaValueVec[i].clear();
+            ValueNode1Sum[i].clear();
+            ValueNode2Sum[i].clear();
+            return 0;
+        }
+
+    private:
+        inline float SumValueFromSource(const SourceHash &a) {
             if (a.size() == 0) return 0.f;
             float sum(0.f);
             for (auto kv:a) {
-                sum += kv;
+                sum += kv.second;
             }
             return sum;
         }
     };
 
     int InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &localParameter);
+
+    int InitialBwdValues(int sampleIndex, char **sampledHaps, FwdBwdLocalParameter &fwdParameter,
+                         FwdBwdLocalParameter &bwdParameter);
 
     int ResetFwdValues(FwdBwdLocalParameter &localParameter);
 
@@ -478,11 +533,11 @@ public:
      * Calculate Backward Marginal Probability
      * @param sampleIndex
      * @param sampledHaps
-     * @param localParameter
+     * @param fwdParameter
      * @return
      */
-    int BackwardAlgorithmRec(int sampleIndex, char **sampledHaps,
-                             FwdBwdLocalParameter &localParameter);
+    int BackwardAlgorithmRec(int sampleIndex, char **sampledHaps, FwdBwdLocalParameter &fwdParameter,
+                             FwdBwdLocalParameter &bwdParameter);
 
     /*!BackwardSamplingRec()
      * sampling haplotype while backward algorithm with recombination model added
@@ -507,6 +562,8 @@ public:
 #endif
     char **sampledHaps = nullptr;
     int nSampleCopy;
+
+    float **genoProb;
 
 
     //KS D value related

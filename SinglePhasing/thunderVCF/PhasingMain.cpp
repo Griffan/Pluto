@@ -262,9 +262,16 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
 
                 int PLidx = pMarker->asFormatKeys.Find("PL");
                 if (PLidx < 0) {
-//                        throw VcfFileException("Cannot recognize GT key in FORMAT field");
+//                        throw VcfFileException("Cannot recognize PL key in FORMAT field");
                     pMarker->asFormatKeys.Add("PL");
                     PLidx = 1;
+                }
+
+                int GPidx = pMarker->asFormatKeys.Find("GP");
+                if (GPidx < 0) {
+//                        throw VcfFileException("Cannot recognize GP key in FORMAT field");
+                    pMarker->asFormatKeys.Add("GP");
+                    GPidx = 1;
                 }
 
                 int nFormats = pMarker->asFormatKeys.Length();
@@ -284,6 +291,10 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                                                                              engine.genotypes[pi][markerIndex*3],
                                                                              engine.genotypes[pi][markerIndex*3 + 1],
                                                                              engine.genotypes[pi][markerIndex*3 + 2]);
+                        pMarker->asSampleValues[nFormats * i + GPidx].printf("%f,%f,%f",
+                                                                             engine.genoProb[pi][markerIndex * 3],
+                                                                             engine.genoProb[pi][markerIndex * 3 + 1],
+                                                                             engine.genoProb[pi][markerIndex * 3 + 2]);
                     } else {
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][markerIndex] + 1,
                                                                              haplotypes[pi * 2 + 1][markerIndex] + 1);
@@ -474,9 +485,16 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
 
                     int PLidx = pMarker->asFormatKeys.Find("PL");
                     if (PLidx < 0) {
-//                        throw VcfFileException("Cannot recognize GT key in FORMAT field");
+//                        throw VcfFileException("Cannot recognize PL key in FORMAT field");
                         pMarker->asFormatKeys.Add("PL");
                         PLidx = 1;
+                    }
+
+                    int GPidx = pMarker->asFormatKeys.Find("GP");
+                    if (GPidx < 0) {
+//                        throw VcfFileException("Cannot recognize GP key in FORMAT field");
+                        pMarker->asFormatKeys.Add("GP");
+                        GPidx = 1;
                     }
 
                     int nFormats = pMarker->asFormatKeys.Length();
@@ -495,6 +513,12 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
                                                                                  engine.genotypes[pi][markerIndex*3],
                                                                                  engine.genotypes[pi][markerIndex*3 + 1],
                                                                                  engine.genotypes[pi][markerIndex*3 + 2]);
+                            pMarker->asSampleValues[nFormats * i + GPidx].printf("%f,%f,%f",
+                                                                                 engine.genoProb[pi][markerIndex * 3],
+                                                                                 engine.genoProb[pi][markerIndex * 3 +
+                                                                                                     1],
+                                                                                 engine.genoProb[pi][markerIndex * 3 +
+                                                                                                     2]);
                         }
 //                        else {
 //                            pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d",
