@@ -407,13 +407,13 @@ public:
         }
 
         inline int Normalize(int i) {
-            float tmpBwdValue = 0.f;
             for (auto kv:parentsNodeVec[i]) {
                 StateIndex tmpNode1 = GetFirst(kv.first);
                 StateIndex tmpNode2 = GetSecond(kv.first);
-                for (auto &kv: GetSourceHash(i, kv.second)) {
-                    kv.second /= ValueSum[i];
-                    tmpBwdValue += kv.second;
+                float tmpBwdValue = 0.f;
+                for (auto &sourceValuePair: GetSourceHash(i, kv.second)) {
+                    sourceValuePair.second /= ValueSum[i];
+                    tmpBwdValue += sourceValuePair.second;
                 }
                 ValueNode1Sum[i][tmpNode1] += tmpBwdValue;
                 ValueNode2Sum[i][tmpNode2] += tmpBwdValue;
