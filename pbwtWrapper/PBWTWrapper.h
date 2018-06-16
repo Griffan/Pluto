@@ -111,15 +111,8 @@ struct r_stat_t {
 
     bool IsSignificant() {
         double r = (size * S0xy - S0x * Sy) / (sqrt(size * S0xx - S0x * S0x) * sqrt(size * Syy - Sy * Sy));
-//        double r2=(size*S1xy-S1x*Sy)/(sqrt(size*S1xx-S1x*S1x)*sqrt(size*Syy-Sy*Sy));
         double t = r * sqrt(size - 2) / sqrt(1 - r * r);
         return fabs(t) > GetTCritical(size - 2);
-//        double t2=r2*sqrt(size-2)/sqrt(1-r2*r2);
-//        double p=pt(t,size-2,1,0);
-
-//if(p<0.25||p>0.75)        fprintf(stderr,"r:%f,\tbeta hat:%f,\tp value:%f,\t df:%d\n",r,S0xy/S0xx,p,size-2);
-//        return p<0.25||p>0.75;
-
     }
 };
 
@@ -207,8 +200,13 @@ public:
     }
 
     int AddParentNode(StateIndex parentIndex) {
-        parentNodeSet.insert(parentNodeSet.end(),parentIndex);
-        return 0;
+        auto item=parentNodeSet.insert(/*parentNodeSet.end(),*/parentIndex);
+//        if(not parentNodeSet.empty())
+//        {
+//            for(auto k:parentNodeSet)
+//            fprintf(stderr,"inserted %d to set of size %d\n",k,parentNodeSet.size());
+//        }
+        return item.second;
     }
 
     int AddChildNode(uchar allele, StateIndex index) {//should only be called once
@@ -689,7 +687,7 @@ public:
     */
     int PrintDistributionAtSite(int state,std::vector<int>& dist);
 
-    template<typename T> void PrintVector(T* a, int size, const char* str)
+    template<typename T> void PrintVector(T a, int size, const char* str)
     {
         fprintf(stderr,"debug array %s:\n",str);
         for (int i = 0; i < size; ++i) {
@@ -697,6 +695,16 @@ public:
         }
         fprintf(stderr,"\n");
     }
+
+    template<typename T> void PrintNonZeroVector(T a, int size, const char* str)
+    {
+        fprintf(stderr,"debug array %s:\n",str);
+        for(auto i=0;i<size; ++i){
+            if(a[i]>0)fprintf(stderr,"%d:%d\t",i, a[i]);
+        }
+        fprintf(stderr,"\n");
+    }
+
     template<typename T> inline void PrintMatrix(std::vector<std::vector<T> > a,const char* str)
     {
         fprintf(stderr,"debug matrix size(%d,%d,) %s:\n",a.size(),a[0].size(), str);

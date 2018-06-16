@@ -75,7 +75,86 @@ char**  HapsInit(int M, int N)
     return haps;
 }
 
+char**  HapsInit2(int M, int N)
+{
+    char ** haps = new char* [M];
+    for(int i=0;i!=M;++i)
+        haps[i]=new char [N];
+//    haps[0]                   = const_cast<char *>("0000");
+    haps[0][0]=0;
+    haps[0][1]=0;
+    haps[0][2]=0;
+    haps[0][3]=0;
+    haps[0][4]=0;
 
+    for (int i = 1; i <21 ; ++i) {
+        memcpy(haps[i],haps[0],N);
+    }
+//    haps[21]                  =const_cast<char *>("0001");
+    haps[21][0]=0;
+    haps[21][1]=0;
+    haps[21][2]=0;
+    haps[21][3]=1;
+    haps[21][4]=1;
+
+    for (int i = 21+1; i <79+21 ; ++i) {
+        memcpy(haps[i],haps[21],N);
+    }
+//    haps[79+21]               =const_cast<char *>("0010");
+    haps[79+21][0]=0;
+    haps[79+21][1]=0;
+    haps[79+21][2]=1;
+    haps[79+21][3]=1;
+    haps[79+21][4]=1;
+
+    for (int i = 79+21+1; i <95+79+21 ; ++i) {
+        memcpy(haps[i],haps[79+21],N);
+    }
+//    haps[95+79+21]            =const_cast<char *>("0011");
+    haps[95+79+21][0]=0;
+    haps[95+79+21][1]=1;
+    haps[95+79+21][2]=1;
+    haps[95+79+21][3]=0;
+    haps[95+79+21][4]=0;
+
+    for (int i = 95+79+21+1; i <116+95+79+21 ; ++i) {
+        memcpy(haps[i],haps[95+79+21],N);
+    }
+//    haps[116+95+79+21]        =const_cast<char *>("0100");
+    haps[116+95+79+21][0]=1;
+    haps[116+95+79+21][1]=0;
+    haps[116+95+79+21][2]=0;
+    haps[116+95+79+21][3]=0;
+    haps[116+95+79+21][4]=0;
+
+    for (int i = 116+95+79+21+1; i <25+116+95+79+21 ; ++i) {
+        memcpy(haps[i],haps[116+95+79+21],N);
+    }
+//    haps[25+116+95+79+21]     =const_cast<char *>("0101");
+    haps[25+116+95+79+21][0]=1;
+    haps[25+116+95+79+21][1]=0;
+    haps[25+116+95+79+21][2]=0;
+    haps[25+116+95+79+21][3]=1;
+    haps[25+116+95+79+21][4]=1;
+
+    for (int i = 25+116+95+79+21+1; i <112+25+116+95+79+21 ; ++i) {
+        memcpy(haps[i],haps[25+116+95+79+21],N);
+    }
+//    haps[112+25+116+95+79+21] =const_cast<char *>("0111");
+    haps[112+25+116+95+79+21][0]=1;
+    haps[112+25+116+95+79+21][1]=0;
+    haps[112+25+116+95+79+21][2]=1;
+    haps[112+25+116+95+79+21][3]=1;
+    haps[112+25+116+95+79+21][4]=1;
+
+    for (int i = 112+25+116+95+79+21+1; i <152+112+25+116+95+79+21 ; ++i) {
+        memcpy(haps[i],haps[112+25+116+95+79+21],N);
+    }
+
+    std::random_shuffle(haps, haps + 600);
+
+    return haps;
+}
 class PBWTWrapperTest : public ::testing::Test {
 protected:
     PBWTWrapper* Wrapper;
@@ -84,7 +163,7 @@ protected:
     {
         M=21+79+95+116+25+112+152;
         N=4;
-        Wrapper = new PBWTWrapper(M,N,nullptr);
+        Wrapper = new PBWTWrapper(M,N,nullptr,0);
     }
 
     virtual ~PBWTWrapperTest(){}
@@ -230,7 +309,7 @@ TEST_F(PBWTWrapperTest, CursorBackwards)
 
     EXPECT_EQ(a,Wrapper->alpha);
 
-    EXPECT_EQ(d,Wrapper->delta[0]);
+    EXPECT_EQ(d,Wrapper->delta);
 }
 
 TEST_F(PBWTWrapperTest, CursorForwards)
@@ -293,7 +372,7 @@ TEST_F(PBWTWrapperTest, CursorForwards)
     EXPECT_EQ(a,Wrapper->a);
 //    Wrapper->PrintVector(d,"expected");
 //    Wrapper->PrintVector(Wrapper->d[Wrapper->N-1],"actual");
-    EXPECT_EQ(d,Wrapper->d[Wrapper->N-1]);
+    EXPECT_EQ(d,Wrapper->d);
 }
 
 TEST_F(PBWTWrapperTest, MoveSegment)
@@ -311,7 +390,7 @@ protected:
     {
         M=21+79+95+116+25+112+152;
         N=4;
-        Wrapper = new PBWTWrapper(M,N,0);
+        Wrapper = new PBWTWrapper(M,N,0,20);
     }
 
     virtual ~StateNodeTest(){}
@@ -325,6 +404,37 @@ protected:
     virtual void TearDown(){}
 };
 
+class EdgeMergeTest : public ::testing::Test {
+protected:
+    PBWTWrapper* Wrapper;
+    int M,N;
+    EdgeMergeTest()
+    {
+        M=600;
+        N=5;
+        Wrapper = new PBWTWrapper(M,N,0,20);
+    }
+
+    virtual ~EdgeMergeTest(){}
+
+    virtual void SetUp(){
+        cerr << "Hello, World! From StateNodeTest" << endl;
+        char ** haps=HapsInit2(M,N);
+        Wrapper->SetHaps(haps,0,2*M,0,0,0,0);
+    }
+
+    virtual void TearDown(){}
+};
+
+TEST_F(EdgeMergeTest, RegressionMergeAtSite)
+{
+    Wrapper->CursorBackwards();
+//    Wrapper->CursorForwardsTo(0,20);
+//    Wrapper->CursorForwardsTo(1,20);
+//    Wrapper->CursorForwardsTo(2,20);
+//    Wrapper->RegressionMergeAtSite(1,true);
+    Wrapper->CursorForwards();
+}
 int main(int argc, char ** argv) {
 
     ::testing::InitGoogleTest(&argc, argv);
