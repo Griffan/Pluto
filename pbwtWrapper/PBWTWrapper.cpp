@@ -23,7 +23,7 @@ const float T_CRITICAL_VALUE[] =
          1.97,/*200*/ 1.97,/*500*/ 1.96/*infinity*/
         };
 
-float P_thresh = 0.05;
+float P_thresh = 0.01;
 
 PBWTWrapper::PBWTWrapper(int nhaps, int nsnps) : Graph(nsnps, nhaps) {
     nSamples = nhaps / 2;
@@ -404,7 +404,7 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
             CreateNewCluster(k, M, i0, group);
         }
         int numState = GetNumStates(k - 1);
-        if (numState != 1 && k < (N - 20)) RegressionMergeAtSite(k - 1, true);//TODO:implement this function
+        if (numState > 1 && k < (N - 20)) RegressionMergeAtSite(k - 1, true);//TODO:implement this function
 
     }
 
@@ -1181,6 +1181,7 @@ int PBWTWrapper::CalculateDmaxBeta(double &pval, double &Dmax, std::vector<int> 
 
 #include "../SinglePhasing/libStatGen/include/Random.h"
 
+#define MIN_FREQ 10
 int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
 
     Random localRandom(31415);
@@ -1189,6 +1190,11 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
     int currentNumCluster = GetNumStates(site);
 //    std::cerr << "Enter Site:" << site << " has " << currentNumCluster << " state and P_thresh:" << P_thresh
 //              << std::endl;
+//    if(site>2)
+//    for (int l = 0; l < Graph.StateNodeMat[site-2].size(); ++l) {
+//        std::cerr<<"site:"<<site-2<<"Node:"<<l<<"\tAllele:"<<(int)Graph.StateNodeMat[site-2][l]->GetAllele()<<"\tchild0:"<<Graph.StateNodeMat[site-2][l]->GetNumHap(0)<<"\tchild1:"<<Graph.StateNodeMat[site-2][l]->GetNumHap(1)<<std::endl;
+//    }
+//    return 0;
 
 //    unsigned long numHaps = haplotypeCluster[site].size();
 
@@ -1239,9 +1245,13 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
             if (GetAllele(site, stateL) != GetAllele(site, stateR))
                 continue;
 
-            if (!IsRecipricalLengthOK(dist[stateL], dist[stateR]))
-                continue;
-
+            if ((dist[stateL].size() == 1 or dist[stateR].size() == 1) and
+                (dist[stateL].size() != dist[stateR].size())) {
+                MaxPair mergePair = {stateL, stateR, Dmax, EXACT, 1, localRandom.Next()};
+                mergePairList.push(mergePair);
+            } else {
+                if (!IsRecipricalLengthOK(dist[stateL], dist[stateR]))
+                    continue;
 
 //            if (rightCoordinateStat[stateL].Combine(rightCoordinateStat[stateR]).IsSignificant()) {
 //                    PrintVector(dist[stateL],dist[stateL].size(),"rank j:");
@@ -1251,52 +1261,53 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
 //                continue;
 //            }
 
-            if (dist[stateL].size() <= 10) {
-                if (dist[stateR].size() <= 10) {//both rare
-                    continue;
-                } else//j rare, k not
+                if (dist[stateL].size() <= MIN_FREQ) {
+                    if (dist[stateR].size() <= MIN_FREQ) {//both rare
+                        continue;
+                    } else//j rare, k not
+                    {
+                        if (!IsEditDistanceOK(stateL, stateR, site, 5))
+                            continue;
+                    }
+                } else if (dist[stateR].size() <= MIN_FREQ)//j not, k rare
                 {
                     if (!IsEditDistanceOK(stateL, stateR, site, 5))
                         continue;
                 }
-            } else if (dist[stateR].size() <= 10)//j not, k rare
-            {
-                if (!IsEditDistanceOK(stateL, stateR, site, 5))
-                    continue;
-            }
 
-//            if (dist[stateL].size() <= 20 || dist[stateR].size() <= 20) {
-//                if (!IsEditDistanceOK(stateL, stateR, site, 50))
+//            if (dist[stateL].size() <= MIN_FREQ || dist[stateR].size() <= MIN_FREQ) {
+//                if (!IsEditDistanceOK(stateL, stateR, site, 5))
 //                    continue;
 //            }
 
 
-            sizeL = clusterMembership[stateL].size();
-            sizeR = clusterMembership[stateR].size();
+                sizeL = clusterMembership[stateL].size();
+                sizeR = clusterMembership[stateR].size();
 
-            if (sizeL * sizeR < 10000)//exact
-            {
-                EXACT = true;
-            } else {
-                EXACT = false;
-            }
+                if (sizeL * sizeR < 10000)//exact
+                {
+                    EXACT = true;
+                } else {
+                    EXACT = false;
+                }
 
-            if (CalculateDmax(pval, Dmax, dist[stateL], dist[stateR]))//return early
-            {
-                goto DIST_END;
-            }
+                if (CalculateDmax(pval, Dmax, dist[stateL], dist[stateR]))//return early
+                {
+                    goto DIST_END;
+                }
 
-            if (EXACT) {
-                pval = GetPValue(sizeL, sizeR, Dmax);
-            } else {
-                Ddiff = sqrt(double(sizeL * sizeR/(sizeL + sizeR))) * Dmax;
-                pval = 1. - pkstwo_wrapper(1, &Ddiff, 1e-06);
-            }
+                if (EXACT) {
+                    pval = GetPValue(sizeL, sizeR, Dmax);
+                } else {
+                    Ddiff = sqrt(double(sizeL * sizeR / (sizeL + sizeR))) * Dmax;
+                    pval = 1. - pkstwo_wrapper(1, &Ddiff, 1e-06);
+                }
 
-            if (pval > P_thresh)//potentially from same group
-            {
-                MaxPair mergePair = {stateL, stateR, Dmax, EXACT, pval, localRandom.Next()};
-                mergePairList.push(mergePair);
+                if (pval > P_thresh)//potentially from same group
+                {
+                    MaxPair mergePair = {stateL, stateR, Dmax, EXACT, pval, localRandom.Next()};
+                    mergePairList.push(mergePair);
+                }
             }
 
             DIST_END:
@@ -1314,7 +1325,6 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
     StateIndex clusterA(0), clusterB(0);
     double old_p_max = 0;
     while (!mergePairList.empty()) {
-
         MaxPair iter_pair = mergePairList.top();
         mergePairList.pop();
         old_p_max = iter_pair.pval;
@@ -1327,18 +1337,17 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
         if (removeIndicator[clusterA] || removeIndicator[clusterB]) continue;//skip
         if (retainIndicator[clusterA] ||
             retainIndicator[clusterB]) {//if either of these two cluster ever merged before, recalculate p value
-
             if (GetAllele(site, stateL) != GetAllele(site, stateR))
                 continue;
-            if (dist[clusterA].size() <= 10) {
-                if (dist[clusterB].size() <= 10) {//both rare
+            if (dist[clusterA].size() <= MIN_FREQ) {
+                if (dist[clusterB].size() <= MIN_FREQ) {//both rare
                     continue;
                 } else//j rare, k not
                 {
                     if (!IsEditDistanceOK(clusterA, clusterB, site, 5))
                         continue;
                 }
-            } else if (dist[clusterB].size() <= 10)//j not, k rare
+            } else if (dist[clusterB].size() <= MIN_FREQ)//j not, k rare
             {
                 if (!IsEditDistanceOK(clusterA, clusterB, site, 5))
                     continue;
@@ -1348,6 +1357,11 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
                 if (!IsRecipricalLengthOK(dist[clusterA], dist[clusterB]))//||!IsEditDistanceOK(backBone,j,k,site,0.5))
                     continue;
             }
+
+//            if (dist[stateL].size() <= MIN_FREQ || dist[stateR].size() <= MIN_FREQ) {
+//                if (!IsEditDistanceOK(stateL, stateR, site, 5))
+//                    continue;
+//            }
 
 //            if (rightCoordinateStat[clusterA].Combine(rightCoordinateStat[clusterB]).IsSignificant()) {
 //                continue;

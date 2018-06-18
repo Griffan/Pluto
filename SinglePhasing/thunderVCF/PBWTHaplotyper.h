@@ -212,6 +212,24 @@ public:
         return Wrapper->Graph.GetProbToCurrentNodeConditionalOnParentNode(site, from, allele);//site is for parent
     }
 
+    inline float GetTransitionFreq(int site, StateIndex from, StateIndex to) {
+        uchar allele = GetAllele(site + 1, to);
+        if ((int) Wrapper->Graph.StateNodeMat.size() <= site) {
+            fprintf(stderr, "site %d doesn't exist!\n", site);
+            abort();
+        }
+        if ((int) Wrapper->Graph.StateNodeMat[site].size() <= from) {
+            fprintf(stderr, "site:%d, from:%d states too large!\n", site, from);
+            return 0.f;
+        }
+        if (Wrapper->Graph.StateNodeMat[site][from]->GetChildNodeIndex(allele) == -1 ||
+            Wrapper->Graph.StateNodeMat[site][from]->GetChildNodeIndex(allele) != to) {
+            fprintf(stderr, "site:%d from:%d to:%d states too large!\n", site, from, to);
+            return 0.f;
+        }
+        return Wrapper->Graph.StateNodeMat[site][from]->GetNumHap(allele);
+    }
+
     inline float GetHapProbAt(int site, int index) {
         return Wrapper->GetHapProbAt(site, index);
     }
