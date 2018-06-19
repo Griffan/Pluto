@@ -594,7 +594,7 @@ float PBWTHaplotyper::GetRecombRate(int marker) {
     }
     return Wrapper->recomRate[marker];
 }
-
+/*
 void PBWTHaplotyper::RandomSetup(Random *rand) {
     if (rand == NULL)
         rand = &globalRandom;
@@ -656,7 +656,8 @@ void PBWTHaplotyper::RandomSetup(Random *rand) {
         }
     }
 }
-/*
+*/
+
 void PBWTHaplotyper::RandomSetup(Random *rand) {
     if (rand == NULL)
         rand = &globalRandom;
@@ -687,7 +688,7 @@ void PBWTHaplotyper::RandomSetup(Random *rand) {
         }
     }
 }
-*/
+
 //without recombination
 struct EdgePair {
     int childNode1;
@@ -841,13 +842,13 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                     if (childNode2 == -1 ) continue;
 //                    if (parentNode2 == parentNode1 and childNode2 > childNode1) continue;
                     gl = posterior[allele1+allele2];
-                    if (gl > genoThresh and i % 10 != 0)
+                    if (gl > genoThresh and i % 2 != 0 and 0)
                     {
                         tmpFwdValue = prevFwdValue * GetTransitionProb(i - 1, parentNode1, childNode1) *
                                       GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
 //                        if(childNode1 == childNode2) tmpFwdValue *= 0.5;
 
-                        if (DEBUG && (i >= 3160 && i <= 3167 || i < 20 || i > 960 && i < 980))
+                        if (DEBUG && (i >= 3160 && i <= 3167 || i < 20 || i > 1080 && i < 1111))
                             fprintf(stderr,
                                     "normal debug from (%d,%d) to (%d,%d) prevFwdValue:%g\ttp1:%g(%g)\ttp2:%g(%g)\t%g(%d,%d)\tfreq:%f\n",
                                     parentNode1,
@@ -978,7 +979,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                                 continue;
 
                             }
-                            if (numCrediablePair < 512) {
+                            if (numCrediablePair < 10000) {
                                 EdgePairList.push(
                                         EdgePair(childNode1, childNode2, tmpParentNode1, tmpParentNode2, tmpFwdValue));
                                 numCrediablePair++;
