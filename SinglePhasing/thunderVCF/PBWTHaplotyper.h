@@ -121,7 +121,7 @@ public:
         genotypes[idv][genoIndex + 2] = static_cast<char>(Phred22);
     }
 
-    int CalculatePosteriorGL(int markerIndex, int sampleIndex, double * posterior)
+    int CalculatePosteriorGL(int markerIndex, int sampleIndex, double *posterior)//for RandomSetup
     {
         double prior[3];
         prior[0] = freq1s[markerIndex] * freq1s[markerIndex];
@@ -139,6 +139,34 @@ public:
         return 0;
     }
 
+//    double GetEmissionProb(int markerIndex, int sampleIndex, StateIndex A, StateIndex B)
+//    {
+//        int geno = GetAllele(markerIndex, A) + GetAllele(markerIndex, B);
+//        double emmit[3]={0,0,0};
+//        emmit[0] = Penetrance(markerIndex, geno, 0) * phred2prob[genotypes[sampleIndex][markerIndex*3]];
+//        emmit[1] = Penetrance(markerIndex, geno, 1) * phred2prob[genotypes[sampleIndex][markerIndex*3+1]];
+//        emmit[2] = Penetrance(markerIndex, geno, 2) * phred2prob[genotypes[sampleIndex][markerIndex*3+2]];
+//        double sum = emmit[0] + emmit[1] + emmit[2];
+//
+//        return emmit[geno]/sum;
+//    }
+
+    int UpdateFreq() {
+        for (int i = 0; i < markers; ++i) {
+            float cnt = 0;
+            for (int j = 0; j < individuals; ++j) {
+                cnt += haplotypes[j * 2][i] + haplotypes[j * 2 + 1][i];
+            }
+            freq1s[i] = cnt / (2 * individuals);
+        }
+        return 0;
+    }
+
+    double GetGL(int individual, int marker, uchar allele1, uchar allele2) {
+        return phred2prob[(size_t) genotypes[individual][3 * marker + allele1 + allele2]];
+    }
+
+
     int GetUnphasedNum()
     {
         int nTarget;
@@ -153,40 +181,6 @@ public:
 
         return nTarget;
     }
-
-#ifdef HETERSITE
-    bool onlyHeterSite=false;
-    //subset markers related
-    char** tmpHaps= nullptr;
-    char ** tmpGeno= nullptr;
-    float* tmpPenetrance = nullptr;
-    int tmpMarkers;
-    double max_num;
-    std::vector<int> relativeIndexToAbsolute;
-    std::unordered_map<int,int> absoluteIndexToRelative;
-    inline int SwapTempHaps()
-    {
-        char** tmpH = haplotypes;
-        haplotypes=tmpHaps;
-        tmpHaps=tmpH;
-
-        tmpH=genotypes;
-        genotypes=tmpGeno;
-        tmpGeno=tmpH;
-
-        float * tmpP=penetrances;
-        penetrances=tmpPenetrance;
-        tmpPenetrance=tmpP;
-
-        int tmpM=markers;
-        markers=tmpMarkers;
-        tmpMarkers=tmpM;
-        return 0;
-    }
-
-    int ExtractHeterSites(int individualToProcess);
-    int FillHeterSitesBack(int individualToProcess);
-#endif
 
     //Memory management functions
     bool SetErrorAndTheta(std::vector<float> &holderError, std::vector<float> &holderTheta);
@@ -265,8 +259,6 @@ public:
     inline void UpdateStateNum(int num) {
         states = num;
     }
-
-    double GetGL(int individual, int marker, uchar allele1, uchar allele2);
 
     float GetRecombRate(int marker);
     //HMM version two
@@ -419,6 +411,14 @@ public:
             return 0;
         }
 
+        inline int ClearParentsNodeVec(int i) {
+
+            parentsNodeVec[i].clear();
+            megaFwdVec[i].clear();
+            megaSourceVec[i].clear();
+            return 0;
+        }
+
         inline FwdVec &GetFwdVec(int i, int destIndex) {
             return megaFwdVec[i][destIndex];
         }
@@ -460,6 +460,8 @@ public:
     int InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &localParameter);
 
     int ResetFwdValues(FwdBwdLocalParameter &localParameter);
+
+    int FindRecSite(vector<bool> &siteVec, int sampleIndex);
 
     int LocalForwardBackWard(int sampleIndex);
 

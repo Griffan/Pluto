@@ -1921,7 +1921,7 @@ namespace PhaseIntersect {
         // Setup random seed ...
         globalRandom.Reset(seed);
 
-        if (rounds < burnin) burnin = 0;
+        if (rounds <= burnin) burnin = 0;
 
         PBWTHaplotyper engine;//declaration of engine, also will call default constructor
         engine.runningModel |= ITERATIVE;
@@ -2083,12 +2083,12 @@ namespace PhaseIntersect {
             else
                 engine.genoThresh = genoThresh[4];
 
-//            if (i < burnin) engine.SetUseRev(i%2);
-            
-	    engine.LoopThroughChromosomesRecomb(ped);
+            if (i < burnin) engine.SetUseRev(i % 2);
+            engine.LoopThroughChromosomesRecomb(ped);
 
             if (!fixTrans) engine.UpdateThetas();
             errorRate = engine.UpdateErrorRate();
+
             printf("Markov Chain iteration %d [%d mosaic crossovers]\n",
                    i + 1, engine.TotalCrossovers());
             if (i < burnin)

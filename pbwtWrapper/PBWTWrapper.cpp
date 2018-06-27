@@ -23,7 +23,7 @@ const float T_CRITICAL_VALUE[] =
          1.97,/*200*/ 1.97,/*500*/ 1.96/*infinity*/
         };
 
-float P_thresh = 0.05;
+float P_thresh = 0.01;
 
 PBWTWrapper::PBWTWrapper(int nhaps, int nsnps) : Graph(nsnps, nhaps) {
     nSamples = nhaps / 2;
@@ -1190,14 +1190,6 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
     int currentNumCluster = GetNumStates(site);
 //    std::cerr << "Enter Site:" << site << " has " << currentNumCluster << " state and P_thresh:" << P_thresh
 //              << std::endl;
-//    if(site>2)
-//    for (int l = 0; l < Graph.StateNodeMat[site-2].size(); ++l) {
-//        std::cerr<<"site:"<<site-2<<"Node:"<<l<<"\tAllele:"<<(int)Graph.StateNodeMat[site-2][l]->GetAllele()<<"\tchild0:"<<Graph.StateNodeMat[site-2][l]->GetNumHap(0)<<"\tchild1:"<<Graph.StateNodeMat[site-2][l]->GetNumHap(1)<<std::endl;
-//    }
-//    return 0;
-
-//    unsigned long numHaps = haplotypeCluster[site].size();
-
 
     std::vector<bool> removeIndicator(currentNumCluster, false);
     std::vector<bool> retainIndicator(currentNumCluster, false);
@@ -1207,7 +1199,6 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
     pval = 0;
     EXACT = false;
     stateOrder.clear();//mapping oldState to newOrder
-//    tmpAllele.clear();
     removeMembership.clear();//rankID,state
     std::vector<StateNode *> tmpNodeVec;
 
@@ -1247,6 +1238,8 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
 
             if ((dist[stateL].size() == 1 or dist[stateR].size() == 1) and
                 (dist[stateL].size() != dist[stateR].size())) {
+                if (!IsEditDistanceOK(stateL, stateR, site, 5))
+                    continue;
                 MaxPair mergePair = {stateL, stateR, Dmax, EXACT, 1, localRandom.Next()};
                 mergePairList.push(mergePair);
             } else {
@@ -1779,7 +1772,7 @@ void PBWTWrapper::DoMerge(int site, StateIndex retainState, StateIndex removeSta
 
 
 int PBWTWrapper::SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampledHaps, int CopyStart2, int CopyEnd2,
-                         float *rate) {
+                         float *rate, int phased) {
 
     if (rate)
         recomRate.assign(rate, rate + nMarkers - 1);
@@ -1791,7 +1784,9 @@ int PBWTWrapper::SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampled
     for (int j = CopyStart; i < M && j < CopyEnd; ++i, ++j) {
         haplotype[i] = haps[j];
     }
-    std::random_shuffle(haplotype,haplotype+(CopyEnd-CopyStart));
+    //only shuffle phased ref panel
+    CopyStart = CopyStart > phased * 2 ? CopyStart : phased * 2;
+    std::random_shuffle(haplotype + phased * 2, haplotype + (CopyEnd - CopyStart));
     if (sampledHaps)
         for (int j = CopyStart2; i < M && j < CopyEnd2; ++i, ++j) {
             haplotype[i] = sampledHaps[j];

@@ -643,7 +643,8 @@ public:
 
     int MoveSegment(const std::unordered_map<int,int>& mergedMembership,int site);
 
-    int SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampledHaps, int CopyStart2, int CopyEnd2, float* rate);
+    int SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampledHaps, int CopyStart2, int CopyEnd2,
+                float *rate, int phased);
     //inline functions
     inline int GetNumStates(int k) const
     {
