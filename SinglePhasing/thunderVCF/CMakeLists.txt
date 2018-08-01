@@ -8,7 +8,7 @@ file(GLOB SOURCE_FILES
     "*.cpp"
 )
 
-add_library(thunderVCF ${SOURCE_FILES})
+add_library(thunderVCF ${SOURCE_FILES} FwdBwdLocalParameter.cpp FwdBwdLocalParameter.h)
 add_dependencies(thunderVCF LIBSTATGEN)
 target_link_libraries(thunderVCF Mach Vcf  PBWTWrapper  z ${LIBSTATGEN_LIB_DIR}/libStatGen.a)
 target_include_directories(thunderVCF PRIVATE  ${LIBSTATGEN_INCLUDE_DIR})

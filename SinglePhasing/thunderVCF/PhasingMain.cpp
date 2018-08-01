@@ -252,6 +252,14 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                         pMarker->asInfoValues[nInfo].printf("%.4f", nthetas ? thetas[m - 1] / nthetas : 0);
                 }
 
+                nInfo = pMarker->asInfoKeys.Find("AF");
+                if (nInfo < 0) {
+                    sprintf(sDose, "%.4f", engine.freq1s[markerIndex]);
+                    pMarker->asInfoKeys.Add("AF");
+                    pMarker->asInfoValues.Add(sDose);
+                    } else
+                    pMarker->asInfoValues[nInfo].printf("%.4f", engine.freq1s[markerIndex]);
+
                 pMarker->asFormatKeys.Clear();
                 int GTidx = pMarker->asFormatKeys.Find("GT");
                 if (GTidx < 0) {
@@ -260,11 +268,20 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                     GTidx = 0;
                 }
 
+
                 int PLidx = pMarker->asFormatKeys.Find("PL");
                 if (PLidx < 0) {
 //                        throw VcfFileException("Cannot recognize GT key in FORMAT field");
                     pMarker->asFormatKeys.Add("PL");
                     PLidx = 1;
+                }
+
+
+                int GPidx = pMarker->asFormatKeys.Find("GP");
+                if (GPidx < 0) {
+//                        throw VcfFileException("Cannot recognize genoProbs key in FORMAT field");
+                    pMarker->asFormatKeys.Add("GP");
+                    GPidx = 2;
                 }
 
                 int nFormats = pMarker->asFormatKeys.Length();
@@ -284,6 +301,10 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                                                                              engine.genotypes[pi][markerIndex*3],
                                                                              engine.genotypes[pi][markerIndex*3 + 1],
                                                                              engine.genotypes[pi][markerIndex*3 + 2]);
+                        pMarker->asSampleValues[nFormats * i + GPidx].printf("%d,%d,%d",
+                                                                             engine.genoProbs[pi][markerIndex*3],
+                                                                             engine.genoProbs[pi][markerIndex*3 + 1],
+                                                                             engine.genoProbs[pi][markerIndex*3 + 2]);
                     } else {
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][markerIndex] + 1,
                                                                              haplotypes[pi * 2 + 1][markerIndex] + 1);
@@ -472,11 +493,20 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
                         GTidx = 0;
                     }
 
+
                     int PLidx = pMarker->asFormatKeys.Find("PL");
                     if (PLidx < 0) {
 //                        throw VcfFileException("Cannot recognize GT key in FORMAT field");
                         pMarker->asFormatKeys.Add("PL");
                         PLidx = 1;
+                    }
+
+
+                    int GPidx = pMarker->asFormatKeys.Find("GP");
+                    if (GPidx < 0) {
+//                        throw VcfFileException("Cannot recognize genoProbs key in FORMAT field");
+                        pMarker->asFormatKeys.Add("GP");
+                        GPidx = 2;
                     }
 
                     int nFormats = pMarker->asFormatKeys.Length();
@@ -495,6 +525,10 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
                                                                                  engine.genotypes[pi][markerIndex*3],
                                                                                  engine.genotypes[pi][markerIndex*3 + 1],
                                                                                  engine.genotypes[pi][markerIndex*3 + 2]);
+                            pMarker->asSampleValues[nFormats * i + GPidx].printf("%d,%d,%d",
+                                                                                 engine.genoProbs[pi][markerIndex*3],
+                                                                                 engine.genoProbs[pi][markerIndex*3 + 1],
+                                                                                 engine.genoProbs[pi][markerIndex*3 + 2]);
                         }
 //                        else {
 //                            pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d",
@@ -1371,7 +1405,7 @@ namespace ReadGraph {
 
         engine.loadGraph = std::string(phasedfile.c_str()) + ".DAG";
 
-        engine.LoopThroughChromosomesRecomb(ped);
+        engine.LoopThroughChromosomesGenotyping(ped);
 
 
         SetCrashExplanation("outputing solution");
@@ -1824,10 +1858,10 @@ namespace PhaseIntersect {
 
         clock_t t;
         t = clock();
-        const double genoThresh[5] = {pow(10.0,-0.1*30),
-                                     pow(10.0,-0.1*40),
-                                     pow(10.0,-0.1*50),
-                                     pow(10.0,-0.1*60),
+        const double genoThresh[5] = {pow(10.0,-0.1*127),
+                                     pow(10.0,-0.1*127),
+                                     pow(10.0,-0.1*127),
+                                     pow(10.0,-0.1*127),
                                      pow(10.0,-0.1*127)};
         double errorRate = 0.01;
         double transRate = 0.01;
@@ -2078,13 +2112,18 @@ namespace PhaseIntersect {
         SetCrashExplanation("phasing procedure");
 
         for (int i = 0; i < rounds; i++) {
-            if(i < 2)
+            if(i < 4)
                 engine.genoThresh = genoThresh[i];
             else
                 engine.genoThresh = genoThresh[4];
+//            engine.genoThresh = genoThresh[0];
 
-            if (i < burnin) engine.SetUseRev(i % 2);
-            engine.LoopThroughChromosomesRecomb(ped);
+//            /*if (i < burnin)*/ engine.SetUseRev(i % 2);
+
+           if(i< 5)
+                engine.LoopThroughChromosomesPhasing(ped);
+           else
+               engine.LoopThroughChromosomesGenotyping(ped);
 
             if (!fixTrans) engine.UpdateThetas();
             errorRate = engine.UpdateErrorRate();
@@ -2093,6 +2132,7 @@ namespace PhaseIntersect {
                    i + 1, engine.TotalCrossovers());
             if (i < burnin)
                 continue;
+
             if (OutputManager::outputHaplotypes) {
                 consensus.Store(engine.haplotypes);
             }
@@ -2396,7 +2436,7 @@ int PhasingMain(int argc, char **argv) {
 //    engine.loadGraph="HG00535.phased.DAG";
 
         if (isSingleRound)
-            engine.LoopThroughChromosomesRecomb(ped);
+            engine.LoopThroughChromosomesGenotyping(ped);
 //        else
 //            engine.LoopThroughChromosomesHighPrecision();
 
