@@ -1781,12 +1781,15 @@ int PBWTWrapper::SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampled
 //    }
     haplotype = new char *[M];
     int i = 0;
+    //TODO:confirm M and CopyEnd; the very index CopyEnd not included 
     for (int j = CopyStart; i < M && j < CopyEnd; ++i, ++j) {
         haplotype[i] = haps[j];
     }
     //only shuffle phased ref panel
-    CopyStart = CopyStart > phased * 2 ? CopyStart : phased * 2;
-    std::random_shuffle(haplotype + phased * 2, haplotype + (CopyEnd - CopyStart));
+    int totalCopied = CopyEnd - CopyStart;
+    std::cerr<<"CopyStart:"<<CopyStart<<"\tCopyEnd:"<<CopyEnd<<"\tphased:"<<phased<<std::endl;
+    CopyStart = CopyStart > (totalCopied - phased * 2) ? CopyStart : (totalCopied - phased * 2);
+    std::random_shuffle(haplotype + CopyStart, haplotype + totalCopied);
     if (sampledHaps)
         for (int j = CopyStart2; i < M && j < CopyEnd2; ++i, ++j) {
             haplotype[i] = sampledHaps[j];

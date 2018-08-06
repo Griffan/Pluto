@@ -56,7 +56,7 @@ int R_finite(double x)
 #ifdef HAVE_WORKING_ISFINITE
     return isfinite(x);
 #else
-    return (!isnan(x) & (x != KS_PosInf ) & (x != KS_NegInf));
+    return (!std::isnan(x) & (x != KS_PosInf ) & (x != KS_NegInf));
 #endif
 }
 static double R_pow_di(double x, int n)
@@ -64,7 +64,7 @@ static double R_pow_di(double x, int n)
     const double  NA_REAL = R_ValueOfNA();
     double xn = 1.0;
 
-    if (isnan(x)) return x;
+    if (std::isnan(x)) return x;
     if (n == NA_INTEGER) return NA_REAL;
 
     if (n != 0) {
@@ -322,7 +322,7 @@ double pkstwo_wrapper(int n, double* statistic, double tol) {
     std::vector<double> p;
     std::vector<int> index;
     for (int i = 0; i <n; ++i) {
-        if(isnan(statistic[i]))
+        if(std::isnan(statistic[i]))
             continue;
         else if(statistic[i]>0) {
             index.push_back(i);
@@ -352,7 +352,7 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v) {
 double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
     std::vector<int> tmpx;
     for (int i = 0; i < x.size(); ++i) {
-        if (!isnan(x[i]))
+        if (!std::isnan(x[i]))
             tmpx.push_back(x[i]);
     }
     x = tmpx;
@@ -366,7 +366,7 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
     /*if (isdigit(y[0]))*/ {
         tmpx.clear();
         for (int i = 0; i < y.size(); ++i) {
-            if (!isnan(y[i]))
+            if (!std::isnan(y[i]))
                 tmpx.push_back(y[i]);
         }
         y = tmpx;
