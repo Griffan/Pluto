@@ -6,9 +6,9 @@
 */
 
 
-#include <math.h>
+#include <cmath>
 #include <stdlib.h>
-#include "ks.h"
+#include "KSTest.h"
 #include <cstdlib>
 #include <string>
 #include <iostream>

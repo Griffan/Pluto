@@ -4,7 +4,7 @@
 
 #include "PBWTViewer.h"
 #include <fstream>
-#include "ks.h"
+#include "KSTest.h"
 #define prefixLength 1200
 #define ROUND 10
 PBWTViewer::PBWTViewer(int a, int b):PBWTWrapper(a,b),clusterAllele(b, std::vector<uchar>()) {

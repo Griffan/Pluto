@@ -3,6 +3,7 @@
 //
 
 #include <iostream>
+#include <fstream>
 #include "PBWTWrapper.h"
 #include "random"
 #include "gtest/gtest.h"
@@ -169,9 +170,11 @@ protected:
     virtual ~PBWTWrapperTest(){}
 
     virtual void SetUp(){
-        cerr << "Hello, World! From PBWTWrapper" << endl;
+        cerr << "Hello, World! From PBWTWrapper\n\n" << endl;
+        cerr << "[Warning:Make sure to disable haps shuffling in Wrapper->SetHaps]\n\n" << endl;
+
         char ** haps=HapsInit(M,N);
-        Wrapper->SetHaps(haps,0,2*M,0,0,0,0);
+        Wrapper->SetHaps(haps,0,M,0,0,0,0,M);
     }
 
     virtual void TearDown(){}
@@ -398,7 +401,7 @@ protected:
     virtual void SetUp(){
         cerr << "Hello, World! From StateNodeTest" << endl;
         char ** haps=HapsInit(M,N);
-        Wrapper->SetHaps(haps,0,2*M,0,0,0,0);
+        Wrapper->SetHaps(haps,0,M,0,0,0,0,M);
     }
 
     virtual void TearDown(){}
@@ -420,7 +423,7 @@ protected:
     virtual void SetUp(){
         cerr << "Hello, World! From StateNodeTest" << endl;
         char ** haps=HapsInit2(M,N);
-        Wrapper->SetHaps(haps,0,2*M,0,0,0,0);
+        Wrapper->SetHaps(haps,0,M,0,0,0,0,M);
     }
 
     virtual void TearDown(){}
@@ -435,6 +438,72 @@ TEST_F(EdgeMergeTest, RegressionMergeAtSite)
 //    Wrapper->RegressionMergeAtSite(1,true);
     Wrapper->CursorForwards();
 }
+
+class IOTest : public ::testing::Test
+{
+protected:
+    PBWTWrapper* Wrapper;
+    int M,N;
+    IOTest()
+    {
+        M=21+79+95+116+25+112+152;
+        N=4;
+        Wrapper = new PBWTWrapper(M,N,nullptr,0);
+    }
+
+    virtual ~IOTest(){}
+
+    virtual void SetUp(){
+        cerr << "Hello, World! From PBWTWrapper\n\n" << endl;
+        cerr << "[Warning:Make sure to disable haps shuffling in Wrapper->SetHaps]\n\n" << endl;
+
+        char ** haps=HapsInit(M,N);
+        Wrapper->SetHaps(haps,0,M,0,0,0,0,M);
+    }
+
+    virtual void TearDown(){}
+};
+
+TEST_F(IOTest, IOJson)
+{
+    //Setup
+    Wrapper->CursorBackwards();
+    Wrapper->CursorForwards();
+
+    std::string expectedOutput = R"({
+  "nodes": [
+{"name": "0.0"},
+{"name": "1.0"},
+{"name": "2.0"},
+{"name": "3.0"},
+{"name": "3.1"}
+  ],
+  "links": [
+{"source": 0, "target": 1, "weight": 600, "allele": 0},
+{"source": 1, "target": 2, "weight": 600, "allele": 0},
+{"source": 2, "target": 3, "weight": 141, "allele": 0},
+{"source": 2, "target": 4, "weight": 459, "allele": 1}
+  ]
+}
+)";
+
+    //WriteToJson
+    Wrapper->Graph.ToJson("UnitTest.json");
+
+    std::ifstream t("UnitTest.json");
+    std::stringstream buffer;
+    buffer << t.rdbuf();
+
+    EXPECT_EQ(expectedOutput,buffer.str());
+
+    Wrapper->Graph.Reset();
+    Wrapper->Graph.FromJson("UnitTest.json");
+    Wrapper->Graph.ToJson("UnitTest.json");
+    EXPECT_EQ(expectedOutput,buffer.str());
+
+
+}
+
 int main(int argc, char ** argv) {
 
     ::testing::InitGoogleTest(&argc, argv);

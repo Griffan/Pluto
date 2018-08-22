@@ -109,17 +109,14 @@ public:
 //        if(Phred12 > 127) Phred12 =127;
 //        if(Phred22 > 127) Phred22 =127;
 
-	long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
-	if(minPhred == Phred12)
-	{
-		if((Phred11 - minPhred) > 50) Phred11 = 127;
-		if((Phred22 - minPhred) > 50) Phred22 = 127;
-	}
-	else
-	{
-		if(Phred11 == minPhred) Phred22 = 127;
-		if(Phred22 == minPhred) Phred11 = 127;
-	}
+        long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
+        if (minPhred == Phred12) {
+            if ((Phred11 - minPhred) > 30) Phred11 = 127;
+            if ((Phred22 - minPhred) > 30) Phred22 = 127;
+        } else {
+            if (Phred11 == minPhred) Phred22 = 127;
+            if (Phred22 == minPhred) Phred11 = 127;
+        }
         genotypes[idv][genoIndex] = static_cast<char>(Phred11);
         genotypes[idv][genoIndex + 1] = static_cast<char>(Phred12);
         genotypes[idv][genoIndex + 2] = static_cast<char>(Phred22);
@@ -156,12 +153,14 @@ public:
 //    }
 
     int UpdateFreq() {
-        for (int i = 0; i < markers; ++i) {
-            float cnt = 0;
-            for (int j = 0; j < individuals; ++j) {
-                cnt += haplotypes[j * 2][i] + haplotypes[j * 2 + 1][i];
+        if(runningModel & ITERATIVE) {
+            for (int i = 0; i < markers; ++i) {
+                float cnt = 0;
+                for (int j = 0; j < individuals; ++j) {
+                    cnt += haplotypes[j * 2][i] + haplotypes[j * 2 + 1][i];
+                }
+                freq1s[i] = cnt / (2 * individuals);
             }
-            freq1s[i] = cnt / (2 * individuals);
         }
         return 0;
     }
@@ -169,13 +168,14 @@ public:
     //genotype related
 
 
-    float GetGL(int individual, int marker, uchar allele1, uchar allele2) {
+    float GetGL(int individual, int marker, char allele1, char allele2) {
         return (float)phred2prob[(size_t) genotypes[individual][3 * marker + allele1 + allele2]];
     }
 
-    void SetGP(int individual, int marker, uchar allele1, uchar allele2, float p) {
+    void SetGP(int individual, int marker, char allele1, char allele2, float p) {
         p = p > std::numeric_limits<float>::min() ? p : std::numeric_limits<float>::min();
-        genoProbs[individual][3 * marker + allele1 + allele2] = static_cast<char>(-10 * log10(p));
+        int tmpPL = static_cast<int>(std::floor(-10 * log10(p) + 0.5));
+        genoProbs[individual][3 * marker + allele1 + allele2] = tmpPL < 127 ? tmpPL:127;
     }
 
     void ResetGL(int individual, int marker) {
@@ -223,59 +223,32 @@ public:
 
     //inline section
     inline float GetTransitionProb(int site, StateIndex from, StateIndex to) {
-        uchar allele = GetAllele(site + 1, to);
-        if ((int) Wrapper->Graph.StateNodeMat.size() <= site) {
-            fprintf(stderr, "site %d doesn't exist!\n", site);
-            abort();
-        }
-        if ((int) Wrapper->Graph.StateNodeMat[site].size() <= from) {
-            fprintf(stderr, "site:%d, from:%d states too large!\n", site, from);
-            return 0.f;
-        }
-        if (Wrapper->Graph.StateNodeMat[site][from]->GetChildNodeIndex(allele) == -1 ||
-            Wrapper->Graph.StateNodeMat[site][from]->GetChildNodeIndex(allele) != to) {
-            fprintf(stderr, "site:%d from:%d to:%d states too large!\n", site, from, to);
-            return 0.f;
-        }
-        return Wrapper->Graph.GetProbToCurrentNodeConditionalOnParentNode(site, from, allele);//site is for parent
+        return Wrapper->Graph.GetTransitionProb(site, from, to);//site is for parent
     }
 
     inline float GetTransitionFreq(int site, StateIndex from, StateIndex to) {
-        uchar allele = GetAllele(site + 1, to);
-        if ((int) Wrapper->Graph.StateNodeMat.size() <= site) {
-            fprintf(stderr, "site %d doesn't exist!\n", site);
-            abort();
-        }
-        if ((int) Wrapper->Graph.StateNodeMat[site].size() <= from) {
-            fprintf(stderr, "site:%d, from:%d states too large!\n", site, from);
-            return 0.f;
-        }
-        if (Wrapper->Graph.StateNodeMat[site][from]->GetChildNodeIndex(allele) == -1 ||
-            Wrapper->Graph.StateNodeMat[site][from]->GetChildNodeIndex(allele) != to) {
-            fprintf(stderr, "site:%d from:%d to:%d states too large!\n", site, from, to);
-            return 0.f;
-        }
-        return Wrapper->Graph.StateNodeMat[site][from]->GetNumHap(allele);
+        return Wrapper->Graph.GetTransitionFreq(site, from, to);
     }
 
     inline float GetHapProbAt(int site, int index) {
         return Wrapper->GetHapProbAt(site, index);
     }
 
-    inline float GetEdgeProbAt(int site, StateIndex from, uchar allele) {
+    inline float GetEdgeProbAt(int site, StateIndex from, char allele) {
         return Wrapper->Graph.GetEdgeProbFromParentNode(site, from, allele);//nhaps of allele / total nhaps
     }
 
-    inline uchar GetAllele(int site, StateIndex state) const {
+    inline char GetAllele(int site, StateIndex state) const {
         return Wrapper->GetAllele(site, state);
     }
 
-    inline StateIndex GetChildNode(int site, StateIndex state, uchar allele) {
-        return Wrapper->Graph.StateNodeMat[site][state]->GetChildNodeIndex(allele);
+    inline StateIndex GetChildNode(int site, StateIndex state, char allele) {
+        return Wrapper->Graph.GetChildNode(site, state, allele);
     }
 
-    inline ParentSet &GetParentNodes(int site, StateIndex state) {
-        return Wrapper->Graph.StateNodeMat[site][state]->GetParentIndexSet();
+    inline ParentSet GetParentNodes(int site, StateIndex state) {
+//        return Wrapper->Graph.StateNodeMat[site][state]->GetParentIndexSet();
+        return Wrapper->Graph.GetParentSet(site, state);
     }
 
     inline int GetStateNumFrom(int site) {
