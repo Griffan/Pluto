@@ -15,7 +15,6 @@
 #include <numeric>
 #include <sstream>
 #include <unordered_map>
-#include "Rmath.h"
 #include "DAG.h"
 
 #define THROW_IF(val) if (val) throw "error in " __FUNCTION__
