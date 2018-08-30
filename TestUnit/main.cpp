@@ -414,7 +414,7 @@ protected:
     EdgeMergeTest()
     {
         M=600;
-        N=5;
+        N=4;
         Wrapper = new PBWTWrapper(M,N,0,20);
     }
 
@@ -437,6 +437,20 @@ TEST_F(EdgeMergeTest, RegressionMergeAtSite)
 //    Wrapper->CursorForwardsTo(2,20);
 //    Wrapper->RegressionMergeAtSite(1,true);
     Wrapper->CursorForwards();
+}
+
+TEST_F(EdgeMergeTest, AuxillaryFunctions)
+{
+    Wrapper->CursorBackwards();
+    Wrapper->CursorForwards();
+
+    EXPECT_EQ(0,Wrapper->GetAllele(0,0));
+    EXPECT_EQ(1,Wrapper->GetAllele(0,1));
+    EXPECT_EQ(0,Wrapper->GetAllele(1,0));
+    EXPECT_EQ(1,Wrapper->GetAllele(1,1));
+    EXPECT_EQ(0,Wrapper->GetAllele(2,0));
+    EXPECT_EQ(1,Wrapper->GetAllele(2,1));
+    EXPECT_EQ(1,Wrapper->GetAllele(2,2));
 }
 
 class IOTest : public ::testing::Test

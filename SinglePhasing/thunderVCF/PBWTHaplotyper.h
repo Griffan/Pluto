@@ -100,23 +100,24 @@ public:
 
     void FillGenotypeLikelihood(long Phred11, long Phred12, long Phred22, int idv, int genoIndex)
     {
-//        long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
-//        if( (Phred11 - minPhred) > 20) Phred11 = 127;
-//        else if((Phred12 - minPhred) > 20) Phred12 = 127;
-//        else if((Phred22 - minPhred) > 20) Phred22 = 127;
-
-//        if(Phred11 > 127) Phred11 =127;
-//        if(Phred12 > 127) Phred12 =127;
-//        if(Phred22 > 127) Phred22 =127;
-
+        long minValue = 127;
         long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
-        if (minPhred == Phred12) {
-            if ((Phred11 - minPhred) > 30) Phred11 = 127;
-            if ((Phred22 - minPhred) > 30) Phred22 = 127;
-        } else {
-            if (Phred11 == minPhred) Phred22 = 127;
-            if (Phred22 == minPhred) Phred11 = 127;
-        }
+        if( (Phred11 - minPhred) > 30) Phred11 = minValue;
+        else if((Phred12 - minPhred) > 30) Phred12 = minValue;
+        else if((Phred22 - minPhred) > 30) Phred22 = minValue;
+
+        if(Phred11 > minValue) Phred11 =minValue;
+        if(Phred12 > minValue) Phred12 =minValue;
+        if(Phred22 > minValue) Phred22 =minValue;
+
+//        long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
+//        if (minPhred == Phred12) {
+//            if ((Phred11 - minPhred) > 30) Phred11 = 127;
+//            if ((Phred22 - minPhred) > 30) Phred22 = 127;
+//        } else {
+//            if (Phred11 == minPhred) Phred22 = 127;
+//            if (Phred22 == minPhred) Phred11 = 127;
+//        }
         genotypes[idv][genoIndex] = static_cast<char>(Phred11);
         genotypes[idv][genoIndex + 1] = static_cast<char>(Phred12);
         genotypes[idv][genoIndex + 2] = static_cast<char>(Phred22);
@@ -174,8 +175,9 @@ public:
 
     void SetGP(int individual, int marker, char allele1, char allele2, float p) {
         p = p > std::numeric_limits<float>::min() ? p : std::numeric_limits<float>::min();
-        int tmpPL = static_cast<int>(std::floor(-10 * log10(p) + 0.5));
-        genoProbs[individual][3 * marker + allele1 + allele2] = tmpPL < 127 ? tmpPL:127;
+//        int tmpPL = static_cast<int>(log10(p));
+//        genoProbs[individual][3 * marker + allele1 + allele2] = tmpPL < 127 ? tmpPL:127;
+        genoProbs[individual][3 * marker + allele1 + allele2] = p;
     }
 
     void ResetGL(int individual, int marker) {
@@ -267,7 +269,7 @@ public:
         states = num;
     }
 
-    float GetRecombRate(int marker);
+    float GetRecombRate(int from, int to);
     //HMM version two
 
 //    struct PairHash {
@@ -369,6 +371,8 @@ public:
     int BackwardSamplingRecBeagle(Random *rand, int SampleIndex, char **sampledHaps);
 #endif
 
+    int FindAccessibleStates(int sampleIndex, FwdBwdLocalParameter &localParameter);
+
     /*!ForwardAlgorithmRec
      * Calculate Forward Marginal Probability
      * @param sampleIndex
@@ -376,7 +380,7 @@ public:
      * @return
      */
     int ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &localParameter, bool greedyMode);
-    int ForwardAlgorithmRecV2(int sampleIndex, FwdBwdLocalParameter &localParameter);
+    int ForwardAlgorithmRestrict(int sampleIndex, FwdBwdLocalParameter &localParameter);
 
     /*!BackwardAlgorithmRec
      * Calculate Backward Marginal Probability
@@ -411,7 +415,7 @@ public:
     char **sampledHaps = nullptr;
     int nSampleCopy;
 
-    char **genoProbs;
+    float **genoProbs;
 
 
     //KS D value related

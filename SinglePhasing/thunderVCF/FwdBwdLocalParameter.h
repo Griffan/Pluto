@@ -35,6 +35,7 @@ class FwdBwdLocalParameter {
 
 public:
     int states;
+    int markers;
     //from (parentNode1, parentNode2) to (childNode1, childNode2), childNodes are present in conditional graph, but parentNode are not necessarily present
     std::vector<Dest2SourceVecIndex> parentsNodeVec;//edge information stored part 1
     std::vector<Index2SourceVec> megaSourceVec;//edge information stored part 2
@@ -46,48 +47,63 @@ public:
     std::vector<bool> isRec;
 
     //backward value
-    std::unordered_map<NodePair,float>  finalBwdValue;//current marker -> next marker -> bwdValue
+    std::unordered_map<NodePair, float> finalBwdValue;//current marker -> next marker -> bwdValue
     float bwdValueSum;
     std::unordered_map<int, float> bwdValueNode1Sum;
     std::unordered_map<int, float> bwdValueNode2Sum;
-    std::unordered_map<NodePair,float> bwdValue;
+    std::unordered_map<NodePair, float> bwdValue;
 
 
     explicit FwdBwdLocalParameter(int markers);
 
-     NodePair MakePair(StateIndex first, StateIndex second);
+    NodePair MakePair(StateIndex first, StateIndex second);
 
-     StateIndex GetFirst(NodePair pair);
+    StateIndex GetFirst(NodePair pair);
 
-     StateIndex GetSecond(NodePair pair);
+    StateIndex GetSecond(NodePair pair);
 
-     int FillParentsNodeVec(int i, StateIndex childNode1, StateIndex childNode2, StateIndex parentNode1,
-                                  StateIndex parentNode2, float tmpFwdValue);
+    int FillParentsNodeVec(int i, StateIndex childNode1, StateIndex childNode2, StateIndex parentNode1,
+                           StateIndex parentNode2, float tmpFwdValue);
 
-     int ClearParentsNodeVec(int i);
+    int ClearParentsNodeVec(int i);
 
-     FwdVec &GetFwdVec(int i, int destIndex);
+    int ResetParentsNodeVec();
 
-     FwdVec &GetFwdVec(int i, StateIndex A, StateIndex B);
+    FwdVec &GetFwdVec(int i, int destIndex);
 
-     float GetFwd(int i, int destIndex, int sourceIndex);
+    FwdVec &GetFwdVec(int i, StateIndex A, StateIndex B);
 
-     SourceVec &GetSourceVec(int i, int destIndex);
+    float GetFwd(int i, int destIndex, int sourceIndex);
 
-     SourceVec &GetSourceVec(int i, StateIndex A, StateIndex B);
+    SourceVec &GetSourceVec(int i, int destIndex);
 
-     int GetDestIndex(int i, StateIndex A, StateIndex B);
+    SourceVec &GetSourceVec(int i, StateIndex A, StateIndex B);
 
-     NodePair GetSource(int i, int destIndex, int sourceIndex);
+    int GetDestIndex(int i, StateIndex A, StateIndex B);
 
-     NodePair GetSource(int i, StateIndex A, StateIndex B, int sourceIndex);
+    NodePair GetSource(int i, int destIndex, int sourceIndex);
+
+    NodePair GetSource(int i, StateIndex A, StateIndex B, int sourceIndex);
 
 //    template <class valueVec>
-     float GetSumValueFromContainer(FwdVec &a);
+    float GetSumValueFromContainer(FwdVec &a);
 
-     float GetSumFwdValueFrom(int i, StateIndex A, StateIndex B);
+    float GetSumFwdValueFrom(int i, StateIndex A, StateIndex B);
 
-     float GetSumBwdValueFrom(StateIndex A, StateIndex B);
+    float GetSumBwdValueFrom(StateIndex A, StateIndex B);
+
+    std::vector<std::vector<NodePair> > viableStatePair;
+
+    int AddStatePair(int site, StateIndex A, StateIndex B)
+    {
+        viableStatePair[site].push_back(MakePair(A,B));
+        return 0;
+    }
+
+    std::vector<NodePair> GetStatePair(int site)
+    {
+        return viableStatePair[site];
+    }
 
 
     int ResetBwdValue();

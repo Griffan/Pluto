@@ -301,10 +301,10 @@ void OutputVCFConsensus(const String &inVcf, Pedigree &ped, ConsensusBuilder &co
                                                                              engine.genotypes[pi][markerIndex*3],
                                                                              engine.genotypes[pi][markerIndex*3 + 1],
                                                                              engine.genotypes[pi][markerIndex*3 + 2]);
-                        pMarker->asSampleValues[nFormats * i + GPidx].printf("%d,%d,%d",
-                                                                             engine.genoProbs[pi][markerIndex*3],
-                                                                             engine.genoProbs[pi][markerIndex*3 + 1],
-                                                                             engine.genoProbs[pi][markerIndex*3 + 2]);
+                        pMarker->asSampleValues[nFormats * i + GPidx].printf("%g,%g,%g",
+                                                                             log(engine.genoProbs[pi][markerIndex*3]),
+                                                                             log(engine.genoProbs[pi][markerIndex*3 + 1]),
+                                                                             log(engine.genoProbs[pi][markerIndex*3 + 2]));
                     } else {
                         pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d", haplotypes[pi * 2][markerIndex] + 1,
                                                                              haplotypes[pi * 2 + 1][markerIndex] + 1);
@@ -525,10 +525,10 @@ UnphasedSamplesOutputVCF(const String &inVcf, Pedigree &ped, const String &filen
                                                                                  engine.genotypes[pi][markerIndex*3],
                                                                                  engine.genotypes[pi][markerIndex*3 + 1],
                                                                                  engine.genotypes[pi][markerIndex*3 + 2]);
-                            pMarker->asSampleValues[nFormats * i + GPidx].printf("%d,%d,%d",
-                                                                                 engine.genoProbs[pi][markerIndex*3],
-                                                                                 engine.genoProbs[pi][markerIndex*3 + 1],
-                                                                                 engine.genoProbs[pi][markerIndex*3 + 2]);
+                            pMarker->asSampleValues[nFormats * i + GPidx].printf("%g,%g,%g",
+                                                                                 log(engine.genoProbs[pi][markerIndex*3]),
+                                                                                 log(engine.genoProbs[pi][markerIndex*3 + 1]),
+                                                                                 log(engine.genoProbs[pi][markerIndex*3 + 2]));
                         }
 //                        else {
 //                            pMarker->asSampleValues[nFormats * i + GTidx].printf("%d|%d",
@@ -920,9 +920,7 @@ int BuildGraph(int argc, char **argv) {
     t = clock();
     int seed = 123456, samplingRounds = 1;
 
-    int prefixLength = 50;
-    double errorRate = 0.01;
-    double transRate = 0.01;
+    int prefixLength = 1400;
     bool onlyHeterSite = false;
 
     SetupCrashHandlers();
@@ -1156,7 +1154,7 @@ namespace ReadGraph {
                     }
 
                     engine.freq1s[markerindex] = freqHolder[markerindex];//
-//                    engine.thetas[markerindex] = transRateHolder[markerindex];//TODO: decide if we use customized recombinate rate
+                    engine.thetas[markerindex] = transRateHolder[markerindex];//TODO: decide if we use customized recombinate rate
 //                  if(markerindex >= 9952 && markerindex <=9955) fprintf(stderr,"in reading 1 markerIndex:%d\tfreq:%f\n",markerindex,engine.freq1s[markerindex]);
 
                     //printf("reading vcf 1\n\n");
@@ -2128,7 +2126,7 @@ namespace PhaseIntersect {
 
 //            /*if (i < burnin)*/ engine.SetUseRev(i % 2);
 
-           if(i< 5)
+           if(i< 2)
                 engine.LoopThroughChromosomesPhasing(ped);
            else
                engine.LoopThroughChromosomesGenotyping(ped);

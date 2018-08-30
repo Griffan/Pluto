@@ -4,9 +4,10 @@
 
 #include "FwdBwdLocalParameter.h"
 
-FwdBwdLocalParameter::FwdBwdLocalParameter(int markers) {
+FwdBwdLocalParameter::FwdBwdLocalParameter(int nmarkers) {
 
     states = -1;
+    markers = nmarkers;
 
     Dest2SourceVecIndex dummy;
     dummy.reserve(HASH_RESERVE);
@@ -19,6 +20,8 @@ FwdBwdLocalParameter::FwdBwdLocalParameter(int markers) {
     Index2FwdVec dummy3;
     dummy3.reserve(HASH_RESERVE);
     megaFwdVec.assign(markers, dummy3);
+
+    viableStatePair.assign(markers, std::vector<NodePair >());
 
 }
 
@@ -66,6 +69,13 @@ FwdBwdLocalParameter::FwdBwdLocalParameter(int markers) {
     return 0;
 }
 
+int FwdBwdLocalParameter::ResetParentsNodeVec()
+{
+    for (int i = 0; i < markers; ++i) {
+        ClearParentsNodeVec(i);
+    }
+    return 0;
+}
  FwdVec &FwdBwdLocalParameter::GetFwdVec(int i, int destIndex) {
     return megaFwdVec[i][destIndex];
 }

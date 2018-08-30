@@ -171,7 +171,7 @@ public:
 //    PBWT* pbwtCore;
 //    PbwtCursor* forwardCursor,*reverseCursor;
     std::vector<int> a,alpha/*reverse*/;//stores array a status after process current column haps;
-    std::vector<std::vector<int> > alphaMap;
+    std::vector<std::vector<int> > aMap,alphaMap;
     std::vector<int> d,delta;
     std::vector<std::vector<int> > allDelta;
     std::vector<std::vector<float> > bkDistance;/*reverse*/;
@@ -183,7 +183,7 @@ public:
     //std::vector<std::vector<int> > bkHaplotypeCluster;//site, hapID
 
 
-    char ** haplotype;//I don't store alleles here, instead I rely on the haplotype storage in libMach
+    char ** haplotype;//haplotype data holder
 
     std::vector<std::vector<int> > clusterMembership;//content is the fwd rank at that site
 
@@ -195,8 +195,7 @@ public:
 
     std::unordered_map<StateIndex, StateIndex> stateOrder;//mapping oldState to newOrder
     StateIndex tmpOrder;
-    double pValue;
-    bool exactTest;
+
     std::unordered_map<int, int> removeMembership;//rankID,state
 
     //regressionMergeSite function variables
@@ -265,17 +264,19 @@ public:
 
         Graph.Reset();
 
-        a=std::vector<int>(N,0);
+        a = std::vector<int>(N,0);
 
-        delta=d=alpha=a;
+        delta = d = alpha = a;
 
-        alphaMap=std::vector<std::vector<int> >(N,std::vector<int>(M,0));
+        aMap = std::vector<std::vector<int> >(N,std::vector<int>(M,0));
 
-        haplotypeCluster=std::vector<std::vector<StateIndex > >(N,std::vector<StateIndex>(M,0));
+        alphaMap = aMap;
 
-        c=celta=std::vector<int>(N,0);
+        haplotypeCluster = std::vector<std::vector<StateIndex > >(N,std::vector<StateIndex>(M,0));
 
-        sortedY=std::vector<int>(M,0);
+        c =celta =std::vector<int>(N,0);
+
+        sortedY = std::vector<int>(M,0);
 //        clusterAllele=std::vector<std::vector<uchar> >(N,std::vector<uchar>());
     }
 
@@ -283,6 +284,7 @@ public:
     {
         a.clear();
         delta=d=alpha=a;
+        aMap.clear();
         alphaMap.clear();
         haplotypeCluster.clear();
         c.clear();
@@ -320,12 +322,19 @@ public:
     void MergeSortedArrayToA(std::vector<int> &a, std::vector<int> &b);
     bool IsRecipricalLengthOK(std::vector<int> &a, std::vector<int> &b);
     int CalculateDmax(double & pval, double & Dmax, std::vector<int> & j, std::vector<int>& k);
+    std::vector<int> FindMemberWithAllele(std::vector<int>& hapsInL, char allele, int site);
+    double CalculateDmax(int site, std::vector<int> hapsInL, std::vector<int> hapsInR, int startSite,
+                         int nA, int nB, int endSite, double Dmax, float threshold);
+
     int CalculateDmaxBeta(double & pval, double & Dmax, std::vector<int> & j, std::vector<int>& k);
 
     int MergeAtSite(int site);
-    int RegressionMergeAtSite(int site,bool isBaseWrapper);
+    int RegressionMergeAtSite(int site);
 
-    int MoveSegment(const std::unordered_map<int,int>& mergedMembership,int site);
+    int AddCandidatePair(int site, StateIndex stateL, StateIndex stateR, double &pValue, bool isPop);
+
+
+    int MoveSegment(int site);
 
     int SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampledHaps, int CopyStart2, int CopyEnd2,
                 float *rate, int phased);
@@ -349,7 +358,8 @@ public:
     inline int GetHapIDFromFwd(int fwdRank) const { return a[fwdRank]; }//you should only use it after a being updated
 
     inline int GetRankFromBack(int site, int hapID) {return alphaMap[site][hapID];}
-    //inline int GetRankFromFwd(int site, int hapID) {return aMap[site][hapID];}
+
+    inline int GetRankFromFwd(int site, int hapID) {return aMap[site][hapID];}
 
     inline StateIndex GetHapStateFromFwd(int site, int hapID) { return haplotypeCluster[site][hapID]; }
     //inline int GetHapStateFromBack(int site, int hapID) { return bkHaplotypeCluster[site][hapID]; }
@@ -416,8 +426,8 @@ public:
     int PrintSummary();
 
     void DoMerge(int site, StateIndex retainState, StateIndex removeState, std::vector<std::vector<int>> &dist,
-                 std::vector<bool, std::allocator<bool>> &removeIndicator,
-                 std::vector<bool, std::allocator<bool>> &retainIndicator, std::unordered_map<int, int> &removeMembership);
+                     std::vector<bool, std::allocator<bool>> &removeIndicator,
+                     std::vector<bool, std::allocator<bool>> &retainIndicator);
     int HowManyChildlessState(std::vector<StateNode*> & a)
     {
         int sum=0;
@@ -466,6 +476,8 @@ private:
     int CreateNewCluster(int k, int rank, int i0, StateIndex group);
 
     void CreateLastSiteCluster(int k, int rank, int i0, StateIndex group);
+
+    void UpdateCluster(int site, const std::vector<bool> &removeIndicator);
 };
 
 #endif //PLUTO_PBWTWRAPPER_H
