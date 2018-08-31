@@ -751,9 +751,8 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
     int fitPair = 0;
     int numCrediablePair = 0;
 
-    std::priority_queue<EdgePair, std::vector<EdgePair>, std::function<bool(const EdgePair &,
-                                                                            const EdgePair &)> > EdgePairList(
-            EdgePaircomparator);
+    std::priority_queue<EdgePair, std::vector<EdgePair>,
+            std::function<bool(const EdgePair &, const EdgePair &)> > EdgePairList(EdgePaircomparator);
 
     char allele1(0), allele2(0);
     StateIndex childNode1(0), childNode2(0), parentNode1(0), parentNode2(0);
@@ -969,7 +968,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                                 continue;
 
                             }
-                            if (numCrediablePair < 50*1024) {
+                            if (numCrediablePair < 1024) {
                                 EdgePairList.push(
                                         EdgePair(childNode1, childNode2, tmpParentNode1, tmpParentNode2, tmpFwdValue));
                                 numCrediablePair++;

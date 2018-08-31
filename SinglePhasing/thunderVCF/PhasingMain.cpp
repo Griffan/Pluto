@@ -1154,7 +1154,7 @@ namespace ReadGraph {
                     }
 
                     engine.freq1s[markerindex] = freqHolder[markerindex];//
-                    engine.thetas[markerindex] = transRateHolder[markerindex];//TODO: decide if we use customized recombinate rate
+//                    engine.thetas[markerindex] = transRateHolder[markerindex];//TODO: decide if we use customized recombinate rate
 //                  if(markerindex >= 9952 && markerindex <=9955) fprintf(stderr,"in reading 1 markerIndex:%d\tfreq:%f\n",markerindex,engine.freq1s[markerindex]);
 
                     //printf("reading vcf 1\n\n");

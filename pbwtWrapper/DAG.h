@@ -109,6 +109,11 @@ public:
         numHap[allele]=value;
     }
 
+    inline void AddNumHap(char allele, float value)
+    {
+        numHap[allele]+=value;
+    }
+
     ParentSet& GetParentIndexSet()
     {
         return parentNodeSet;

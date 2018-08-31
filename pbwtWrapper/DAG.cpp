@@ -4,6 +4,7 @@
 
 #include "DAG.h"
 #include <fstream>
+#include <unordered_map>
 
 int StateNode::WriteNode(std::ofstream &fout) {
     int totalSize = 0;
@@ -95,7 +96,7 @@ float DAG::GetProbToCurrentNodeConditionalOnParentNode(int marker, StateIndex pa
            (StateNodeMat[marker][parentIndex]->GetNumHap(0) + StateNodeMat[marker][parentIndex]->GetNumHap(1));
 }
 
-float DAG::GetEdgeProbFromParentNode(int marker, StateIndex parentIndex, char allele) {
+ float DAG::GetEdgeProbFromParentNode(int marker, StateIndex parentIndex, char allele) {
     return StateNodeMat[marker][parentIndex]->GetNumHap(allele) / nhaps;
 }
 
@@ -272,7 +273,7 @@ int DAG::FromJson(const std::string &fileName) {
                 fin<<"{\"name\": \""<<i<<"."<<j<<":"<<(int)StateNodeMat[i][j]->GetAllele()<<"\"},"<<std::endl;
         }
     }*/
-    std::vector<std::pair<StateIndex, StateNode *> > nodeVec;
+    std::vector<std::tuple<long,StateIndex, StateNode *> > nodeVec;
     long curMarker(0);
     StateIndex curIndex(0);
     unsigned long pivot(0);
@@ -287,41 +288,113 @@ int DAG::FromJson(const std::string &fileName) {
         curIndex = static_cast<StateIndex >(std::stoi(line.substr(pivot + 1, len)));
 
         StateNode *tmpNode = new StateNode(-1);
-        nodeVec.emplace_back(curIndex, tmpNode);
-        assert(curIndex == StateNodeMat[curMarker].size());
+        nodeVec.emplace_back(curMarker, curIndex, tmpNode);
+//        assert(curIndex == StateNodeMat[curMarker].size());
         StateNodeMat[curMarker].push_back(tmpNode);
 
     }
 //    std::getline(fin, line);//fin<<"  ],"<<std::endl;
     std::getline(fin, line);//fin<<"  \"links\": ["<<std::endl;
 
-    long sourceIndex(0);
-    long targetIndex(0);
+    long sourceNodeIndex(-1);
+    long targetNodeIndex(-1);
     float weight(0);
+    long prevMarker(-1);
+    std::unordered_map<StateIndex, StateIndex> sourceConflictedPair, targetConflictPair;
+
     while (getline(fin, line) and line.find("source") != std::string::npos) {
         pivot = line.find(':');
         len = line.find(',', pivot + 1) - (pivot + 1);
-        sourceIndex = std::stol(line.substr(pivot + 1, len));
+        sourceNodeIndex = std::stol(line.substr(pivot + 1, len));
         pivot = line.find(':', pivot + 1);
         len = line.find(',', pivot + 1) - (pivot + 1);
-        targetIndex = std::stol(line.substr(pivot + 1, len));
+        targetNodeIndex = std::stol(line.substr(pivot + 1, len));
         pivot = line.find(':', pivot + 1);
         len = line.find(',', pivot + 1) - (pivot + 1);
         weight = std::stof(line.substr(pivot + 1, len));
         pivot = line.find(':', pivot + 1);
         len = line.find('}', pivot + 1) - (pivot + 1);
         allele = std::stoi(line.substr(pivot + 1, len));
+        if (sourceNodeIndex >= 0) {
+            curMarker = std::get<0>(nodeVec[targetNodeIndex]);
+            if(curMarker != prevMarker)//new marker
+            {
+                sourceConflictedPair =  targetConflictPair;
+                targetConflictPair.clear();
+                prevMarker = curMarker;
+            }
+            StateNode *sourcePtr = std::get<2>(nodeVec[sourceNodeIndex]);
+            StateNode *targetPtr = std::get<2>(nodeVec[targetNodeIndex]);
+            StateIndex sourceIdx = std::get<1>(nodeVec[sourceNodeIndex]);
+            StateIndex targetIdx = std::get<1>(nodeVec[targetNodeIndex]);
 
-        if (sourceIndex >= 0) {
-            if (nodeVec[sourceIndex].second->GetNumHap(allele) < weight/*work around for graph inconsistency*/) {
-                nodeVec[sourceIndex].second->SetChildNodeIndex(allele, nodeVec[targetIndex].first);
-                nodeVec[sourceIndex].second->SetNumHap(allele, weight);
-                nodeVec[targetIndex].second->AddParentNode(nodeVec[sourceIndex].first);
-                nodeVec[targetIndex].second->SetAllele(allele);
+            if (targetPtr->GetAllele() == -1 or targetPtr->GetAllele() == allele)/*not visited or visited but not conflicted*/
+            {
+                sourcePtr->SetChildNodeIndex(allele, targetIdx);
+                if(sourceConflictedPair.find(sourceIdx)!= sourceConflictedPair.end())
+                {
+                    long conflictMarker = curMarker - 1;
+                    StateIndex conflictSourceIdx = sourceConflictedPair[sourceIdx];
+                    StateNode *tmpNodePtr = StateNodeMat[conflictMarker][conflictSourceIdx];
+                    tmpNodePtr->SetChildNodeIndex(allele, targetIdx);
+                    tmpNodePtr->SetNumHap(allele, weight/2.);
+                    sourcePtr->SetNumHap(allele, weight/2.);
+                    targetPtr->AddParentNode(conflictSourceIdx);
+                }
+                else
+                    sourcePtr->SetNumHap(allele, weight);
+
+                targetPtr->AddParentNode(sourceIdx);
+                targetPtr->SetAllele(allele);
+            }
+            else if(targetConflictPair.find(targetIdx) == targetConflictPair.end())//conflicted, not visited
+            {
+                    StateNode *tmpTargetNodePtr = new StateNode(-1);
+                    StateNodeMat[curMarker].push_back(tmpTargetNodePtr);
+                    curIndex = StateNodeMat[curMarker].size() - 1;
+
+                    sourcePtr->SetChildNodeIndex(allele, curIndex);
+                    if(sourceConflictedPair.find(sourceIdx)!= sourceConflictedPair.end())
+                    {
+                        long conflictMarker = curMarker - 1;
+                        StateIndex conflictSourceIdx = sourceConflictedPair[sourceIdx];
+                        StateNode *tmpSourceNodePtr = StateNodeMat[conflictMarker][conflictSourceIdx];
+                        tmpSourceNodePtr->SetChildNodeIndex(allele, curIndex);
+                        tmpSourceNodePtr->SetNumHap(allele, weight/2.);
+                        sourcePtr->SetNumHap(allele, weight/2.);
+                        tmpTargetNodePtr->AddParentNode(conflictSourceIdx);
+                    }
+                    else
+                        sourcePtr->SetNumHap(allele, weight);
+
+                    tmpTargetNodePtr->AddParentNode(sourceIdx);
+                    tmpTargetNodePtr->SetAllele(allele);
+                    targetConflictPair[targetIdx] = curIndex;
+
+            }
+            else//conflicted, visited
+            {
+                long conflictMarker = curMarker;
+                StateIndex conflictTargetIdx = targetConflictPair[targetIdx];
+                StateNode *tmpTargetNodePtr = StateNodeMat[conflictMarker][conflictTargetIdx];
+                sourcePtr->SetChildNodeIndex(allele, conflictTargetIdx);
+                if(sourceConflictedPair.find(sourceIdx)!= sourceConflictedPair.end())
+                {
+                    long conflictMarker = curMarker - 1;
+                    StateIndex conflictSourceIdx = sourceConflictedPair[sourceIdx];
+                    StateNode *tmpSourceNodePtr = StateNodeMat[conflictMarker][conflictSourceIdx];
+                    tmpSourceNodePtr->SetChildNodeIndex(allele, conflictTargetIdx);
+                    tmpSourceNodePtr->SetNumHap(allele, weight/2.);
+                    sourcePtr->SetNumHap(allele, weight/2.);
+                    tmpTargetNodePtr->AddParentNode(conflictSourceIdx);
+                }
+                else
+                    sourcePtr->SetNumHap(allele, weight);
+                tmpTargetNodePtr->AddParentNode(sourceIdx);
             }
         }
         else
-            nodeVec[targetIndex].second->SetAllele(allele);
+            std::get<2>(nodeVec[targetNodeIndex])->SetAllele(allele);//first marker
     }
     std::getline(fin, line);//fin<<"  ]\n}"<<std::endl;
     fin.close();
