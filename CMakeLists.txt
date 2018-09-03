@@ -8,7 +8,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wall -g -O3 -std=c++11 -Wextra")
 
 add_definitions(-D__ZLIB_AVAILABLE__)
 
-find_library(LIBSTATGEN NAMES libStatGen StatGen)
+#find_library(LIBSTATGEN NAMES libStatGen StatGen)
 if(NOT LIBSTATGEN)
     include(ExternalProject)
     ExternalProject_Add(LIBSTATGEN
