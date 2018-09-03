@@ -957,7 +957,7 @@ int PBWTWrapper::CalculateDmaxBeta(double &pval, double &Dmax, std::vector<int> 
 
 #include "../SinglePhasing/libStatGen/include/Random.h"
 Random localRandom(31415);
-#define MIN_FREQ 10
+#define MIN_FREQ 5
 int PBWTWrapper::AddCandidatePair(int site, StateIndex stateL, StateIndex stateR, double &pValue, bool isPop)//return 1 if don't merge
 {
 
@@ -985,7 +985,7 @@ int PBWTWrapper::AddCandidatePair(int site, StateIndex stateL, StateIndex stateR
         float threshold = (float) (scale* sqrt((1.0/sizeL)+(1.0/sizeR)));
         Dmax = CalculateDmax(site, clusterMembership[stateL], clusterMembership[stateR], site,
                              sizeL, sizeR, endSite, Dmax, threshold);
-        if (Dmax > 0.9*threshold) {
+        if (Dmax > 1 * threshold) {
             return 1;
         }
         else {
@@ -1003,10 +1003,10 @@ int PBWTWrapper::AddCandidatePair(int site, StateIndex stateL, StateIndex stateR
             return 1;
 
 //            if (rightCoordinateStat[stateL].Combine(rightCoordinateStat[stateR]).IsSignificant()) {
-//                    PrintVector(dist[stateL],dist[stateL].size(),"rank j:");
-//                    PrintVector(dist[stateR],dist[stateR].size(),"rank k:");
-//                    PrintVector(rightCoordinate[j],rightCoordinate[j].size(),"big beta hat right j:");
-//                    PrintVector(rightCoordinate[k],rightCoordinate[k].size(),"big beta hat right k:");
+////                    PrintVector(dist[stateL],dist[stateL].size(),"rank j:");
+////                    PrintVector(dist[stateR],dist[stateR].size(),"rank k:");
+////                    PrintVector(rightCoordinate[j],rightCoordinate[j].size(),"big beta hat right j:");
+////                    PrintVector(rightCoordinate[k],rightCoordinate[k].size(),"big beta hat right k:");
 //                return 1;
 //            }
 
@@ -1026,8 +1026,6 @@ int PBWTWrapper::AddCandidatePair(int site, StateIndex stateL, StateIndex stateR
             }
         }
     }
-
-
     return 0;
 }
 
@@ -1117,7 +1115,13 @@ int PBWTWrapper::RegressionMergeAtSite(int site) {
 //            PrintVector(dist[retainState],"retainState");
 //            PrintVector(dist[removeState],"removeState");
             ret = 1;
-            if (!HasSiblings(site, stateL)) {
+            if (!HasSiblings(site, retainState)) {
+                retainState = stateR;
+                removeState = stateL;
+            }
+            else if (HasSiblings(site, removeState)
+            and clusterMembership[stateL].size() < clusterMembership[stateR].size())
+            {
                 retainState = stateR;
                 removeState = stateL;
             }

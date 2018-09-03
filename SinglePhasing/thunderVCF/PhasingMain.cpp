@@ -1405,9 +1405,9 @@ namespace ReadGraph {
 
         SetCrashExplanation("haplotyping procedure");
 
-//        engine.loadGraph = std::string(phasedfile.c_str()) + ".DAG";
+        engine.loadGraph = std::string(phasedfile.c_str()) + ".DAG";
 
-        engine.loadGraph = std::string(phasedfile.c_str()) + ".json";
+//        engine.loadGraph = std::string(phasedfile.c_str()) + ".json";
 
         engine.genoThresh = pow(10.0,-0.1*127);
 

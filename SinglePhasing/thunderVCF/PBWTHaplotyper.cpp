@@ -388,7 +388,7 @@ void PBWTHaplotyper::ConstructGraph() {
         Wrapper->CursorBackwards();//calculate backwards order of suffix
         Wrapper->CursorForwards();
         Wrapper->Graph.WriteDAG(graphFilePrefix + ".DAG");
-        Wrapper->Graph.ToJson(graphFilePrefix + ".json");
+//        Wrapper->Graph.ToJson(graphFilePrefix + ".json");
         clock_t t1 = clock();
         printf("Done building graph in time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     }
