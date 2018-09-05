@@ -608,7 +608,7 @@ int PBWTWrapper::CursorBackwardsTo(int siteBackword, int T) {
         if (sortedY[rank] == 0) {
             alpha[u] = alpha[rank];
             delta[u] = p;
-            cumCoordinate += (siteBackword - p + 1) > 0 ? 1.0f / (float) (siteBackword - p + 1) : 1.;
+            cumCoordinate += (siteBackword - p + 1) > 20 ? 1.0f / (float) (siteBackword - p + 1) : 1./20;
             tmpD1[u] = cumCoordinate;
             p = 0;
             ++u;
@@ -617,7 +617,7 @@ int PBWTWrapper::CursorBackwardsTo(int siteBackword, int T) {
         } else {
             b[v] = alpha[rank];
             e[v] = q;
-            cumCoordinate += (siteBackword - q + 1) > 0 ? 1.0f / (float) (siteBackword - q + 1) : 1.;
+            cumCoordinate += (siteBackword - q + 1) > 20 ? 1.0f / (float) (siteBackword - q + 1) : 1./20;
             tmpD2[v] = cumCoordinate;
             q = 0;
             ++v;
@@ -1002,13 +1002,16 @@ int PBWTWrapper::AddCandidatePair(int site, StateIndex stateL, StateIndex stateR
         if (!IsRecipricalLengthOK(dist[stateL], dist[stateR]))
             return 1;
 
-//            if (rightCoordinateStat[stateL].Combine(rightCoordinateStat[stateR]).IsSignificant()) {
-////                    PrintVector(dist[stateL],dist[stateL].size(),"rank j:");
-////                    PrintVector(dist[stateR],dist[stateR].size(),"rank k:");
-////                    PrintVector(rightCoordinate[j],rightCoordinate[j].size(),"big beta hat right j:");
-////                    PrintVector(rightCoordinate[k],rightCoordinate[k].size(),"big beta hat right k:");
-//                return 1;
-//            }
+            if (rightCoordinateStat[stateL].Combine(rightCoordinateStat[stateR]).IsSignificant()) {
+//                    PrintVector(dist[stateL],dist[stateL].size(),"rank j:");
+//                    PrintVector(dist[stateR],dist[stateR].size(),"rank k:");
+//                    PrintVector(rightCoordinate[stateL],rightCoordinate[stateL].size(),"big beta hat right j:");
+//                    PrintVector(rightCoordinate[stateR],rightCoordinate[stateR].size(),"big beta hat right k:");
+                return 1;
+            } else
+            {
+//                fprintf(stderr,"merge state pair:(%d,%d)\n",stateL, stateR);
+            }
 
         if (CalculateDmax(pValue, Dmax, dist[stateL], dist[stateR]))//return early
         {

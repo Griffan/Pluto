@@ -11,9 +11,8 @@
 //    typedef std::unordered_map<uint64_t, Source> DestToSource;
 
 #include <cstdint>
-#include <unordered_map>
 #include <vector>
-#include <unordered_set>
+#include "../sparsepp/spp.h"
 
 typedef int16_t StateIndex;
 typedef uint64_t NodePair;
@@ -27,7 +26,9 @@ typedef std::vector<FwdVec> Index2FwdVec;//associated via index with Index2Sourc
 typedef std::vector<BwdVec> Index2BwdVec;//associated via index with Index2SourceVec
 
 
-typedef std::unordered_map<NodePair, int> Dest2SourceVecIndex;//NodePair -> StorageIndex
+//typedef std::unordered_map<NodePair, int> Dest2SourceVecIndex;//NodePair -> StorageIndex
+using spp::sparse_hash_map;
+typedef sparse_hash_map<NodePair, int> Dest2SourceVecIndex;//NodePair -> StorageIndex
 
 #define HASH_RESERVE 4096
 
@@ -42,16 +43,16 @@ public:
 
     std::vector<Index2FwdVec> megaFwdVec;//StorageIndex -> FwdVec
     std::vector<float> fwdValueSum;
-    std::vector<std::unordered_map<int, float> > fwdValueNode1Sum;
-    std::vector<std::unordered_map<int, float> > fwdValueNode2Sum;
+    std::vector<sparse_hash_map<int, float> > fwdValueNode1Sum;
+    std::vector<sparse_hash_map<int, float> > fwdValueNode2Sum;
     std::vector<bool> isRec;
 
     //backward value
-    std::unordered_map<NodePair, float> finalBwdValue;//current marker -> next marker -> bwdValue
+    sparse_hash_map<NodePair, float> finalBwdValue;//current marker -> next marker -> bwdValue
     float bwdValueSum;
-    std::unordered_map<int, float> bwdValueNode1Sum;
-    std::unordered_map<int, float> bwdValueNode2Sum;
-    std::unordered_map<NodePair, float> bwdValue;
+    sparse_hash_map<int, float> bwdValueNode1Sum;
+    sparse_hash_map<int, float> bwdValueNode2Sum;
+    sparse_hash_map<NodePair, float> bwdValue;
 
 
     explicit FwdBwdLocalParameter(int markers);

@@ -654,7 +654,7 @@ inline bool EdgePaircomparator(const EdgePair &lhs, const EdgePair &rhs) {
 int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &localParameter) {
     localParameter.isRec.assign(markers, false);
     localParameter.fwdValueSum.assign(markers, 0.f);
-    std::unordered_map<int, float> dummy;
+    sparse_hash_map<int, float> dummy;
     dummy.reserve(HASH_RESERVE);
     localParameter.fwdValueNode1Sum.assign(markers, dummy);
     localParameter.fwdValueNode2Sum.assign(markers, dummy);
@@ -668,7 +668,7 @@ int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &loca
     CalculatePosteriorGL(0, sampleIndex, posterior);
 
     for (StateIndex i = 0; i < localParameter.states; ++i) {
-        for (StateIndex j = 0; j < localParameter.states; ++j) {
+        for (StateIndex j = 0; j <= i; ++j) {
             char allele1 = GetAllele(0, i);
             char allele2 = GetAllele(0, j);
 //            gl = GetEmissionProb(0, sampleIndex, i, j);
@@ -680,7 +680,7 @@ int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &loca
                     fprintf(stderr,
                             "normal debug in (%d,%d)prior:%g\t%g(%d,%d)\tfreq:%f\n",
                             i, j, prior, gl, allele1, allele2, freq1s[0]);
-//                if(i == j) tmpFwdValue *= 0.5;
+                if(i == j) tmpFwdValue *= 0.5;
                 if (tmpFwdValue < UNDERFLOW_MIN) {
 //                    tmpFwdValue = UNDERFLOW_MIN;
                     continue;
@@ -780,7 +780,6 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
 
             parentNode1 = localParameter.GetFirst(kv.first);//current round parents, last round children
             parentNode2 = localParameter.GetSecond(kv.first);
-//            if(parentNode1 > parentNode2) continue;
             //sum over all the parents of current parents that lead to a child pair
             prevFwdValue = localParameter.GetSumValueFromContainer(localParameter.GetFwdVec(i - 1, kv.second));
             //i child of i-1 child state
@@ -791,14 +790,11 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
                 for (allele2 = 0; allele2 < 2; ++allele2) {
                     childNode2 = GetChildNode(i - 1, parentNode2, allele2);
                     if (childNode2 == -1) continue;
-//                    if (parentNode2 == parentNode1 and childNode2 > childNode1) continue;
-//                    gl = GetEmissionProb(i, sampleIndex, childNode1, childNode2);
                     gl = GetGL(sampleIndex, i, allele1, allele2);
                     if (greedyMode and gl > genoThresh and i > 20)//and i % step != 0)
                     {
                         tmpFwdValue = prevFwdValue * GetTransitionProb(i - 1, parentNode1, childNode1) *
                                       GetTransitionProb(i - 1, parentNode2, childNode2) * gl;
-//                        if(childNode1 == childNode2) tmpFwdValue *= 0.5;
 
                         if (0)//&& (i >= 9173 && i <= 9175 ))
                             fprintf(stderr,
