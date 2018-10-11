@@ -8,7 +8,7 @@
 //debug related
 #define DEBUG false
 
-static const float UNDERFLOW_MIN = std::numeric_limits<float>::min() * 1e2;
+static const float UNDERFLOW_MIN = std::numeric_limits<float>::min() * 1e10;
 
 static void printLeftMatrix(float *probability, int numStates) {
     for (int i = 0; i < numStates; ++i) {
@@ -382,13 +382,13 @@ void PBWTHaplotyper::ConstructGraph() {
         }
 //        Wrapper = new PBWTWrapper(2 * phased, markers, PvalueMatrix, prefixLength);
 //        Wrapper->SetHaps(haplotypes, 2 * (individuals - phased), 2 * individuals, nullptr, 0, 0, thetas);
-        Wrapper = new PBWTWrapper(2 * individuals /*+ (individuals - phased) * nSampleCopy*/, markers, PvalueMatrix,
+        Wrapper = new PBWTWrapper(2 * individuals + (individuals - phased) * nSampleCopy, markers, PvalueMatrix,
                                   prefixLength);
-        Wrapper->SetHaps(haplotypes, 0, 2 * individuals, 0, 0, 0, thetas, phased);
+        Wrapper->SetHaps(haplotypes, 0, 2 * individuals, sampledHaps, 0, (individuals - phased) * nSampleCopy, thetas, phased);
         Wrapper->CursorBackwards();//calculate backwards order of suffix
         Wrapper->CursorForwards();
         Wrapper->Graph.WriteDAG(graphFilePrefix + ".DAG");
-//        Wrapper->Graph.ToJson(graphFilePrefix + ".json");
+        Wrapper->Graph.ToJson(graphFilePrefix + ".json");
         clock_t t1 = clock();
         printf("Done building graph in time:%.2f sec\n", (float) (t1 - t) / CLOCKS_PER_SEC);
     }
@@ -889,7 +889,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
 
         if (fitPair == 0 && !reenter)//process orphan nodes
         {
-            fprintf(stderr, "[%s] sample %d recombined at marker %d\n", __FUNCTION__, sampleIndex, i);
+//            fprintf(stderr, "[%s] sample %d recombined at marker %d\n", __FUNCTION__, sampleIndex, i);
             recRate = GetRecombRate(i - 1, i);//start from marker 1 but store at index 0
             localParameter.isRec[i - 1] = true;
             localParameter.states = GetStateNumFrom(i);
@@ -1364,6 +1364,7 @@ int PBWTHaplotyper::BackwardSamplingRec(Random *rand, int sampleIndex, char **sa
                         sampledChild0 = tmpSampledParent0;//previous correct parents rejuvenate
                         sampledChild1 = tmpSampledParent1;
                         //override no-rec Imputation
+//                        fprintf(stdout, "[Overide Non-Rec Imputation]individual: %d, Heter Marker:%d from else (%d,%d)\n", sampleIndex, i, sampledChild0, sampledChild1);
                         ImputeAlleles(i, sampledChild0, sampledChild1, rand, sampleIndex, sampledHaps);
                         parentNodePair = localParameter.GetSource(i, destIndex, grandParentsIndex);
                         sampledParent0 = localParameter.GetFirst(parentNodePair);
@@ -1502,9 +1503,9 @@ int PBWTHaplotyper::LocalForwardBackwardSampling(int sampleIndex) {
         InitialFwdValues(sampleIndex, localParameter);
         ForwardAlgorithmRec(sampleIndex, localParameter, true);
         BackwardSamplingRec(&globalRandom, sampleIndex, haplotypes, localParameter);
-//        for (int j = 0; j < nSampleCopy; ++j) {//n copy per individual
-//            BackwardSamplingRec(&globalRandom, j + sampleIndex * nSampleCopy, sampledHaps, localParameter);
-//        }
+        for (int j = 0; j < nSampleCopy; ++j) {//n copy per individual
+            BackwardSamplingRec(&globalRandom, j + sampleIndex * nSampleCopy, sampledHaps, localParameter);
+        }
     }
     catch (std::exception &e) {
         fprintf(stderr, "%dth individual phasing failed!\n", sampleIndex);
@@ -1518,7 +1519,7 @@ int PBWTHaplotyper::LocalForwardBackward(int sampleIndex) {
     try {
         InitialFwdValues(sampleIndex, localParameter);
         ForwardAlgorithmRec(sampleIndex, localParameter, false);
-        BackwardSamplingRec(&globalRandom, sampleIndex, haplotypes, localParameter);
+//        BackwardSamplingRec(&globalRandom, sampleIndex, haplotypes, localParameter);
         BackwardAlgorithmRec(&globalRandom, sampleIndex, haplotypes, localParameter);
         CorrectGenotype();
 //        localParameter.ResetParentsNodeVec();

@@ -918,7 +918,7 @@ int BuildGraph(int argc, char **argv) {
 
     clock_t t;
     t = clock();
-    int seed = 123456, samplingRounds = 1;
+    int seed = 123456, samplingRounds = 0;
 
     int prefixLength = 1400;
     bool onlyHeterSite = false;
@@ -1265,7 +1265,7 @@ namespace ReadGraph {
         double errorRate = 0.01;
         double transRate = 0.01;
         int seed = 123456, warmup = 0, states = 0, weightedStates = 0;
-        int burnin = 5, rounds = 10, polling = 0, samples = 0, samplingRounds = 1;
+        int burnin = 5, rounds = 10, polling = 0, samples = 0, samplingRounds = 0;
         int maxPhred = 255;
 
         int prefixLength = 50;
@@ -1406,8 +1406,10 @@ namespace ReadGraph {
         SetCrashExplanation("haplotyping procedure");
 
         engine.loadGraph = std::string(phasedfile.c_str()) + ".DAG";
+//
+//        engine.loadGraph = std::string(phasedfile.c_str()) + ".json.beagle";
 
-//        engine.loadGraph = std::string(phasedfile.c_str()) + ".json";
+        fprintf(stderr,"Graph file:%s\n",engine.loadGraph.c_str());
 
         engine.genoThresh = pow(10.0,-0.1*127);
 
@@ -1872,10 +1874,10 @@ namespace PhaseIntersect {
         double errorRate = 0.01;
         double transRate = 0.01;
         int seed = 123456, warmup = 0, states = 0, weightedStates = 0;
-        int burnin = 2, rounds = 4, polling = 0, samples = 0, samplingRounds = 1;
+        int burnin = 2, rounds = 4, polling = 0, samples = 0, samplingRounds = 0;
         int maxPhred = 255;
 
-        int prefixLength = 30;
+        int prefixLength = 1400;
 
         bool compact = false;
         bool mle = false, mledetails = false, uncompressed = false;
@@ -2126,7 +2128,7 @@ namespace PhaseIntersect {
 
 //            /*if (i < burnin)*/ engine.SetUseRev(i % 2);
 
-           if(i< 2)
+           if(i < burnin)
                 engine.LoopThroughChromosomesPhasing(ped);
            else
                engine.LoopThroughChromosomesGenotyping(ped);

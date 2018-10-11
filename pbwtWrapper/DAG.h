@@ -271,6 +271,15 @@ public:
         return false;
     }
 
+    bool Has2ndRelatives(int site, StateIndex state) {
+        if(site ==0 or 1) return true;
+        for(auto kv:StateNodeMat[site][state]->GetParentIndexSet())
+        {
+            if(HasSiblings(site - 1, kv)) return true;//parent has sibs
+        }
+        return false;
+    }
+
     int JoinNodes(int marker, StateIndex indexRetain, StateIndex indexRemove);
 
     void UpdateChildNodeIndex(int marker, StateIndex parentIndex, StateIndex newChildIndex, char allele);

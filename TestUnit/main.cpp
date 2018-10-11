@@ -180,47 +180,6 @@ protected:
     virtual void TearDown(){}
 };
 
-/*
-   PBWTWrapper(){}
-    ~PBWTWrapper(){}
-
-    PBWTWrapper(const char ** haps, int nhaps, int nsnps);
-    PBWTWrapper(int nhaps,int nsnps);
-
-    int CursorForwards();
-    int CursorBackwards();
-
-    int CursorForwardsTo(int k, int T=5);
-
-    int CursorBackwardsTo(int k, int T=5);
-
-    int CopyHap(int k, PbwtCursor* Cursor);
-
-    int LabelNoSiblingCluster(int site);
-	int UpdateTransVector(int site);
-
-    bool IsEditDistanceOK(const std::vector< std::vector<char*> >& backBone,int stateA, int stateB, int index, double thresh);
-    int MergeAtSite(int site);
-
-    int MoveSegment(const std::unordered_map<int,int>& mergedMembership,int site);
-
-    int SetHaps(char **haps);
-
-    //inline functions
-    inline int GetNumStates(int k)
-
-    inline unsigned long GetNumHaps(int site) const { return haplotypeCluster[site].size(); }
-
-    inline int GetHapIDFromBack(int site, int backRank) const { return alpha[site + 1][backRank]; }
-    inline int GetHapIDFromFwd(int site, int fwdRank) const { if(site<0) return fwdRank; else return a[site][fwdRank]; }//you should only use it after a being updated
-
-    inline int GetRankFromBack(int site, int hapID) {return alphaMap[site][hapID];}
-    inline int GetRankFromFwd(int site, int hapID) {return aMap[site][hapID];}
-
-    inline int GetHapStateFromFwd(int site, int hapID) { return haplotypeCluster[site][hapID]; }
-    inline void ResetWrapper()
-
- * */
 //TEST_F(PBWTWrapperTest, IsEditDistanceOK) {
 //    std::vector< std::vector<char*> > backBone(2,std::vector<char*>(0,0));
 //    backBone[0].push_back(Wrapper->haplotype[0]);
@@ -432,11 +391,15 @@ protected:
 TEST_F(EdgeMergeTest, RegressionMergeAtSite)
 {
     Wrapper->CursorBackwards();
-//    Wrapper->CursorForwardsTo(0,20);
-//    Wrapper->CursorForwardsTo(1,20);
-//    Wrapper->CursorForwardsTo(2,20);
-//    Wrapper->RegressionMergeAtSite(1,true);
     Wrapper->CursorForwards();
+    EXPECT_EQ(2,Wrapper->GetNumStates(0));
+    EXPECT_EQ(2,Wrapper->GetNumStates(1));
+    EXPECT_EQ(3,Wrapper->GetNumStates(2));
+    EXPECT_EQ(46,Wrapper->clusterMembership[0].size());
+    EXPECT_EQ(116,Wrapper->clusterMembership[1].size());
+    EXPECT_EQ(191,Wrapper->clusterMembership[2].size());
+    EXPECT_EQ(247,Wrapper->clusterMembership[3].size());
+
 }
 
 TEST_F(EdgeMergeTest, AuxillaryFunctions)

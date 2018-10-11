@@ -201,6 +201,11 @@ public:
     std::vector<std::vector<float> > leftCoordinate;
     std::vector<std::vector<float> > rightCoordinate;
     std::vector<r_stat_t>  rightCoordinateStat;
+    //addPair auxiliary variables
+    float nUnmergedAtLeaf=0;
+    float maxUnmergedAtLeaf=0;
+    int lastReadDepth=0;
+    int currentEndSite=0;
 
 
 
@@ -312,6 +317,10 @@ public:
         return Graph.HasSiblings(site, state);
     }
 
+    bool Has2ndRelatives(int site, StateIndex state) {
+        return Graph.Has2ndRelatives(site, state);
+    }
+
 //  int LabelNoSiblingCluster(int site);
 //	int UpdateTransVector(int site);
 
@@ -330,12 +339,13 @@ public:
     int MergeAtSite(int site);
     int RegressionMergeAtSite(int site);
 
+    int NextReadDepth(float unmergedRatio, int depth, int lastDepth);
     int AddCandidatePair(int site, StateIndex stateL, StateIndex stateR, double &pValue, bool isPop);
 
 
     int MoveSegment(int site);
 
-    int SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampledHaps, int CopyStart2, int CopyEnd2,
+    int SetHaps(char **haps, int copyStart, int copyEnd, char **sampledHaps, int copyStart2, int copyEnd2,
                 float *rate, int phased);
     //inline functions
     inline int GetNumStates(int k) const

@@ -212,10 +212,10 @@ int DAG::ToJson(const std::string &fileName) {
         unsigned long currentSiteNodeNum = StateNodeMat[i].size();
         for (int j = 0; j < currentSiteNodeNum; ++j) {
             if (i == nMarkers - 1 and j == currentSiteNodeNum - 1)
-                fout << "{\"name\": \"" << i << "." << j << "\"}"
+                fout << "{\"name\": \"" << i << "." << j <<":"<<int(StateNodeMat[i][j]->GetAllele())<<":"<<StateNodeMat[i][j]->GetNumHap(0)+StateNodeMat[i][j]->GetNumHap(1)<< "\"}"
                      << std::endl;
             else
-                fout << "{\"name\": \"" << i << "." << j << "\"},"
+                fout << "{\"name\": \"" << i << "." << j <<":"<<int(StateNodeMat[i][j]->GetAllele())<<":"<<StateNodeMat[i][j]->GetNumHap(0)+StateNodeMat[i][j]->GetNumHap(1)<< "\"},"
                      << std::endl;
         }
     }
