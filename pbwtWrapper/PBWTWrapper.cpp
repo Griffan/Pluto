@@ -1050,8 +1050,8 @@ int PBWTWrapper::RegressionMergeAtSite(int site) {
     int ret(0);
     int currentNumCluster = GetNumStates(site);
     if (currentNumCluster <= 1) return ret;
-    std::cerr << "Enter Site:" << site << " has " << currentNumCluster << " state and P_thresh:" << P_thresh
-              << std::endl;
+//    std::cerr << "Enter Site:" << site << " has " << currentNumCluster << " state and P_thresh:" << P_thresh
+//              << std::endl;
 
     std::vector<bool> removeIndicator(currentNumCluster, false);
     std::vector<bool> retainIndicator(currentNumCluster, false);
@@ -1160,13 +1160,13 @@ int PBWTWrapper::RegressionMergeAtSite(int site) {
     }
 
     if (ret) UpdateCluster(site, removeIndicator);
-    std::cerr << "Exit Site:" << site << " has " << GetNumStates(site) << " state" << std::endl;
+//    std::cerr << "Exit Site:" << site << " has " << GetNumStates(site) << " state" << std::endl;
     float ratio = (nUnmergedAtLeaf / maxUnmergedAtLeaf);
     int depth = (currentEndSite - site - 1);
     int readDepth = NextReadDepth(ratio, depth, lastReadDepth);
     readDepth = readDepth > 500 ? 500 : readDepth;
-    std::cerr << "site:" << site << "\tdepth:" << depth << "\treadDepth:" << readDepth
-              << "\tratio:" << nUnmergedAtLeaf / maxUnmergedAtLeaf << "\tunmerged:" << nUnmergedAtLeaf << std::endl;
+//    std::cerr << "site:" << site << "\tdepth:" << depth << "\treadDepth:" << readDepth
+//              << "\tratio:" << nUnmergedAtLeaf / maxUnmergedAtLeaf << "\tunmerged:" << nUnmergedAtLeaf << std::endl;
 
     if (readDepth > depth) {
         currentEndSite = currentEndSite + (readDepth - depth);
