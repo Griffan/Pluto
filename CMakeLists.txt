@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.4)
 project(Pluto)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wall -g -O3 -std=c++11 -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wall -g -O3 -std=c++11 -Wextra -Wno-char-subscripts -Wno-unused-parameter -Wno-unused-value")
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
 #SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 #SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
@@ -10,6 +10,7 @@ add_definitions(-D__ZLIB_AVAILABLE__)
 
 #find_library(LIBSTATGEN NAMES libStatGen StatGen)
 if(NOT LIBSTATGEN)
+    message(STATUS "libStatGen not found")
     include(ExternalProject)
     ExternalProject_Add(LIBSTATGEN
             PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/build
@@ -22,7 +23,7 @@ if(NOT LIBSTATGEN)
             SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen
             CONFIGURE_COMMAND ""
             BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen
-            BUILD_COMMAND make opt #CC="/usr/local/Cellar/gcc/7.3.0_1/bin/g++-7"
+            BUILD_COMMAND make opt CFLAGS="-fpermissive" CXX="/usr/local/bin/g++-7" CC="/usr/local/bin/g++-7"
             INSTALL_COMMAND ""
             )
     set(LIBSTATGEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen/include)

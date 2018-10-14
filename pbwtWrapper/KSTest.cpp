@@ -321,7 +321,7 @@ double pkstwo_wrapper(int n, double* statistic, double tol) {
 
     std::vector<double> p;
     std::vector<int> index;
-    for (int i = 0; i <n; ++i) {
+    for (int i = 0; i < n; ++i) {
         if(std::isnan(statistic[i]))
             continue;
         else if(statistic[i]>0) {
@@ -351,7 +351,7 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v) {
 
 double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
     std::vector<int> tmpx;
-    for (int i = 0; i < x.size(); ++i) {
+    for (size_t i = 0; i < x.size(); ++i) {
         if (!std::isnan(x[i]))
             tmpx.push_back(x[i]);
     }
@@ -365,7 +365,7 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
     double STATISTIC=-1.0;
     /*if (isdigit(y[0]))*/ {
         tmpx.clear();
-        for (int i = 0; i < y.size(); ++i) {
+        for (size_t i = 0; i < y.size(); ++i) {
             if (!std::isnan(y[i]))
                 tmpx.push_back(y[i]);
         }
@@ -397,7 +397,7 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
 //        int decline_cycle=0;
 //        int previous_sign=0;
 //        int num_switch=0;
-        for (int j = 0; j <wOrder.size() ; ++j) {
+        for (size_t j = 0; j <wOrder.size() ; ++j) {
 //            if(j==0)
 //            {
 //                if(wOrder[j]+1 <= nx) {
@@ -471,7 +471,7 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
             }
             else fprintf(stderr,"[Waring]p-value will be approximate in the presence of ties\n");
             std::vector<double> tmp;
-            for (int i = 0; i <w.size()-1; ++i) {
+            for (size_t i = 0; i <w.size()-1; ++i) {
                 if((w[i+1]-w[i])!=0)
                     tmp.push_back(z[i]);
             }
@@ -491,7 +491,7 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
                 PVAL < -1 - .Call(C_pSmirnov2x, STATISTIC, n.x, n.y)*/
         //here we only consider two-sided(equal to)
 
-        for (int k = 0; k < z.size(); ++k) {
+        for (size_t k = 0; k < z.size(); ++k) {
             if(STATISTIC < fabs(z[k]))
                 STATISTIC=fabs(z[k]);
         }

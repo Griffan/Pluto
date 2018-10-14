@@ -853,7 +853,7 @@ int PBWTWrapper::CalculateDmax(double &pval, double &Dmax, std::vector<int> &j, 
 
 std::vector<int> PBWTWrapper::FindMemberWithAllele(std::vector<int> &hapsInL, char allele, int site) {
     std::vector<int> memVec;
-    for (int i = 0; i < hapsInL.size(); ++i) {
+    for (size_t i = 0; i < hapsInL.size(); ++i) {
         int hapID = GetHapIDFromFwd(hapsInL[i]);
         char iAllele = haplotype[hapID][site];
         if (iAllele == allele) memVec.push_back(hapsInL[i]);
@@ -868,7 +868,7 @@ double PBWTWrapper::CalculateDmax(int site, std::vector<int> hapsInL, std::vecto
     double sizeR = hapsInR.size();
     double propA = sizeL / nL;
     double propB = sizeR / nR;
-    double diff = abs(propA - propB);
+    double diff = fabs(propA - propB);
     if (diff >= threshold) {
         return diff;
     } else if (propA <= Dmax && propB <= Dmax) {
@@ -954,12 +954,13 @@ int PBWTWrapper::CalculateDmaxBeta(double &pval, double &Dmax, std::vector<int> 
     return 0;
 };
 
-#include "../SinglePhasing/libStatGen/include/Random.h"
-
-Random localRandom(31415);
 #define MIN_FREQ 5
 #define MIN_DEPTH 10
 
+#include <random>
+std::random_device rd;
+std::mt19937 mt(rd());
+std::uniform_real_distribution<double> RandGenNext(0, std::numeric_limits<double>::max());
 int PBWTWrapper::NextReadDepth(float unmergedRatio, int depth, int lastDepth) {
     if (unmergedRatio <= 1) {
         return MIN_DEPTH;
@@ -1007,7 +1008,7 @@ int PBWTWrapper::AddCandidatePair(int site, StateIndex stateL, StateIndex stateR
         } else {
             pValue = P_thresh + (Dmax < threshold ? 0.00001 : -0.00001);
             if (not isPop) {
-                MaxPair mergePair = {stateL, stateR, Dmax, exactTest, pValue, localRandom.Next()};
+                MaxPair mergePair = {stateL, stateR, Dmax, exactTest, pValue, RandGenNext(mt)};
                 mergePairList.push(mergePair);
             }
         }
@@ -1037,7 +1038,7 @@ int PBWTWrapper::AddCandidatePair(int site, StateIndex stateL, StateIndex stateR
         if (pValue > P_thresh)//potentially from same group
         {
             if (not isPop) {
-                MaxPair mergePair = {stateL, stateR, Dmax, exactTest, pValue, localRandom.Next()};
+                MaxPair mergePair = {stateL, stateR, Dmax, exactTest, pValue, RandGenNext(mt)};
                 mergePairList.push(mergePair);
             }
         }
@@ -1070,7 +1071,7 @@ int PBWTWrapper::RegressionMergeAtSite(int site) {
     StateIndex stateL(0), stateR(0);
 
     std::vector<StateIndex> stateWithSibs, stateWithoutSibs;
-    for (StateIndex i = 0; i < dist.size(); ++i) {
+    for (size_t i = 0; i < dist.size(); ++i) {
         if (HasSiblings(site, i)) stateWithSibs.push_back(i);
         else stateWithoutSibs.push_back(i);
     }

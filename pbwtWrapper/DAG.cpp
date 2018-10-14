@@ -31,7 +31,7 @@ int StateNode::ReadNode(std::ifstream &fin) {
     unsigned long sizeOfSet;
     fin.read((char *) &sizeOfSet, sizeof(unsigned long));
     StateIndex k;
-    for (int i = 0; i != sizeOfSet; i++) {
+    for (unsigned long i = 0; i != sizeOfSet; i++) {
         fin.read((char *) &k, sizeof(StateIndex));
         AddParentNode(k);
     }
@@ -116,7 +116,7 @@ int DAG::WriteDAG(const std::string &fileName) {
         unsigned long currentSiteNodeNum = StateNodeMat[i].size();
         fout.write((char *) &currentSiteNodeNum, sizeof(unsigned long));
         totalSize += sizeof(unsigned long);
-        for (int j = 0; j < currentSiteNodeNum; ++j) {
+        for (unsigned long j = 0; j < currentSiteNodeNum; ++j) {
             totalSize += StateNodeMat[i][j]->WriteNode(fout);
         }
     }
@@ -151,8 +151,8 @@ int DAG::ReadDAG(const std::string &fileName) {
     for (int i = 0; i < nsnps; ++i) {
         unsigned long currentSiteNodeNum(0);
         fin.read((char *) &currentSiteNodeNum, sizeof(unsigned long));
-        for (int j = 0; j < currentSiteNodeNum; ++j) {
-            StateNode *tmpNode = new StateNode(255);
+        for (unsigned long j = 0; j < currentSiteNodeNum; ++j) {
+            StateNode *tmpNode = new StateNode(-1);
             tmpNode->ReadNode(fin);
             StateNodeMat[i].push_back(tmpNode);
         }
@@ -210,7 +210,7 @@ int DAG::ToJson(const std::string &fileName) {
          << "  \"nodes\": [" << std::endl;
     for (int i = 0; i </*nsnps*/nMarkers; ++i) {
         unsigned long currentSiteNodeNum = StateNodeMat[i].size();
-        for (int j = 0; j < currentSiteNodeNum; ++j) {
+        for (unsigned long j = 0; j < currentSiteNodeNum; ++j) {
             if (i == nMarkers - 1 and j == currentSiteNodeNum - 1)
                 fout << "{\"name\": \"" << i << "." << j <<":"<<int(StateNodeMat[i][j]->GetAllele())<<":"<<StateNodeMat[i][j]->GetNumHap(0)+StateNodeMat[i][j]->GetNumHap(1)<< "\"}"
                      << std::endl;
@@ -224,7 +224,7 @@ int DAG::ToJson(const std::string &fileName) {
     for (int i = 0; i </*nsnps-1*/nMarkers - 1; ++i) {
         unsigned long currentSiteNodeNum = StateNodeMat[i].size();
         majorIndex += currentSiteNodeNum;
-        for (int j = 0; j < currentSiteNodeNum; ++j) {
+        for (unsigned long j = 0; j < currentSiteNodeNum; ++j) {
             if (StateNodeMat[i][j]->GetChildNodeIndex(0) != -1)
                 fout << "{\"source\": " << minorIndex
                      << ", \"target\": " << majorIndex + StateNodeMat[i][j]->GetChildNodeIndex(0)

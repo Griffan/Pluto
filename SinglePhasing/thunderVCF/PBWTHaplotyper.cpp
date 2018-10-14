@@ -115,14 +115,13 @@ void PBWTHaplotyper::InitialSampleCopy(Random *rand) {
     int nTarget = GetUnphasedNum();
 
     for (int j = 0; j < markers; j++) {
-        double mac = 0;
         int markerIndex = 3 * j;
 
 //        double hyperprior11 = freq1s[j] * freq1s[j];
 //        double hyperprior12 = 2.0 * freq1s[j] * (1.0 - freq1s[j]);
 //        double hyperprior22 = (1.0 - freq1s[j]) * (1.0 - freq1s[j]);
 //
-//
+//        double mac = 0;
 //        for (int i = 0; i < nTarget; i++) {
 //            double post11 = hyperprior11 * phred2prob[(size_t) genotypes[i][markerIndex]];
 //            double post12 = hyperprior12 * phred2prob[(size_t) genotypes[i][markerIndex + 1]];
@@ -698,7 +697,7 @@ int PBWTHaplotyper::InitialFwdValues(int sampleIndex, FwdBwdLocalParameter &loca
 
         //below is debug code
         if (DEBUG)
-            for (int j = 0; j < localParameter.GetFwdVec(0, kv.second).size(); ++j) {
+            for (size_t j = 0; j < localParameter.GetFwdVec(0, kv.second).size(); ++j) {
                 float &tmpFwd = localParameter.GetFwdVec(0, kv.second).at(j);
                 tmpFwd /= localParameter.fwdValueSum[0];
                 tmpFwdValue += tmpFwd;
@@ -1017,7 +1016,7 @@ int PBWTHaplotyper::ForwardAlgorithmRec(int sampleIndex, FwdBwdLocalParameter &l
 
 //below is debug code
             if (DEBUG)
-                for (int j = 0; j < localParameter.GetFwdVec(i, kv.second).size(); ++j) {
+                for (size_t j = 0; j < localParameter.GetFwdVec(i, kv.second).size(); ++j) {
                     float &tmpFwd = localParameter.GetFwdVec(i, kv.second).at(j);
                     float notNormalized = tmpFwd;
                     tmpFwd /= localParameter.fwdValueSum[i];
@@ -1187,7 +1186,7 @@ int PBWTHaplotyper::ForwardAlgorithmRestrict(int sampleIndex, FwdBwdLocalParamet
 
 //below is debug code
             if (DEBUG)
-                for (int j = 0; j < localParameter.GetFwdVec(i, kv.second).size(); ++j) {
+                for (size_t j = 0; j < localParameter.GetFwdVec(i, kv.second).size(); ++j) {
                     float &tmpFwd = localParameter.GetFwdVec(i, kv.second).at(j);
                     float notNormalized = tmpFwd;
                     tmpFwd /= localParameter.fwdValueSum[i];

@@ -9,6 +9,7 @@ int usage()
     fprintf(stderr,"\tPluto index\n");
     fprintf(stderr,"\tPluto phase\n");
     fprintf(stderr,"\tPluto iterative\n");
+    return 0;
 }
 
 int main(int argc, char ** argv) {

@@ -16,7 +16,7 @@
 #include <sstream>
 #include <unordered_map>
 #include "DAG.h"
-
+#include <cmath>
 #define THROW_IF(val) if (val) throw "error in " __FUNCTION__
 #define WHEREAMI fprintf(stderr,"running at in %s", __FUNCTION__)
 //Definition for linear regression
