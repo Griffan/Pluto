@@ -957,10 +957,12 @@ int PBWTWrapper::CalculateDmaxBeta(double &pval, double &Dmax, std::vector<int> 
 #define MIN_FREQ 5
 #define MIN_DEPTH 10
 
-#include <random>
-std::random_device rd;
-std::mt19937 mt(rd());
-std::uniform_real_distribution<double> RandGenNext(0, std::numeric_limits<double>::max());
+//#include <random>
+//std::random_device rd;
+//std::mt19937 mt(rd());
+//std::uniform_real_distribution<double> RandGenNext(0, std::numeric_limits<double>::max());
+#include "Random.h"
+Random localRandom(31415);
 int PBWTWrapper::NextReadDepth(float unmergedRatio, int depth, int lastDepth) {
     if (unmergedRatio <= 1) {
         return MIN_DEPTH;
@@ -1008,7 +1010,7 @@ int PBWTWrapper::AddCandidatePair(int site, StateIndex stateL, StateIndex stateR
         } else {
             pValue = P_thresh + (Dmax < threshold ? 0.00001 : -0.00001);
             if (not isPop) {
-                MaxPair mergePair = {stateL, stateR, Dmax, exactTest, pValue, RandGenNext(mt)};
+                MaxPair mergePair = {stateL, stateR, Dmax, exactTest, pValue, localRandom.Next()};
                 mergePairList.push(mergePair);
             }
         }
@@ -1038,7 +1040,7 @@ int PBWTWrapper::AddCandidatePair(int site, StateIndex stateL, StateIndex stateR
         if (pValue > P_thresh)//potentially from same group
         {
             if (not isPop) {
-                MaxPair mergePair = {stateL, stateR, Dmax, exactTest, pValue, RandGenNext(mt)};
+                MaxPair mergePair = {stateL, stateR, Dmax, exactTest, pValue, localRandom.Next()};
                 mergePairList.push(mergePair);
             }
         }

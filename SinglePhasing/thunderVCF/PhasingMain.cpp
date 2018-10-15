@@ -1232,7 +1232,7 @@ namespace ReadGraph {
                 {
                     markerindex = refMarkerIdx[iter->first];
                     engine.freq1s[markerindex] = freqHolder[markerindex];
-                    engine.thetas[markerindex] = transRateHolder[markerindex];
+//                    engine.thetas[markerindex] = transRateHolder[markerindex];
 
                     int genoindex = markerindex * 3;
                     for (int i = 0; i < (engine.individuals - engine.phased); i++)//for each unphased individual
@@ -1723,7 +1723,7 @@ namespace PhaseIntersect {
 
                 }
                 else
-                    error("unknow sample!");
+                    error("unknown sample!");
             }
 
             int markerindex = 0;

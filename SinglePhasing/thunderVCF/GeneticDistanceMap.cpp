@@ -36,7 +36,7 @@ float GeneticDistanceMap::InferGeneticDistance(std::string chr, int start) {
     }
     if(chrBpGeneticDistance.find(chr)==chrBpGeneticDistance.end())
     {
-        std::cerr<<"Unknown chromsome ID:"<<chr<<std::endl;
+        std::cerr<<"Unknown chromsome ID:"<<chr<<" for genetic distance map file!"<<std::endl;
         exit(EXIT_FAILURE);
     }
 
