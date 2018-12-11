@@ -6,9 +6,9 @@
 #include <cmath>
 #include "PBWTWrapper.h"
 #include "iostream"
-#include "pbwt/pbwt.h"
 #include <fstream>
 #include <functional>
+#include <cstring>
 
 const float T_CRITICAL_VALUE[] =
         {12.71, 4.3, 3.18, 2.78, 2.57,
@@ -23,46 +23,53 @@ const float T_CRITICAL_VALUE[] =
          1.97,/*200*/ 1.97,/*500*/ 1.96/*infinity*/
         };
 
-float P_thresh=0.6;
+float P_thresh = 0.1;//the smaller the threshold, the more likely the nodes will be merged
 
-bool comparator(const max_pair_t &lhs, const max_pair_t &rhs) {
-    if(lhs.pval == rhs.pval)
-    {
-        if(lhs.Dmax==rhs.Dmax) {
-            return lhs.f_id<rhs.f_id;
-        }
-        return lhs.Dmax<rhs.Dmax;
-    }
-    return lhs.pval < rhs.pval;
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps) : Graph(nsnps, nhaps) {
+    nSamples = nhaps / 2;
+    nMarkers = nsnps;
+    N = nsnps;
+    M = nhaps;
+    haplotype = nullptr;
 }
 
-PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float *** t_PvalueMatrix) : prefixLength(1200),Graph(nsnps),
-                                                 a(nsnps, std::vector<int>(nhaps, 0)), alpha(a), aMap(a),alphaMap(a),
-        /*alphaMap(nsnps,std::unordered_map<int,int>()),
-        aMap(nsnps,std::unordered_map<int,int>()),*/
-                                                 d(a), delta(a), bkDistance(nsnps, std::vector<float>(nhaps,
-                                                                                                      (float) 0.)), /*sortedY(nsnps,std::vector<uchar>(nhaps,0)),*/
-                                                 c(nsnps, 0), celta(c), u(a), ultra(a),
-                                                 haplotypeCluster(a),
-                                                 bkHaplotypeCluster(a),
-//                                                 clusterAllele(nsnps, std::vector<uchar>()),
-                                                 mergePairList(
-                                                         std::function<bool(const max_pair_t &, const max_pair_t &)>(
-                                                                 comparator)) {
+PBWTWrapper::PBWTWrapper(int nhaps, int nsnps, float ***t_PvalueMatrix, int prefixLen)
+        : prefixLength(prefixLen), Graph(nsnps, nhaps),
+          a(nhaps, 0), alpha(a),
+          aMap(nsnps, a),
+          alphaMap(nsnps, a),
+          d(nhaps, 0),
+          delta(d),
+          allDelta(alphaMap),
+          bkDistance(nsnps, std::vector<float>(nhaps, 0.f)),
+          sortedY(a),
+          c(nsnps, 0), celta(c),
+          haplotypeCluster(nsnps, std::vector<StateIndex>(nhaps, 0)),
+          mergePairList(std::function<bool(const MaxPair &,
+                                           const MaxPair &)>(comparator)) {
     nSamples = nhaps / 2;
     nMarkers = nsnps;
     N = nsnps;
     M = nhaps;//last two haps are slots for current individual need to be phased
-    PvalueMatrix=t_PvalueMatrix;
+    PvalueMatrix = t_PvalueMatrix;
     //cerr<<"Inside PBWTWrapper M:"<<M<<endl;
-    pbwtCore = pbwtCreate(nhaps, nsnps);
+//    pbwtCore = pbwtCreate(nhaps, nsnps);
     //pbwtCore->CompressedAllele = arrayCreate(4096 * 32, uchar);
 
-    forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
+//    forwardCursor = pbwtCursorCreate(pbwtCore, TRUE, TRUE);
 
-    reverseCursor = pbwtCursorCreate(pbwtCore, FALSE, TRUE);
+//    reverseCursor = pbwtCursorCreate(pbwtCore, FALSE, TRUE);
+    for (int i = 0; i < M; ++i) {
+        a[i] = i;
+    }
+    alpha = a;
 
     haplotype = nullptr;
+
+    nUnmergedAtLeaf = 0;
+    maxUnmergedAtLeaf = nhaps * 0.01;
+    lastReadDepth = 500;
+    currentEndSite = 500;
 
 }
 
@@ -71,321 +78,17 @@ int PBWTWrapper::CursorForwards() {//so far only implemented for test purpose
 
 
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 0");
-
     for (int k = 0; k != N; ++k) {
-        //fprintf(stderr,"at site %d\n",k);
+//        fprintf(stderr,"at site %d\n",k);
         CursorForwardsTo(k, prefixLength);
+//        PrintNonZeroVector(d, M, "end arrary aFend check 1");
+
     }
     //copy end of a to PBWT
     //PrintVector(forwardCursor->a,M,"end arrary aFend check 1");
 
-    pbwtCursorToAFend(forwardCursor,pbwtCore);
-
-//    for (int i=0;i != pbwtCore->N; i++) {
-//
-//        UpdateTransVector(i);
-//    }
     PrintSummary();
     //update crossover rate?
-    return 0;
-}
-
-int PBWTWrapper::CursorForwardsToDeprecated(int k, int T) {
-/*T is the length that how far you look back
- *This function must be called along the sites, no skip permitted;
- *Mask the site you want to skip at the begining if you have to.
- */
-    int rank, i0 = 0, ia;
-    int group = 0;
-
-    int hapID(0), prevSiteStateIndex(0);
-
-    clusterMembership.clear();
-//    hasSiblings.clear();
-    dist.clear();
-    rightCoordinate.clear();
-    rightCoordinateStat.clear();
-
-
-    int tmpNumHap(0);
-    char allele(-1);
-
-    int tmpT = k > T ? T : k;
-
-
-    /*reprot haolotype cluster based on prefix, so current site not included*/
-    //cluster of the previous site k-1
-    for (rank = 0; rank < forwardCursor->M; ++rank) {
-        /*assign states of last column based on previous d and sortedY*/
-//        /*debug log*/if(k-1>1&&k-1<12&&rank>3220&&rank<3242){printf("now site %d rank:%d d:%d tmpT:%d allle:%d a:%d 3811's rank:%d\n",
-//                                        k,rank,forwardCursor->d[rank],tmpT,forwardCursor->sortedY[rank],forwardCursor->a[rank],aMap[k-2][forwardCursor->a[rank]]);}
-
-        if (forwardCursor->d[rank] >
-            (k - tmpT) &&
-            (k != 0)) {//new cluster if current sequence and last sequence have common sequence less than T
-            //if (na && nb)        /* then there is something to report */
-            if (rank != 0) {
-                tmpNumHap = rank - i0;
-//                if(k-1>1&&k-1<12&&rank>3220&&rank<3242){printf("now site %d rank:%d d:%d tmpT:%d allle:%d a:%d new cluster detected\n",
-//                                                               k,rank,forwardCursor->d[rank],tmpT,forwardCursor->sortedY[rank],forwardCursor->a[rank]);}
-
-                allele = haplotype[GetHapIDFromFwd(k - 1, i0)][k - 1];
-
-                Graph.StateNodeMat[k - 1].push_back(new StateNode(group, tmpNumHap, allele));
-                Graph.StateNodeMat[k - 1][group]->nodeIndex = group;
-
-                dist.push_back(std::vector<int>(tmpNumHap, 0));//state->rank_occupied
-                rightCoordinate.push_back(std::vector<float>(tmpNumHap, (float) 0.));//state->rank_occupied
-                std::vector<int> tmpMem;
-                for (ia = i0; ia < rank; ++ia) {
-                    hapID = GetHapIDFromFwd(k - 1, ia);//original ID, by treating rank as backward ranking
-                    haplotypeCluster[k - 1][hapID] = group;
-                    tmpMem.push_back(ia);
-                    dist[group][ia - i0] = GetRankFromBack(k - 1, hapID);
-                    rightCoordinate[group][ia - i0] = GetDistanceFromBack(k - 1, dist[group][ia - i0]);
-                    if (k >= 2) {
-                        prevSiteStateIndex = GetHapStateFromFwd(k - 2, hapID);
-                        Graph.StateNodeMat[k - 1][group]->AddParentNode(prevSiteStateIndex, Graph.StateNodeMat[k - 2][prevSiteStateIndex]);//site k-1
-                        Graph.StateNodeMat[k - 2][prevSiteStateIndex]->AddChildNode(allele, &(Graph.StateNodeMat[k - 1][group]->nodeIndex), hapID <= M ? 1.f : 1e-6f);
-                    }
-                }
-
-                if (k == 1) {
-                    Graph.StateNodeMat[0][group]->AddParentNode(0, nullptr);//site 1
-                    Graph.StateNodeMat[0][group]->SetID(0,0);
-                }
-                else
-                    Graph.StateNodeMat[k - 1][group]->SetID(prevSiteStateIndex,Graph.StateNodeMat[k - 2][prevSiteStateIndex]->ID);
-
-                Graph.RegisterState(k-1, Graph.StateNodeMat[k - 1][group]->ID, &(Graph.StateNodeMat[k - 1][group]->nodeIndex));
-
-                rightCoordinateStat.push_back(rightCoordinate[group]);
-                std::sort(dist[group].begin(),
-                          dist[group].end());//TODO:only sort nodes need to be compared, skip those otherwise
-//                clusterAllele[k - 1].push_back(allele);
-                clusterMembership.push_back(tmpMem);
-//                /*debug log*/if(k-1==11){printf("now site %d has %d states, newly added state has %d haps, where rank:%d d:%d tmpT:%d\n",
-//                                                                  k,Graph.StateNodeMat[k - 1].size(),tmpNumHap,rank,forwardCursor->d[rank],tmpT);}
-
-                i0 = rank;
-                group++;
-            }
-        }
-    }
-    //finish the last segment if i0 didn't reach the end
-    if (i0 < forwardCursor->M) {
-        if (k != 0) {
-            tmpNumHap = forwardCursor->M - i0;
-
-            allele = haplotype[GetHapIDFromFwd(k - 1, i0)][k - 1];
-//            if (allele != 0 and allele != 1) {
-//                fprintf(stderr, "last state marker:%d\ti0:%d\tgroup:%d\tID:%d\n", k - 1, i0, group,
-//                        GetHapIDFromFwd(k - 1, i0));
-//                exit(EXIT_FAILURE);
-//            }
-            Graph.StateNodeMat[k - 1].push_back(new StateNode(group, tmpNumHap, allele));
-            Graph.StateNodeMat[k - 1][group]->nodeIndex = group;
-
-            dist.push_back(std::vector<int>(tmpNumHap, 0));//state->rank_occupied
-            rightCoordinate.push_back(std::vector<float>(tmpNumHap, (float) 0.));//state->rank_occupied
-            std::vector<int> tmpMem;
-            for (ia = i0; ia < forwardCursor->M; ++ia) {
-                hapID = GetHapIDFromFwd(k - 1, ia);//original ID, by treating rank as backward ranking
-                haplotypeCluster[k - 1][hapID] = group;
-                tmpMem.push_back(ia);
-                dist[group][ia - i0] = GetRankFromBack(k - 1, hapID);
-                rightCoordinate[group][ia - i0] = GetDistanceFromBack(k - 1, dist[group][ia - i0]);
-                if (k >= 2) {
-                    prevSiteStateIndex = GetHapStateFromFwd(k - 2, hapID);
-                    Graph.StateNodeMat[k - 1][group]->AddParentNode(prevSiteStateIndex,
-                                                                    Graph.StateNodeMat[k - 2][prevSiteStateIndex]);
-                    Graph.StateNodeMat[k - 2][prevSiteStateIndex]->AddChildNode(allele, &(Graph.StateNodeMat[k - 1][group]->nodeIndex),
-                                                                                hapID <= M ? 1.f : 1e-6f);
-                }
-            }
-
-            if (k == 1) {
-                Graph.StateNodeMat[0][group]->AddParentNode(0, nullptr);//site 1
-                Graph.StateNodeMat[0][group]->SetID(0,0);
-            }
-            else
-                Graph.StateNodeMat[k - 1][group]->SetID(prevSiteStateIndex,Graph.StateNodeMat[k - 2][prevSiteStateIndex]->ID);
-
-            Graph.RegisterState(k-1, Graph.StateNodeMat[k - 1][group]->ID, &(Graph.StateNodeMat[k - 1][group]->nodeIndex));
-
-            rightCoordinateStat.push_back(rightCoordinate[group]);
-            std::sort(dist[group].begin(), dist[group].end());
-//            clusterAllele[k - 1].push_back(allele);
-            clusterMembership.push_back(tmpMem);
-        }
-    }
-//    if(k>=2) {
-//        std::cerr << "site:" << k - 2 << ":\t ";
-//        HowManyChildlessState(Graph.StateNodeMat[k - 2]);
-//        HowManyChildHapCount(Graph.StateNodeMat[k - 2], k - 1);
-//    }
-    //merge cluster based on KS test
-    int merged = 0;
-#ifdef DEBUG
-    if(k!=0){
-        fprintf(stderr, "at site:%d\n", k-1);
-        PrintVector(haplotypeCluster[k-1],"haplotype state before merge state");
-        PrintVector(clusterAllele[k-1],"state allele before merge allele");
-    }
-#endif
-    if (k >= 1) {
-
-
-        if (GetNumStates(k-1) != 1) merged = RegressionMergeAtSite(k - 1, true);//TODO:implement this function
-//        if (merged) std::cerr<<"merged at site:"<<k-1<<std::endl;
-        Graph.NormalizeCurrentSiteTransitionProb(k - 2);
-
-        //if(k!=0&&clusterAllele[k-1].size()!=1) test = MergeAtSiteExperiment(k-1);
-#ifdef DEBUG
-        if(test) {
-            fprintf(stderr, "at site:%d\n", k-1);
-            PrintVector(haplotypeCluster[k-1], "haplotype state after merge state");
-            PrintVector(clusterAllele[k-1],"state allele after merge allele");
-            fprintf(stderr,"\n");
-        }
-#endif
-//        UpdateTransVector(k - 1);
-
-
-    }
-//    std::cerr<<"site:"<<k-2<<"After merge:";
-//    int tmpNum=HowManyChildlessState(Graph.StateNodeMat[k - 2]);
-//    if(tmpNum>0) abort();
-
-
-    //copy haplotypes into forwardCursor->y, here is the start of new site, before this
-    //section, we are grouping haplotypes based on previous site's alleles
-    CopyHap(k, forwardCursor);
-    //now use haplotype alleles on current site k, to update array a and array d
-
-    int u = 0, v = 0;
-    int p = k + 1;
-    int q = k + 1;
-
-    for (rank = 0; rank < forwardCursor->M; ++rank) {
-
-        if (forwardCursor->d[rank] > p) p = forwardCursor->d[rank];
-        if (forwardCursor->d[rank] > q) q = forwardCursor->d[rank];
-//        /*debug log*/if(k-1>1&&k-1<12&&rank>3220&&rank<3242){printf("right before update array a, now site %d rank:%d d:%d tmpT:%d allle:%d a:%d hapID's rank:%d\t3811's rank:%d\t3811's allele:%d\n",
-//                                                              k,rank,forwardCursor->d[rank],tmpT,forwardCursor->sortedY[rank],forwardCursor->a[rank],aMap[k-2][forwardCursor->a[rank]],aMap[k-2][3811],haplotype[3811][k-1]);}
-
-        if (forwardCursor->sortedY[rank] == 0) {
-            forwardCursor->a[u] = forwardCursor->a[rank];
-            forwardCursor->d[u] = p;
-            ++u;
-            p = 0;
-            forwardCursor->c++;
-            this->u[k][rank] = u;
-        }
-        else {
-            forwardCursor->b[v] = forwardCursor->a[rank];
-            forwardCursor->e[v] = q;
-            ++v;
-            q = 0;
-            this->u[k][rank] = u;
-        }
-    }
-
-    memcpy(forwardCursor->a + u, forwardCursor->b, v * sizeof(int));
-    memcpy(forwardCursor->d + u, forwardCursor->e, v * sizeof(int));
-    c[k] = u;
-
-    forwardCursor->d[forwardCursor->M] = k + 2; /* sentinels */
-    a[k].assign(forwardCursor->a, forwardCursor->a + forwardCursor->M);//stores array a status after process current column haps
-
-    for (int j = 0; j < (int)a[k].size(); ++j) {
-        aMap[k][a[k][j]] = j;//at site k, hapID a[k] is stored at jth row/rank
-    }
-    d[k].assign(forwardCursor->d, forwardCursor->d + forwardCursor->M);
-
-    //section below are dealing with last site
-    if (k == N - 1)
-    {
-        i0 = 0;
-        group = 0;
-
-        clusterMembership.clear();
-//        hasSiblings.clear();
-        dist.clear();
-        for (rank = 0; rank < forwardCursor->M; ++rank) {
-            /*assign states of last column based on previous d and sortedY*/
-            if (forwardCursor->d[rank] >
-                (k - tmpT)) {//new cluster if current sequence and last sequence have common sequence less than T
-                //if (na && nb)        /* then there is something to report */
-                if (rank != 0) {
-//                    fprintf(stderr,"d:%d\tk-tmpT:%d\n",forwardCursor->d[rank],k-tmpT);
-                    tmpNumHap = rank - i0;
-                    allele = haplotype[GetHapIDFromFwd(k, i0)][k];
-                    Graph.StateNodeMat[k].push_back(new StateNode(group, tmpNumHap, allele));
-                    Graph.StateNodeMat[k][group]->nodeIndex = group;
-                    dist.push_back(std::vector<int>(tmpNumHap, 0));//state->rank_occupied
-                    std::vector<int> tmpMem;
-                    for (ia = i0; ia < rank; ++ia) {
-                        hapID = GetHapIDFromFwd(k, ia);//original ID, by treating rank as backward ranking
-                        haplotypeCluster[k][hapID] = group;
-                        tmpMem.push_back(ia);
-                        dist[group][ia - i0] = GetRankFromBack(k, hapID);
-                        if (k >= 1) {
-                            prevSiteStateIndex = GetHapStateFromFwd(k - 1, hapID);
-                            Graph.StateNodeMat[k][group]->AddParentNode(prevSiteStateIndex,
-                                                                        Graph.StateNodeMat[k - 1][prevSiteStateIndex]);
-                            Graph.StateNodeMat[k - 1][prevSiteStateIndex]->AddChildNode(allele,
-                                                                                        &(Graph.StateNodeMat[k][group]->nodeIndex),
-                                                                                        hapID <= M ? 1.f : 1e-6f);
-                        }
-                    }
-                    Graph.StateNodeMat[k][group]->SetID(prevSiteStateIndex,Graph.StateNodeMat[k - 1][prevSiteStateIndex]->ID);
-                    Graph.RegisterState(k, Graph.StateNodeMat[k][group]->ID, &(Graph.StateNodeMat[k][group]->nodeIndex));
-                    Graph.StateNodeMat[k][group]->AddChildNode(0, nullptr, 0);//end of the chain
-                    std::sort(dist[group].begin(), dist[group].end());
-//                    clusterAllele[k].push_back(allele);
-                    clusterMembership.push_back(tmpMem);
-
-                    i0 = rank;
-                    group++;
-                }
-            }
-        }
-        //finish the last segment if i0 didn't reach the end
-        if (i0 < forwardCursor->M) {
-            tmpNumHap = forwardCursor->M - i0;
-            allele = haplotype[GetHapIDFromFwd(k, i0)][k];
-
-            dist.push_back(std::vector<int>(tmpNumHap, 0));//state->rank_occupied
-            Graph.StateNodeMat[k].push_back(new StateNode(group, tmpNumHap, allele));
-            Graph.StateNodeMat[k][group]->nodeIndex = group;
-            std::vector<int> tmpMem;
-            for (ia = i0; ia < forwardCursor->M; ++ia) {
-                hapID = GetHapIDFromFwd(k, ia);//original ID, by treating rank as backward ranking
-                haplotypeCluster[k][hapID] = group;
-                tmpMem.push_back(ia);
-                dist[group][ia - i0] = GetRankFromBack(k, hapID);
-                if (k >= 1) {
-                    prevSiteStateIndex = GetHapStateFromFwd(k - 1, hapID);
-                    Graph.StateNodeMat[k][group]->AddParentNode(prevSiteStateIndex,
-                                                                Graph.StateNodeMat[k - 1][prevSiteStateIndex]);
-                    Graph.StateNodeMat[k - 1][prevSiteStateIndex]->AddChildNode(allele,
-                                                                                &(Graph.StateNodeMat[k][group]->nodeIndex),
-                                                                                hapID <= M ? 1.f : 1e-6f);
-                }
-            }
-            Graph.StateNodeMat[k][group]->SetID(prevSiteStateIndex,Graph.StateNodeMat[k - 1][prevSiteStateIndex]->ID);
-            Graph.RegisterState(k, Graph.StateNodeMat[k][group]->ID, &(Graph.StateNodeMat[k][group]->nodeIndex));
-            Graph.StateNodeMat[k][group]->AddChildNode(0, nullptr, 0);
-            std::sort(dist[group].begin(), dist[group].end());
-//            clusterAllele[k].push_back(allele);
-            clusterMembership.push_back(tmpMem);
-        }
-
-//            LabelNoSiblingCluster(k);
-//            UpdateTransVector(k);//for the last second site
-        Graph.NormalizeCurrentSiteTransitionProb(k - 1);
-    }
     return 0;
 }
 
@@ -394,8 +97,9 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
  *This function must be called along the sites, no skip permitted;
  *Mask the site you want to skip at the begining if you have to.
  */
-    int rank, i0 = 0;
-    int group = 0;
+    int rank = 0;
+    int i0 = 0;
+    StateIndex group = 0;
 
     clusterMembership.clear();
     dist.clear();
@@ -403,11 +107,10 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
     rightCoordinateStat.clear();
 
     int tmpT = k > T ? T : k;
-    if (k >=1) {
-        for (rank = 0; rank < forwardCursor->M; ++rank) {
-            if (forwardCursor->d[rank] >
-                (k - tmpT))  {//new cluster if current sequence and last sequence have common sequence less than T
-                //if (na && nb)        /* then there is something to report */
+    if (k >= 1) {
+        for (rank = 0; rank < M; ++rank) {
+            if (d[rank] >
+                (k - tmpT)) {//new cluster if current sequence and last sequence have common sequence less than T
                 if (rank != 0) {
                     CreateNewCluster(k, rank, i0, group);
                     i0 = rank;
@@ -416,34 +119,23 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
             }
         }
         //finish the last segment if i0 didn't reach the end
-        if (i0 < forwardCursor->M) {
-
-            CreateNewCluster(k, forwardCursor->M, i0, group);
-
+        if (i0 < M) {
+            CreateNewCluster(k, M, i0, group);
         }
-
-        if (GetNumStates(k - 1) != 1) RegressionMergeAtSite(k - 1, true);//TODO:implement this function
-
-        Graph.NormalizeCurrentSiteTransitionProb(k - 2);
-
-
+        /*if ( k < (N - 20))*/ RegressionMergeAtSite(k - 1);
     }
 
     UpdateAandD(k);
-
     //section below are dealing with last site
     if (k == N - 1) {
         i0 = 0;
         group = 0;
-
         clusterMembership.clear();
-//        hasSiblings.clear();
         dist.clear();
-        for (rank = 0; rank < forwardCursor->M; ++rank) {
+        for (rank = 0; rank < M; ++rank) {
             /*assign states of last column based on previous d and sortedY*/
-            if (forwardCursor->d[rank] >
+            if (d[rank] >
                 (k - tmpT)) {//new cluster if current sequence and last sequence have common sequence less than T
-
                 if (rank != 0) {
                     CreateLastSiteCluster(k, rank, i0, group);
                     i0 = rank;
@@ -452,83 +144,73 @@ int PBWTWrapper::CursorForwardsTo(int k, int T) {
             }
         }
         //finish the last segment if i0 didn't reach the end
-        if (i0 < forwardCursor->M) {
-            CreateLastSiteCluster(k, forwardCursor->M, i0, group);
+        if (i0 < M) {
+            CreateLastSiteCluster(k, M, i0, group);
         }
-        Graph.NormalizeCurrentSiteTransitionProb(k - 1);
+//        Graph.NormalizeCurrentSiteTransitionProb(k - 1);
     }
     return 0;
 }
 
-void PBWTWrapper::CreateLastSiteCluster(int k, int rank, int i0, int group) {
+void PBWTWrapper::CreateLastSiteCluster(int k, int rank, int i0, StateIndex group) {
 
-    int tmpNumHap = rank-i0;
-    char allele = haplotype[GetHapIDFromFwd(k, i0)][k];
-    int prevSiteStateIndex =0;
-    int hapID =0;
+    int tmpNumHap = rank - i0;
+    char allele = haplotype[GetHapIDFromFwd(i0)][k];
+    StateIndex prevSiteStateIndex = 0;
+    int hapID = 0;
 
-    Graph.StateNodeMat[k].push_back(new StateNode(group, tmpNumHap, allele));
-    Graph.StateNodeMat[k][group]->nodeIndex = group;
-    dist.push_back(std::__1::vector<int>(tmpNumHap, 0));//state->rank_occupied
-    std::__1::vector<int> tmpMem;
+//    Graph.StateNodeMat[k].push_back(new StateNode(allele));
+    Graph.AddNode(k, allele);
+    dist.push_back(std::vector<int>(tmpNumHap, 0));//state->rank_occupied
+    std::vector<int> tmpMem;
     for (int ia = i0; ia < rank; ++ia) {
-                        hapID = GetHapIDFromFwd(k, ia);//original ID, by treating rank as backward ranking
-                        haplotypeCluster[k][hapID] = group;
-                        tmpMem.push_back(ia);
-                        dist[group][ia - i0] = GetRankFromBack(k, hapID);
-
-                        prevSiteStateIndex = GetHapStateFromFwd(k - 1, hapID);
-                            Graph.StateNodeMat[k][group]->AddParentNode(prevSiteStateIndex,
-                                                                        Graph.StateNodeMat[k - 1][prevSiteStateIndex]);
-                            Graph.StateNodeMat[k - 1][prevSiteStateIndex]->AddChildNode(allele,
-                                                                                        &(Graph.StateNodeMat[k][group]->nodeIndex),
-                                                                                        hapID <= M ? 1.f : 1e-6f);
-
-                    }
-    Graph.StateNodeMat[k][group]->SetID(prevSiteStateIndex, Graph.StateNodeMat[k - 1][prevSiteStateIndex]->ID);
-    Graph.RegisterState(k, Graph.StateNodeMat[k][group]->ID, &(Graph.StateNodeMat[k][group]->nodeIndex));
-    Graph.StateNodeMat[k][group]->AddChildNode(0, nullptr, 0);//end of the chain
+        hapID = GetHapIDFromFwd(ia);//original ID, by treating rank as backward ranking
+        haplotypeCluster[k][hapID] = group;
+        tmpMem.push_back(ia);
+        dist[group][ia - i0] = GetRankFromBack(k, hapID);
+        prevSiteStateIndex = GetHapStateFromFwd(k - 1, hapID);
+//        Graph.StateNodeMat[k][group]->AddParentNode(prevSiteStateIndex);
+//        Graph.StateNodeMat[k - 1][prevSiteStateIndex]->AddChildNode(allele, group);
+        Graph.AddParentNode(k, group, prevSiteStateIndex);
+        Graph.AddChildNode(k - 1, prevSiteStateIndex, allele, group);
+    }
+//    Graph.StateNodeMat[k][group]->AddChildNode(0, -1);//end of the chain
     sort(dist[group].begin(), dist[group].end());
-//                    clusterAllele[k].push_back(allele);
     clusterMembership.push_back(tmpMem);
 }
 
-int PBWTWrapper::CreateNewCluster(int k, int rank, int i0, int group) {
+int PBWTWrapper::CreateNewCluster(int k, int rank, int i0, StateIndex group) {
 
     int tmpNumHap = rank - i0;
-    char allele = haplotype[GetHapIDFromFwd(k - 1, i0)][k - 1];
-    int prevSiteStateIndex =0;
-    int hapID =0;
+    int hapID = GetHapIDFromFwd(i0);
+    char allele = haplotype[hapID][k - 1];
+    StateIndex prevSiteStateIndex = 0;
 
-    Graph.StateNodeMat[k - 1].push_back(new StateNode(group, tmpNumHap, allele));
-    Graph.StateNodeMat[k - 1][group]->nodeIndex = group;
 
-    dist.push_back(std::__1::vector<int>(tmpNumHap, 0));//state->rank_occupied
-    rightCoordinate.push_back(std::__1::vector<float>(tmpNumHap, (float) 0.));//state->rank_occupied
-    std::__1::vector<int> tmpMem;
+//    Graph.StateNodeMat[k - 1].push_back(new StateNode(allele));
+    Graph.AddNode(k - 1, allele);
+
+
+    dist.push_back(std::vector<int>(tmpNumHap, 0));//state->rank_occupied
+    rightCoordinate.push_back(std::vector<float>(tmpNumHap, (float) 0.));//state->rank_occupied
+    std::vector<int> tmpMem;
     for (int ia = i0; ia < rank; ++ia) {
-        hapID = GetHapIDFromFwd(k - 1, ia);//original ID, by treating rank as backward ranking
+        hapID = GetHapIDFromFwd(ia);//original ID, by treating rank as backward ranking
         haplotypeCluster[k - 1][hapID] = group;
         tmpMem.push_back(ia);
         dist[group][ia - i0] = GetRankFromBack(k - 1, hapID);
         rightCoordinate[group][ia - i0] = GetDistanceFromBack(k - 1, dist[group][ia - i0]);
         if (k >= 2) {
             prevSiteStateIndex = GetHapStateFromFwd(k - 2, hapID);
-            Graph.StateNodeMat[k - 1][group]->AddParentNode(prevSiteStateIndex,
-                                                            Graph.StateNodeMat[k - 2][prevSiteStateIndex]);//site k-1
-            Graph.StateNodeMat[k - 2][prevSiteStateIndex]->AddChildNode(allele,
-                                                                        &(Graph.StateNodeMat[k - 1][group]->nodeIndex),
-                                                                        hapID <= M? 1.f : 1e-6f);
+//            Graph.StateNodeMat[k - 1][group]->AddParentNode(prevSiteStateIndex);//site k-1
+//            Graph.StateNodeMat[k - 2][prevSiteStateIndex]->AddChildNode(allele, group);
+            Graph.AddParentNode(k - 1, group, prevSiteStateIndex);
+            Graph.AddChildNode(k - 2, prevSiteStateIndex, allele, group);
         }
     }
-    if (k == 1) {
-        Graph.StateNodeMat[0][group]->AddParentNode(0, nullptr);//site 1
-        Graph.StateNodeMat[0][group]->SetID(0, 0);
-    }
-    else
-        Graph.StateNodeMat[k - 1][group]->SetID(prevSiteStateIndex, Graph.StateNodeMat[k - 2][prevSiteStateIndex]->ID);
-
-    Graph.RegisterState(k - 1, Graph.StateNodeMat[k - 1][group]->ID, &(Graph.StateNodeMat[k - 1][group]->nodeIndex));
+//    if (k == 1) {
+//        Graph.StateNodeMat[0][group]->AddParentNode(0);//site 1
+//    }
 
     rightCoordinateStat.push_back(rightCoordinate[group]);
     sort(dist[group].begin(),
@@ -541,66 +223,47 @@ int PBWTWrapper::CreateNewCluster(int k, int rank, int i0, int group) {
 void PBWTWrapper::UpdateAandD(int k) {
     //copy haplotypes into forwardCursor->y, here is the start of new site, before this
     //section, we are grouping haplotypes based on previous site's alleles
-    CopyHap(k, forwardCursor);
+    CopyHap(k, a);
     //now use haplotype alleles on current site k, to update array a and array d
+    std::vector<int> b(M, 0), e(M, 0);
+//    int c = 0;
     int u = 0, v = 0;
     int p = k + 1;
     int q = k + 1;
-    for (int rank = 0; rank < forwardCursor->M; ++rank) {
-            if (forwardCursor->d[rank] > p) p = forwardCursor->d[rank];
-            if (forwardCursor->d[rank] > q) q = forwardCursor->d[rank];
-            if (forwardCursor->sortedY[rank] == 0) {
-                forwardCursor->a[u] = forwardCursor->a[rank];
-                forwardCursor->d[u] = p;
-                ++u;
-                p = 0;
-                forwardCursor->c++;
-                PBWTWrapper::u[k][rank] = u;
-            }
-            else {
-                forwardCursor->b[v] = forwardCursor->a[rank];
-                forwardCursor->e[v] = q;
-                ++v;
-                q = 0;
-                PBWTWrapper::u[k][rank] = u;
-            }
+
+    for (int rank = 0; rank < M; ++rank) {
+        if (d[rank] > p) p = d[rank];
+        if (d[rank] > q) q = d[rank];
+        if (sortedY[rank] == 0) {
+            a[u] = a[rank];
+            d[u] = p;
+            ++u;
+            p = 0;
+//            c++;
+//                PBWTWrapper::u[k][rank] = u;
+        } else {
+            b[v] = a[rank];
+            e[v] = q;
+            ++v;
+            q = 0;
+//                PBWTWrapper::u[k][rank] = u;
         }
-
-    memcpy(forwardCursor->a + u, forwardCursor->b, v * sizeof(int));
-    memcpy(forwardCursor->d + u, forwardCursor->e, v * sizeof(int));
-    c[k] = u;
-
-    forwardCursor->d[forwardCursor->M] = k + 2; /* sentinels */
-    a[k].assign(forwardCursor->a, forwardCursor->a + forwardCursor->M);
-
-    for (int j = 0; j < (int) a[k].size(); ++j) {
-            aMap[k][a[k][j]] = j;//at site k, hapID a[k] is stored at jth row/rank
-        }
-    d[k].assign(forwardCursor->d, forwardCursor->d + forwardCursor->M);
-}
-
-int PBWTWrapper::FastCursorForwards(const PBWTWrapper& motherWrapper) {//so far only implemented for test purpose
-
-
-    //PrintVector(forwardCursor->a,M,"end arrary aFend check 0");
-
-    for (int k = 0; k != N; ++k) {
-        //fprintf(stderr,"at site %d\n",k);
-        FastCursorForwardsTo(k, prefixLength, motherWrapper);
     }
-    //copy end of a to PBWT
-    //PrintVector(forwardCursor->a,M,"end arrary aFend check 1");
 
-    pbwtCursorToAFend(forwardCursor,pbwtCore);
+//    memcpy(a + u, b, v * sizeof(int));
+    std::copy(b.begin(), b.begin() + v, a.begin() + u);
 
-//    for (int i=0;i != pbwtCore->N; i++) {
-//
-//        UpdateTransVector(i);
-//    }
-    PrintSummary();
-    //update crossover rate?
-    return 0;
+//    memcpy(d + u, e, v * sizeof(int));
+    std::copy(e.begin(), e.begin() + v, d.begin() + u);
+
+    c[k] = u;
+    for (int j = 0; j < (int) a.size(); ++j) {
+        aMap[k][a[j]] = j;
+    }
+//    d[M] = k + 2; /* sentinels */
 }
+
+/*
 int PBWTWrapper::FastCursorForwardsTo(int k, int T, const PBWTWrapper& baseWrapper) {
 
     int rank, i0 = 0, ia;
@@ -619,16 +282,15 @@ int PBWTWrapper::FastCursorForwardsTo(int k, int T, const PBWTWrapper& baseWrapp
 
     int tmpT = k > T ? T : k;
 
-    /*reprot haolotype cluster based on prefix, so current site not included*/
+
     //cluster of the previous site k-1
     for (rank = 0; rank < forwardCursor->M; ++rank) {
-        /*assign states of last column based on previous d and sortedY*/
-        if (forwardCursor->d[rank] >
+
             (k - tmpT) &&
             (k >=1 )) {//new cluster if current sequence and last sequence have common sequence less than T
             if (rank != 0) {
                 tmpNumHap = rank - i0;
-                allele = haplotype[GetHapIDFromFwd(k - 1, i0)][k - 1];
+                allele = haplotype[GetHapIDFromFwd(i0)][k - 1];
 
                 Graph.StateNodeMat[k - 1].push_back(new StateNode(group, tmpNumHap, allele));
                 Graph.StateNodeMat[k - 1][group]->nodeIndex = group;
@@ -637,7 +299,7 @@ int PBWTWrapper::FastCursorForwardsTo(int k, int T, const PBWTWrapper& baseWrapp
                 rightCoordinate.push_back(std::vector<float>(tmpNumHap, (float) 0.));//state->rank_occupied
                 std::vector<int> tmpMem;
                 for (ia = i0; ia < rank; ++ia) {
-                    hapID = GetHapIDFromFwd(k - 1, ia);//original ID, by treating rank as backward ranking
+                    hapID = GetHapIDFromFwd(ia);//original ID, by treating rank as backward ranking
                     haplotypeCluster[k - 1][hapID] = group;
                     tmpMem.push_back(ia);
                     dist[group][ia - i0] = GetRankFromBack(k - 1, hapID);
@@ -690,7 +352,7 @@ int PBWTWrapper::FastCursorForwardsTo(int k, int T, const PBWTWrapper& baseWrapp
     if (i0 < forwardCursor->M) {
         if (k != 0) {
             tmpNumHap = forwardCursor->M - i0;
-            allele = haplotype[GetHapIDFromFwd(k - 1, i0)][k - 1];
+            allele = haplotype[GetHapIDFromFwd(i0)][k - 1];
 
             Graph.StateNodeMat[k - 1].push_back(new StateNode(group, tmpNumHap, allele));
             Graph.StateNodeMat[k - 1][group]->nodeIndex = group;
@@ -699,7 +361,7 @@ int PBWTWrapper::FastCursorForwardsTo(int k, int T, const PBWTWrapper& baseWrapp
             rightCoordinate.push_back(std::vector<float>(tmpNumHap, (float) 0.));//state->rank_occupied
             std::vector<int> tmpMem;
             for (ia = i0; ia < forwardCursor->M; ++ia) {
-                hapID = GetHapIDFromFwd(k - 1, ia);//original ID, by treating rank as backward ranking
+                hapID = GetHapIDFromFwd(ia);//original ID, by treating rank as backward ranking
                 haplotypeCluster[k - 1][hapID] = group;
                 tmpMem.push_back(ia);
                 dist[group][ia - i0] = GetRankFromBack(k - 1, hapID);
@@ -804,7 +466,7 @@ int PBWTWrapper::FastCursorForwardsTo(int k, int T, const PBWTWrapper& baseWrapp
     memcpy(forwardCursor->d + u, forwardCursor->e, v * sizeof(int));
     c[k] = u;
 
-    forwardCursor->d[forwardCursor->M] = k + 2; /* sentinels */
+    forwardCursor->d[forwardCursor->M] = k + 2;
     a[k].assign(forwardCursor->a, forwardCursor->a + forwardCursor->M);
 
     for (int j = 0; j < (int)a[k].size(); ++j) {
@@ -821,19 +483,19 @@ int PBWTWrapper::FastCursorForwardsTo(int k, int T, const PBWTWrapper& baseWrapp
 
         dist.clear();
         for (rank = 0; rank < forwardCursor->M; ++rank) {
-            /*assign states of last column based on previous d and sortedY*/
+
             if (forwardCursor->d[rank] >
                 (k - tmpT)) {//new cluster if current sequence and last sequence have common sequence less than T
                 if (rank != 0) {
                     tmpNumHap = rank - i0;
-                    allele = haplotype[GetHapIDFromFwd(k, i0)][k];
+                    allele = haplotype[GetHapIDFromFwd(i0)][k];
 
                     Graph.StateNodeMat[k].push_back(new StateNode(group, tmpNumHap, allele));
                     Graph.StateNodeMat[k][group]->nodeIndex = group;
                     dist.push_back(std::vector<int>(tmpNumHap, 0));//state->rank_occupied
                     std::vector<int> tmpMem;
                     for (ia = i0; ia < rank; ++ia) {
-                        hapID = GetHapIDFromFwd(k, ia);//original ID, by treating rank as backward ranking
+                        hapID = GetHapIDFromFwd(ia);//original ID, by treating rank as backward ranking
                         haplotypeCluster[k][hapID] = group;
                         tmpMem.push_back(ia);
                         dist[group][ia - i0] = GetRankFromBack(k, hapID);
@@ -876,14 +538,14 @@ int PBWTWrapper::FastCursorForwardsTo(int k, int T, const PBWTWrapper& baseWrapp
         //finish the last segment if i0 didn't reach the end
         if (i0 < forwardCursor->M) {
             tmpNumHap = forwardCursor->M - i0;
-            allele = haplotype[GetHapIDFromFwd(k, i0)][k];
+            allele = haplotype[GetHapIDFromFwd(i0)][k];
 
             dist.push_back(std::vector<int>(tmpNumHap, 0));//state->rank_occupied
             Graph.StateNodeMat[k].push_back(new StateNode(group, tmpNumHap, allele));
             Graph.StateNodeMat[k][group]->nodeIndex = group;
             std::vector<int> tmpMem;
             for (ia = i0; ia < forwardCursor->M; ++ia) {
-                hapID = GetHapIDFromFwd(k, ia);//original ID, by treating rank as backward ranking
+                hapID = GetHapIDFromFwd(ia);//original ID, by treating rank as backward ranking
                 haplotypeCluster[k][hapID] = group;
                 tmpMem.push_back(ia);
                 dist[group][ia - i0] = GetRankFromBack(k, hapID);
@@ -923,9 +585,10 @@ int PBWTWrapper::FastCursorForwardsTo(int k, int T, const PBWTWrapper& baseWrapp
     }
     return 0;
 }
+*/
 int PBWTWrapper::CursorBackwards() {
-    for (int i = 0; i != N; i++) {
 
+    for (int i = 0; i != N; i++) {
         CursorBackwardsTo(i, 50);
     }
     return 0;
@@ -936,81 +599,72 @@ int PBWTWrapper::CursorBackwardsTo(int siteBackword, int T) {
     int rank;
     //copy haplotypes into forwardCursor->y
     int siteForward = N - siteBackword - 1;//forward site 0 based
-    CopyHap(siteForward, reverseCursor);
-
+    CopyHap(siteForward, alpha);
+    std::vector<int> e(M, 0), b(M, 0);
     int u = 0, v = 0;
     int p = siteBackword + 1;
     int q = siteBackword + 1;
     float cumCoordinate = 0.0f;
-    float *tmpD1 = new float[reverseCursor->M];
-    float *tmpD2 = new float[reverseCursor->M];
-    for (rank = 0; rank < reverseCursor->M; ++rank) {
-        if (reverseCursor->d[rank] > p) p = reverseCursor->d[rank];
-        if (reverseCursor->d[rank] > q) q = reverseCursor->d[rank];
-
-        if (reverseCursor->sortedY[rank] == 0) {
-            reverseCursor->a[u] = reverseCursor->a[rank];
-            reverseCursor->d[u] = p;
-            cumCoordinate += (siteBackword - p + 1) > 0 ? 1.0f / (float) (siteBackword - p + 1) : 1.;
+    float *tmpD1 = new float[M];
+    float *tmpD2 = new float[M];
+    for (rank = 0; rank < M; ++rank) {
+        if (delta[rank] > p) p = delta[rank];
+        if (delta[rank] > q) q = delta[rank];
+        if (sortedY[rank] == 0) {
+            alpha[u] = alpha[rank];
+            delta[u] = p;
+            cumCoordinate += (siteBackword - p + 1) > 20 ? 1.0f / (float) (siteBackword - p + 1) : 1. / 20;
             tmpD1[u] = cumCoordinate;
-
             p = 0;
             ++u;
-            reverseCursor->c++;
-            ultra[siteForward][rank] = u;
-        }
-        else {
-            reverseCursor->b[v] = reverseCursor->a[rank];
-            reverseCursor->e[v] = q;
-            cumCoordinate += (siteBackword - q + 1) > 0 ? 1.0f / (float) (siteBackword - q + 1) : 1.;
+//            reverseCursor->c++;
+//            ultra[siteForward][rank] = u;
+        } else {
+            b[v] = alpha[rank];
+            e[v] = q;
+            cumCoordinate += (siteBackword - q + 1) > 20 ? 1.0f / (float) (siteBackword - q + 1) : 1. / 20;
             tmpD2[v] = cumCoordinate;
             q = 0;
             ++v;
-            ultra[siteForward][rank] = u;
+//            ultra[siteForward][rank] = u;
         }
     }
-
-
-    memcpy(reverseCursor->a + u, reverseCursor->b, v * sizeof(int));
-    memcpy(reverseCursor->d + u, reverseCursor->e, v * sizeof(int));
+//    memcpy(alpha + u, reverseCursor->b, v * sizeof(int));
+    std::copy(b.begin(), b.begin() + v, alpha.begin() + u);
+//    memcpy(delta + u, reverseCursor->e, v * sizeof(int));
+    std::copy(e.begin(), e.begin() + v, delta.begin() + u);
     memcpy(tmpD1 + u, tmpD2, v * sizeof(float));
-    reverseCursor->d[reverseCursor->M] = siteBackword + 2; /* sentinels */
-    alpha[siteForward].assign(reverseCursor->a, reverseCursor->a + reverseCursor->M);
+//    delta[M] = siteBackword + 2; /* sentinels */
+//    alpha.assign(alpha.begin(), alpha.end());
     celta[siteForward] = u;
-    for (int j = 0; j < (int)alpha[siteForward].size(); ++j) {
-        alphaMap[siteForward][alpha[siteForward][j]] = j;
+    for (int j = 0; j < (int) alpha.size(); ++j) {
+        alphaMap[siteForward][alpha[j]] = j;
     }
-    bkDistance[siteForward].assign(tmpD1, tmpD1 + reverseCursor->M);
-    delta[siteForward].assign(reverseCursor->d, reverseCursor->d + reverseCursor->M);
+    bkDistance[siteForward].assign(tmpD1, tmpD1 + M);
+    allDelta[siteForward].assign(delta.begin(), delta.end());
     delete[] tmpD1;
     delete[] tmpD2;
-
     return 0;
 }
 
-int PBWTWrapper::CopyHap(int k, PbwtCursor *Cursor) {//this function has the same effect as forward/backward read
-    for (int i = 0; i != Cursor->M; ++i) {
-        if (haplotype[Cursor->a[i]][k] >= '0')
-            Cursor->sortedY[i] = haplotype[Cursor->a[i]][k] - '0';
-        else //fprintf(stderr,"alert!!!! %d,%d,%d,%d\n",haplotype[Cursor->a[i]][k],k,i,Cursor->a[i]);
-            Cursor->sortedY[i] = haplotype[Cursor->a[i]][k];
+int PBWTWrapper::CopyHap(int k, std::vector<int> &tmpA) {//this function has the same effect as forward/backward read
+    for (int i = 0; i != M; ++i) {//ensure that alleles are 0/1 values not '0'/'1'
+        sortedY[i] = haplotype[tmpA[i]][k];
     }
-
     //PrintVector(Cursor->sortedY,Cursor->M,"fromCopyHap");
     return 0;
 }
 
 void PBWTWrapper::MergeSortedArrayToA(std::vector<int> &a, std::vector<int> &b) {
     int indexA(0), indexB(0), indexTotal(0);
-    int sizeA(a.size()),sizeB(b.size());
+    int sizeA(a.size()), sizeB(b.size());
     std::vector<int> mergedDist(sizeA + sizeB);
-    while (indexA <sizeA && indexB <sizeB) {
+    while (indexA < sizeA && indexB < sizeB) {
         if (a[indexA] < b[indexB]) {
             mergedDist[indexTotal++] = a[indexA];
             indexA++;
 
-        }
-        else {
+        } else {
             mergedDist[indexTotal++] = b[indexB];
             indexB++;
         }
@@ -1032,24 +686,22 @@ bool PBWTWrapper::IsRecipricalLengthOK(std::vector<int> &a, std::vector<int> &b)
     int cnt = 0;
     if (a.front() < b.front()) {
         if (a.back() < b.back()) {
-            for (auto& value: b) {
+            for (auto &value: b) {
                 if (value < a.back()) cnt++;
                 else break;
             }
-            return cnt / size > 0.8;
-        }
-        else
+            return cnt / size > 0.5;
+        } else
             return true;
-    }
-    else {
+    } else {
         if (a.back() < b.back())
             return true;
         else {
-            for (auto & value:a) {
+            for (auto &value:a) {
                 if (value < b.back()) cnt++;
                 else break;
             }
-            return cnt / size > 0.8;
+            return cnt / size > 0.5;
         }
     }
 }
@@ -1062,35 +714,40 @@ bool PBWTWrapper::IsEditDistanceOK(int stateA, int stateB, int index, int error_
     int lower, upper;
     int backRankA, backRankB;
     int numTruth(0);
-    const int sizeB=(int)dist[stateB].size();
-    for (int i = 0; i < sizeB; ++i) {
-        backRankB = dist[stateB][i];
-        auto lowerRankA = std::lower_bound(dist[stateA].begin(), dist[stateA].end(), backRankB);
-        if (lowerRankA == dist[stateA].end()) lower = backRankB + 1;
-        else if (lowerRankA == dist[stateA].begin()) {
-            lower = -1;
-        }
-        else {
-            lowerRankA--;
+    const int sizeB = (int) dist[stateB].size();
+    for (int i = 0; i < sizeB; ++i) {//for each item in smaller set
+        backRankB = dist[stateB][i];//get its rank
+        auto lowerRankA = std::lower_bound(dist[stateA].begin(), dist[stateA].end(),
+                                           backRankB);//find closest item in larger set
+        if (lowerRankA == dist[stateA].end()) lower = backRankB + 1;//if not found, lower bound is rankB + 1
+        else if (lowerRankA == dist[stateA].begin()) {//if found as smallest in larger set
+            lower = -1;//lower bound is minus 1
+        } else {
+            lowerRankA--;//otherwise, get the element in larger set immediately smaller than current item in smaller set
             lower = *lowerRankA;
         }
-        auto upperRankB = std::upper_bound(dist[stateA].begin(), dist[stateA].end(), backRankB);
+        auto upperRankB = std::upper_bound(dist[stateA].begin(), dist[stateA].end(),
+                                           backRankB);//same thing for upper bound
         if (upperRankB == dist[stateA].end()) upper = backRankB - 1;
         else upper = *upperRankB;
-        while (lower != -1 and lower < backRankB) {
-            if (delta[index][++lower] < thresh_pos) continue;
+        while (lower != -1 and lower < backRankB) {//if lower bound is smaller than current item
+            if (allDelta[index][++lower] < thresh_pos)
+                continue;//keep going up if shared prefix ended beyound thresh_pos
             else break;
         }
-        while (backRankB < upper) {
-            if (delta[index][--upper] < thresh_pos) continue;
+        while (backRankB < upper) {//if upper bound is larger than current item
+            if (allDelta[index][--upper] < thresh_pos)
+                continue;//keep going down if share prefix ended beyound thresh_pos
             else break;
         }
-        if (lower == backRankB || upper == backRankB) numTruth++;
+        if (lower == backRankB || upper == backRankB)
+            numTruth++;//if either bound meet current item's rank, that means current item is a member of them
     }
-    if (numTruth == sizeB) return true;
+    if (numTruth == sizeB) return true;//if all of the items in smaller set are members of larger set, return true
     return false;
 }
 
+/*
 bool PBWTWrapper::IsInSameBackCluster(int stateA, int stateB, int site, int error_thresh) {
     //ensure stateA has larger size
     if (dist[stateA].size() < dist[stateB].size()) std::swap(stateA, stateB);
@@ -1138,10 +795,10 @@ bool PBWTWrapper::IsInSameBackCluster(int stateA, int stateB, int site, int erro
     return false;
 
 }
-
+*/
 int PBWTWrapper::CalculateDmax(double &pval, double &Dmax, std::vector<int> &j, std::vector<int> &k) {
-    int sizeJ(j.size()),sizeK(k.size());
-    double thresh = 1.44 * 1.22 * sqrt(1. / sizeJ + 1. / sizeK);
+    int sizeJ(j.size()), sizeK(k.size());
+    double thresh = 1.44 * 1.22 * sqrt(1. / sizeJ + 1. / sizeK);//apha:0.1
     //assume dist has sorted ranks
     double Ddiff = 0;
     pval = 0;
@@ -1151,8 +808,7 @@ int PBWTWrapper::CalculateDmax(double &pval, double &Dmax, std::vector<int> &j, 
         if (j[indexA] < k[indexB]) {
             indexA++;
             Ddiff += 1. / sizeJ;
-        }
-        else {
+        } else {
             indexB++;
             Ddiff -= 1. / sizeK;
         }
@@ -1160,8 +816,7 @@ int PBWTWrapper::CalculateDmax(double &pval, double &Dmax, std::vector<int> &j, 
             Dmax = fabs(Ddiff);
             if (sizeJ * sizeK < 10000) {
                 if (GetPValue(sizeJ, sizeK, Dmax) < P_thresh) return 1;
-            }
-            else {
+            } else {
                 if (Dmax > thresh)
                     return 1;
             }
@@ -1174,22 +829,20 @@ int PBWTWrapper::CalculateDmax(double &pval, double &Dmax, std::vector<int> &j, 
             Dmax = fabs(Ddiff);
             if (sizeJ * sizeK < 10000) {
                 if (GetPValue(sizeJ, sizeK, Dmax) < P_thresh) return 1;
-            }
-            else {
+            } else {
                 if (Dmax > thresh)
                     return 1;
             }
         }
     }
-    while (indexB <sizeK) {
+    while (indexB < sizeK) {
         indexB++;
         Ddiff -= 1. / sizeK;
         if (fabs(Ddiff) > Dmax) {
             Dmax = fabs(Ddiff);
             if (sizeJ * sizeK < 10000) {
                 if (GetPValue(sizeJ, sizeK, Dmax) < P_thresh) return 1;
-            }
-            else {
+            } else {
                 if (Dmax > thresh)
                     return 1;
             }
@@ -1197,6 +850,54 @@ int PBWTWrapper::CalculateDmax(double &pval, double &Dmax, std::vector<int> &j, 
     }
     return 0;
 };
+
+std::vector<int> PBWTWrapper::FindMemberWithAllele(std::vector<int> &hapsInL, char allele, int site) {
+    std::vector<int> memVec;
+    for (size_t i = 0; i < hapsInL.size(); ++i) {
+        int hapID = GetHapIDFromFwd(hapsInL[i]);
+        char iAllele = haplotype[hapID][site];
+        if (iAllele == allele) memVec.push_back(hapsInL[i]);
+    }
+    return memVec;
+}
+
+double PBWTWrapper::CalculateDmax(int site, std::vector<int> hapsInL, std::vector<int> hapsInR, int baseSite,
+                                  int nL, int nR, int endSite, double Dmax, float threshold) {
+    std::vector<int> childL, childR;
+    double sizeL = hapsInL.size();
+    double sizeR = hapsInR.size();
+    double propA = sizeL / nL;
+    double propB = sizeR / nR;
+    double diff = fabs(propA - propB);
+    if (diff >= threshold) {
+        return diff;
+    } else if (propA <= Dmax && propB <= Dmax) {
+        return Dmax;
+    } else if (diff > Dmax) {
+        Dmax = diff;
+    }
+    if (sizeL == 0 || sizeR == 0) {
+        return Dmax;
+    } else if (site > endSite or site == nMarkers) {
+        nUnmergedAtLeaf += (sizeL + sizeR);
+        return Dmax;
+    }
+    //next site
+    for (char j = 0; j < 2; ++j) {
+        childL = FindMemberWithAllele(hapsInL, j, site + 1);
+        childR = FindMemberWithAllele(hapsInR, j, site + 1);
+
+        double childDmax = CalculateDmax(site + 1, childL, childR, baseSite, nL, nR, endSite, Dmax, threshold);
+        if (childDmax > Dmax) {
+            if (childDmax >= threshold) {
+                return childDmax;
+            } else {
+                Dmax = childDmax;
+            }
+        }
+    }
+    return Dmax;
+}
 
 int PBWTWrapper::CalculateDmaxBeta(double &pval, double &Dmax, std::vector<int> &j, std::vector<int> &k) {
     double thresh = 10;
@@ -1211,14 +912,13 @@ int PBWTWrapper::CalculateDmaxBeta(double &pval, double &Dmax, std::vector<int> 
         if (j[indexA] < k[indexB]) {
             indexA++;
             nx++;
-        }
-        else {
+        } else {
             indexB++;
             ny++;
         }
         pA = (nx + alpha) / (sizeJ + alpha + beta);
         pB = (ny + alpha) / (sizeK + alpha + beta);
-        Ddiff = (pA - pB) * (pA - pB) / (pA * (1 - pA) / sizeJ + pB * (1 - pB) /sizeK);
+        Ddiff = (pA - pB) * (pA - pB) / (pA * (1 - pA) / sizeJ + pB * (1 - pB) / sizeK);
         if (Ddiff > Dmax) Dmax = Ddiff;
         if (Dmax >= thresh) {
             Dmax = sqrt(Dmax);
@@ -1253,216 +953,163 @@ int PBWTWrapper::CalculateDmaxBeta(double &pval, double &Dmax, std::vector<int> 
     }
     return 0;
 };
-#include "../SinglePhasing/libStatGen/include/Random.h"
-int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
 
-    Random localRandom(31415);
-//    if(recomRate[site-1]>1e-4) return 1;
+#define MIN_FREQ 5
+#define MIN_DEPTH 10
+
+//#include <random>
+//std::random_device rd;
+//std::mt19937 mt(rd());
+//std::uniform_real_distribution<double> RandGenNext(0, std::numeric_limits<double>::max());
+#include "Random.h"
+Random localRandom(31415);
+int PBWTWrapper::NextReadDepth(float unmergedRatio, int depth, int lastDepth) {
+    if (unmergedRatio <= 1) {
+        return MIN_DEPTH;
+    } else if (depth < (0.85 * lastDepth)) {
+        return 1 + (int) std::round(0.95 * lastDepth);
+    } else if ((unmergedRatio > 2) && (depth > (0.95 * lastDepth))) {
+        return (int) std::ceil((1 + unmergedRatio / 20) * lastDepth);
+    } else {
+        return lastDepth;
+    }
+}
+
+int PBWTWrapper::AddCandidatePair(int site, StateIndex stateL, StateIndex stateR, double &pValue,
+                                  bool isPop)//return 1 if don't merge
+{
+
+    if (GetAllele(site, stateL) != GetAllele(site, stateR))
+        return 1;
+
+    double Dmax = 0.;
+    double Ddiff = 0.;
+    bool exactTest = false;
+    size_t sizeL = clusterMembership[stateL].size();
+    size_t sizeR = clusterMembership[stateR].size();
+
+
+    if (dist[stateL].size() <= MIN_FREQ or dist[stateR].size() <= MIN_FREQ) {
+
+        if (!IsEditDistanceOK(stateL, stateR, site, 5))
+            return 1;
+    }
+
+    if(sizeL * sizeR < 10000)
+//    if (1)
+    {
+        exactTest = true;
+
+        float scale = 0.9;//TODO:double check
+        float threshold = (float) (scale * sqrt((1.0 / sizeL) + (1.0 / sizeR)));
+        Dmax = CalculateDmax(site, clusterMembership[stateL], clusterMembership[stateR], site,
+                             sizeL, sizeR, currentEndSite, Dmax, threshold);
+
+        if (Dmax > 0.8 * threshold) {
+            return 1;
+        } else {
+            pValue = P_thresh + (Dmax < threshold ? 0.00001 : -0.00001);
+            if (not isPop) {
+                MaxPair mergePair = {stateL, stateR, Dmax, exactTest, pValue, localRandom.Next()};
+                mergePairList.push(mergePair);
+            }
+        }
+    } else {
+        exactTest = false;
+        if (!IsRecipricalLengthOK(dist[stateL], dist[stateR]))
+            return 1;
+
+        if (rightCoordinateStat[stateL].Combine(rightCoordinateStat[stateR]).IsSignificant()) {
+//                    PrintVector(dist[stateL],dist[stateL].size(),"rank j:");
+//                    PrintVector(dist[stateR],dist[stateR].size(),"rank k:");
+//                    PrintVector(rightCoordinate[stateL],rightCoordinate[stateL].size(),"big beta hat right j:");
+//                    PrintVector(rightCoordinate[stateR],rightCoordinate[stateR].size(),"big beta hat right k:");
+            return 1;
+        } else {
+//                fprintf(stderr,"merge state pair:(%d,%d)\n",stateL, stateR);
+        }
+
+        if (CalculateDmax(pValue, Dmax, dist[stateL], dist[stateR]))//return early
+        {
+            return 1;
+        }
+
+        Ddiff = sqrt(double(sizeL * sizeR / (sizeL + sizeR))) * Dmax;
+        pValue = 1. - pkstwo_wrapper(1, &Ddiff, 1e-06);
+
+        if (pValue > P_thresh)//potentially from same group
+        {
+            if (not isPop) {
+                MaxPair mergePair = {stateL, stateR, Dmax, exactTest, pValue, localRandom.Next()};
+                mergePairList.push(mergePair);
+            }
+        }
+    }
+    return 0;
+}
+
+int PBWTWrapper::RegressionMergeAtSite(int site) {
+
     int ret(0);
     int currentNumCluster = GetNumStates(site);
-    std::cerr<<"Enter Site:"<<site<<" has "<< currentNumCluster<<" state and recomRate:"<<P_thresh<<std::endl;
-
-//    unsigned long numHaps = haplotypeCluster[site].size();
-
+    if (currentNumCluster <= 1) return ret;
+//    std::cerr << "Enter Site:" << site << " has " << currentNumCluster << " state and P_thresh:" << P_thresh
+//              << std::endl;
 
     std::vector<bool> removeIndicator(currentNumCluster, false);
     std::vector<bool> retainIndicator(currentNumCluster, false);
 
-
     tmpOrder = 0;
-    pval = 0;
-    EXACT = false;
     stateOrder.clear();//mapping oldState to newOrder
-    tmpAllele.clear();
     removeMembership.clear();//rankID,state
-    Graph.tmpNodeVec.clear();
 
-//
-//    int totalChanged=0;
-//    for (int l = 0; l <Graph.StateNodeMat[site].size() ; ++l) {
-//        if(Graph.StateNodeMat[site][l]->needMergeUpdate) totalChanged++;
-//    }
-//    std::cerr<<"site:"<<site<<"\thas "<<totalChanged<<" states out of "<<Graph.StateNodeMat[site].size()<<" states"<<std::endl;
+    StateIndex retainState;
+    StateIndex removeState;
 
+    double pValue = 0.;
 
-    int retainState;
-    int removeState;
+    nUnmergedAtLeaf = 0.f;
 
-    double Dmax = 0.;
-    double Ddiff = 0.;
+    StateIndex stateL(0), stateR(0);
 
-    std::vector<int> stateWithSibs, stateWithoutSibs;
-    for (int i = 0; i <(int) dist.size(); ++i) {
-        if (!HasSiblings(site, i)) stateWithoutSibs.push_back(i);
-        else stateWithSibs.push_back(i);
+    std::vector<StateIndex> stateWithSibs, stateWithoutSibs;
+    for (size_t i = 0; i < dist.size(); ++i) {
+        if (HasSiblings(site, i)) stateWithSibs.push_back(i);
+        else stateWithoutSibs.push_back(i);
     }
     stateWithSibs.insert(stateWithSibs.end(), stateWithoutSibs.begin(), stateWithoutSibs.end());
-
-    int stateL(0), stateR(0);
-    size_t sizeL(0), sizeR(0);
-
-    int totalPair=0;
-//    int skippedPair=0;
-    for (int j = 0; j < int(stateWithSibs.size() - stateWithoutSibs.size()); ++j) {//enumerate through all the states, usually retain stateWithSibs
+    //enumerate through all the states, usually retain stateWithSibs
+    if(1)
+    for (int j = 0; j < int(stateWithSibs.size() - stateWithoutSibs.size()); ++j) {
         stateL = stateWithSibs[j];
-        for (int k = j + 1; k < (int)stateWithSibs.size(); ++k) {
+        for (int k = j + 1; k < (int) stateWithSibs.size(); ++k) {
             stateR = stateWithSibs[k];
-
-            if (GetAllele(site,stateL)!=GetAllele(site,stateR))
-                continue;
-//            totalPair++;
-//            if ((Graph.StateNodeMat[site][stateR]->needMergeUpdate==false and Graph.StateNodeMat[site][stateL]->needMergeUpdate==false) and !isBaseWrapper)
-//            {
-////                std::cerr<<"skipped "<<site<<"\t"<<stateR<<"\t"<<stateL<<std::endl;
-//                skippedPair++;
-//                continue;
-//            }
-//
-
-                if (dist[stateL].size() <= 4) {
-                    if (dist[stateR].size() <= 4) {//both rare
-                        continue;
-                    } else//j rare, k not
-                    {
-                        if (!IsEditDistanceOK(stateL, stateR, site, 50))
-                            continue;
-                    }
-                } else if (dist[stateR].size() <= 4)//j not, k rare
-                {
-                    if (!IsEditDistanceOK(stateL, stateR, site, 50))
-                        continue;
-                }
-
-                {
-                    if (!IsRecipricalLengthOK(dist[stateL], dist[stateR]))//||!IsEditDistanceOK(backBone,j,k,site,0.5))
-                        continue;
-                }
-
-
-                {
-                    if (rightCoordinateStat[stateL].Combine(rightCoordinateStat[stateR]).IsSignificant()) {
-//                    PrintVector(dist[j],"rank j:");
-//                    PrintVector(dist[k],"rank k:");
-//                    PrintVector(rightCoordinate[j],"big beta hat right j:");
-//                    PrintVector(rightCoordinate[k],"big beta hat right k:");
-                        continue;
-                    }
-                }
-
-                sizeL = clusterMembership[stateL].size();
-                sizeR = clusterMembership[stateR].size();
-
-                if (sizeL * sizeR < 10000)//exact
-                {
-                    EXACT = true;
-                } else {
-                    EXACT = false;
-                }
-
-            if (CalculateDmax(pval, Dmax, dist[stateL], dist[stateR]))//return early
-                {
-                    goto DIST_END;
-                }
-
-                if (EXACT) {
-                    pval = GetPValue(sizeL, sizeR, Dmax);
-                } else {
-                    Ddiff = sqrt(double(sizeL + sizeR)) * Dmax;
-                    pval = 1. - pkstwo_wrapper(1, &Ddiff, 1e-06);
-                }
-
-                if (pval > P_thresh)//potentially from same group
-                {
-                    max_pair_t mergePair = {stateL, stateR, Dmax, EXACT, pval,localRandom.Next()};
-                    mergePairList.push(mergePair);
-                }
-
-                DIST_END:
-//            fprintf(stderr,"first:(%d,%d) Dmax:%f and Thresh:%f and Pval:%f, with sample size:%d,%d and %d,%d\n",
-//                        j,k,Dmax,thresh,pval,dist[j].size(),dist[k].size(),clusterMembership[j].size(),clusterMembership[k].size());
-                continue;
-
+            //std::cerr << "Site:" << site << "\tnodeA:" << stateL << "\tnodeB:" << stateR << std::endl;
+            AddCandidatePair(site, stateL, stateR, pValue, false);
         }
-
     }
-
-//    std::cerr<<"not in vain:"<<site<<"\t skipped "<<skippedPair<<" out of "<<totalPair<<std::endl;
-
-    int clusterA(0), clusterB(0);
-    double old_p_max = 0;
-    while (!mergePairList.empty()) {
-
-        max_pair_t iter_pair = mergePairList.top();
-        mergePairList.pop();
-        old_p_max = iter_pair.pval;
-        clusterA = iter_pair.clusterA;
-        clusterB = iter_pair.clusterB;
-        sizeL = clusterMembership[clusterA].size();
-        sizeR = clusterMembership[clusterB].size();
-
-
-
-        if (removeIndicator[clusterA] || removeIndicator[clusterB]) continue;//skip
-        if (retainIndicator[clusterA] || retainIndicator[clusterB]) {//if either of these two cluster ever merged before, recalculate p value
-
-            if (GetAllele(site,stateL)!=GetAllele(site,stateR))
-                continue;
-            if (dist[clusterA].size() <= 4) {
-                if (dist[clusterB].size() <= 4) {//both rare
-                    continue;
-                } else//j rare, k not
-                {
-                    if (!IsEditDistanceOK(clusterA, clusterB, site, 50))
-                        continue;
-                }
-            } else if (dist[clusterB].size() <= 4)//j not, k rare
-            {
-                if (!IsEditDistanceOK(clusterA, clusterB, site, 50))
-                    continue;
+    else
+        for (int j = 0; j < (int) stateWithSibs.size(); ++j) {
+            stateL = stateWithSibs[j];
+            for (int k = j + 1; k < (int) stateWithSibs.size(); ++k) {
+                stateR = stateWithSibs[k];
+                //std::cerr << "Site:" << site << "\tnodeA:" << stateL << "\tnodeB:" << stateR << std::endl;
+                AddCandidatePair(site, stateL, stateR, pValue, false);
             }
-
-            {
-                if (!IsRecipricalLengthOK(dist[clusterA], dist[clusterB]))//||!IsEditDistanceOK(backBone,j,k,site,0.5))
-                    continue;
-            }
-
-                if (rightCoordinateStat[clusterA].Combine(rightCoordinateStat[clusterB]).IsSignificant()) {
-                    continue;
-                }
-
-                if (sizeL * sizeR < 10000)//exact
-                {
-                    iter_pair.exact = true;
-//                thresh = GetExactThresh(clusterMembership[clusterA].size(), clusterMembership[clusterB].size());
-                } else {
-                    iter_pair.exact = false;
-//                thresh = 1.22 * sqrt((clusterMembership[clusterA].size() + clusterMembership[clusterB].size()) /
-//                                     (clusterMembership[clusterA].size() * clusterMembership[clusterB].size()));
-                }
-
-                if (CalculateDmax(iter_pair.pval, iter_pair.Dmax, dist[clusterA], dist[clusterB]))//return early
-                {
-                    goto END_WHILE;
-                }
-
-                iter_pair.Dmax = Dmax;
-
-                if (iter_pair.exact) {
-                    iter_pair.pval = GetPValue(sizeL, sizeR,
-                                               Dmax);//1 - psmirnov2x(iter_pair.Dmax, clusterMembership[clusterA].size(), clusterMembership[clusterB].size());
-                } else {
-                    Ddiff = sqrt(double(sizeL + sizeR)) * iter_pair.Dmax;
-                    iter_pair.pval = 1 - pkstwo_wrapper(1, &Ddiff, 1e-06);//two sided ks test p value
-                }
-                if (iter_pair.pval < old_p_max) {//the smaller the p val, the less likely to merge
-                    max_pair_t mergePair = {clusterA, clusterB, iter_pair.Dmax, iter_pair.exact, iter_pair.pval,localRandom.Next()};
-                    mergePairList.push(mergePair);
-                    continue;
-                }
-
         }
 
+    while (!mergePairList.empty()) {
+        MaxPair iter_pair = mergePairList.top();
+        mergePairList.pop();
+        stateL = iter_pair.clusterA;
+        stateR = iter_pair.clusterB;
 
+        if (removeIndicator[stateL] || removeIndicator[stateR]) continue;//skip
+        if (retainIndicator[stateL] ||
+            retainIndicator[stateR]) {//if either of these two cluster ever merged before, recalculate p value
+            if (AddCandidatePair(site, stateL, stateR, iter_pair.pval, true) != 1)
+                continue;
+        }
 #ifdef DEBUG
 
         {
@@ -1495,73 +1142,76 @@ int PBWTWrapper::RegressionMergeAtSite(int site, bool isBaseWrapper) {
                 }
 
 #endif
-
         if (iter_pair.pval > P_thresh) {
-//            if(site==10)
-//            {
-//
-//                printf("merge of clusterA %d\tclusterB %d:%f\tpval:%f\tret:%d\tsizeL:%d\tsizeR:%d\n",
-//                       clusterA,clusterB, iter_pair.Dmax, iter_pair.pval,ret,sizeL,sizeR);
-//            }
-            retainState = clusterA;
-            removeState = clusterB;
+            retainState = stateL;
+            removeState = stateR;
 //            PrintVector(dist[retainState],"retainState");
 //            PrintVector(dist[removeState],"removeState");
             ret = 1;
-            if (!HasSiblings(site, clusterA)) {
-                retainState = clusterB;
-                removeState = clusterA;
+            if (!HasSiblings(site, retainState)) {
+                retainState = stateR;
+                removeState = stateL;
+            } else if (HasSiblings(site, removeState)
+                       and clusterMembership[stateL].size() < clusterMembership[stateR].size()) {
+                retainState = stateR;
+                removeState = stateL;
             }
-
-            DoMerge(site, retainState, removeState, dist, removeIndicator, retainIndicator, removeMembership);
+            DoMerge(site, retainState, removeState, dist, removeIndicator, retainIndicator);
             rightCoordinateStat[retainState] = rightCoordinateStat[retainState] + rightCoordinateStat[removeState];
-            Graph.StateNodeMat[site][retainState]->operator+=(*Graph.StateNodeMat[site][removeState]);
-            if(isBaseWrapper)Graph.RegisterState(site,Graph.StateNodeMat[site][removeState]->ID,&(Graph.StateNodeMat[site][removeState]->nodeIndex));
-            //finish merge, look for next candidate pair
+            Graph.JoinNodes(site, retainState, removeState);
         }
-//        else// if(clusterMembership[clusterA].size()<=2 && clusterMembership[clusterA].size()<=2)
-//        {
-//            mergePairList = std::priority_queue<max_pair_t, std::vector<max_pair_t>, std::function<bool(
-//                    const max_pair_t &, const max_pair_t &)> >(comparator);
-//            break;
-//        }
-        END_WHILE:
-        continue;
     }
 
-    if (ret) {
-        for (int stateM = 0; stateM < (int)dist.size(); ++stateM)//loop through all remained states with the help of mergeIndicator
-        {
-            if (removeIndicator[stateM]) continue;
-            tmpAllele.push_back(GetAllele(site,stateM));
-            Graph.StateNodeMat[site][stateM]->nodeIndex = tmpOrder;
-            Graph.tmpNodeVec.push_back(Graph.StateNodeMat[site][stateM]);
-            stateOrder[stateM] = tmpOrder;
-            tmpOrder++;
-        }
-//        PrintVector(clusterAllele[site],"allele cluster states after");
-        //PrintVector(haplotypeCluster[site],"haplotype cluster states after");
-        for (auto & value:haplotypeCluster[site]) {
-            value = stateOrder[value];//TODO:don't forget index in StateNode
-        }
-//        clusterAllele[site] = tmpAllele;//update merged cluster allele
-        Graph.StateNodeMat[site] = Graph.tmpNodeVec;
-//        PrintVector(clusterAllele[site],"allele cluster states final");
-        //PrintVector(haplotypeCluster[site],"haplotype cluster states final");
-        //adjust d array and a array
-        MoveSegment(removeMembership, site);
-    }
-    std::cerr<<"Exit Site:"<<site<<" has "<< GetNumStates(site)<<" state"<<std::endl;
+    if (ret) UpdateCluster(site, removeIndicator);
+//    std::cerr << "Exit Site:" << site << " has " << GetNumStates(site) << " state" << std::endl;
+    float ratio = (nUnmergedAtLeaf / maxUnmergedAtLeaf);
+    int depth = (currentEndSite - site - 1);
+    int readDepth = NextReadDepth(ratio, depth, lastReadDepth);
+    readDepth = readDepth > 500 ? 500 : readDepth;
+//    std::cerr << "site:" << site << "\tdepth:" << depth << "\treadDepth:" << readDepth
+//              << "\tratio:" << nUnmergedAtLeaf / maxUnmergedAtLeaf << "\tunmerged:" << nUnmergedAtLeaf << std::endl;
 
-//    if(site>12) exit(EXIT_FAILURE);
+    if (readDepth > depth) {
+        currentEndSite = currentEndSite + (readDepth - depth);
+        currentEndSite = currentEndSite < (nMarkers - 1) ? currentEndSite : (nMarkers - 1);
+        lastReadDepth = readDepth;
+    }
     return ret;
 }
 
+void
+PBWTWrapper::UpdateCluster(int site, const std::vector<bool> &removeIndicator) {
+    std::vector<StateNode *> tmpNodeVec;
+    //loop through all remained states with the help of mergeIndicator
+    for (StateIndex stateM = 0; stateM < (int) dist.size(); ++stateM) {
+        if (removeIndicator[stateM]) {
+            Graph.DeleteNode(site, stateM);
+            continue;
+        }
 
-void PBWTWrapper::DoMerge(int site, int retainState, int removeState, std::vector<std::vector<int>> &dist,
+        for (auto kv:Graph.GetParentSet(site, stateM)) {
+            Graph.UpdateChildNodeIndex(site - 1, kv, tmpOrder, GetAllele(site, stateM));
+        }
+
+        tmpNodeVec.push_back(Graph.GetNode(site, stateM));
+        stateOrder[stateM] = tmpOrder;
+        tmpOrder++;
+    }
+//        PrintVector(clusterAllele[site],"allele cluster states after");
+    //PrintVector(haplotypeCluster[site],"haplotype cluster states after");
+    for (auto &value:haplotypeCluster[site]) {
+        value = stateOrder[value];//TODO:don't forget index in StateNode
+    }
+    Graph.UpdateNodeVec(site, tmpNodeVec);
+//        PrintVector(clusterAllele[site],"allele cluster states final");
+    //PrintVector(haplotypeCluster[site],"haplotype cluster states final");
+    //adjust d array and a array
+    MoveSegment(site);
+}
+
+void PBWTWrapper::DoMerge(int site, StateIndex retainState, StateIndex removeState, std::vector<std::vector<int>> &dist,
                           std::vector<bool, std::allocator<bool>> &removeIndicator,
-                          std::vector<bool, std::allocator<bool>> &retainIndicator,
-                          std::unordered_map<int, int> &removeMembership) {//move dist occupation from stateB to stateA
+                          std::vector<bool, std::allocator<bool>> &retainIndicator) {//move dist occupation from stateB to stateA
 //    fprintf(stderr,"now merge state %d,%d at site %d\n",retainState,removeState,site);
 //    for (int t = 0; t != dist[removeState].size(); ++t) {
 //                dist[retainState][t] += dist[removeState][t];
@@ -1574,39 +1224,116 @@ void PBWTWrapper::DoMerge(int site, int retainState, int removeState, std::vecto
     removeIndicator[removeState] = true;
 
     int removeRankID = 0;
-    for (int t = 0; t < (int)clusterMembership[removeState].size(); ++t) {
+    for (int t = 0; t < (int) clusterMembership[removeState].size(); ++t) {
         removeRankID = clusterMembership[removeState][t];
-        haplotypeCluster[site][GetHapIDFromFwd(site, removeRankID)] = retainState;
+        haplotypeCluster[site][GetHapIDFromFwd(removeRankID)] = retainState;
         clusterMembership[retainState].push_back(removeRankID);
         removeMembership[removeRankID] = removeState;
     }
     clusterMembership[removeState].clear();
-//    for(auto kv:inEdges[site][removeState])
-//    {
-//        inEdges[site][retainState][kv.first]=true;
+}
+
+int PBWTWrapper::MoveSegment(int site) {
+//    fprintf(stderr,"before d:\n");
+//    for (int k = 0; k <M ; ++k) {
+//        fprintf(stderr,"%d\t",forwardCursor->d[k]);
 //    }
+//    fprintf(stderr,"\n");
+//    fprintf(stderr,"before a:\n");
+//    for (int k = 0; k <M ; ++k) {
+//        fprintf(stderr,"%d\t",forwardCursor->a[k]);
+//    }
+//    fprintf(stderr,"\n");
+
+    std::vector<int> tmpD, tmpA;
+    int prevValidState(0);//previous non-merge state
+    int newD(-1);
+    int lastHapID;
+    int firstHapID;
+    int index;
+
+    //initial newD
+    if (clusterMembership[0].size() == 0) {//first cluster is merged into other state
+        newD = site + 1;
+        prevValidState = -1;
+    }
+
+    for (int i = 0; i < (int) clusterMembership.size(); ++i) {//each cluster
+        if (clusterMembership[i].size() != 0) {
+            //find newD if prevValidState is not immediate previous state
+            if (prevValidState != -1 and i != 0) {
+                //fprintf(stderr,"site:%d\tclusterSize:%d\ti:%d\tprevValidState:%d\tprev Size:%d\n",site,clusterMembership[i].size(),i,prevValidState,clusterMembership[prevValidState].size());
+                lastHapID = GetHapIDFromFwd(clusterMembership[prevValidState].back());//lastHap of previous state
+                firstHapID = GetHapIDFromFwd(clusterMembership[i].front());//firstHap of current state
+                index = site;
+                while (index--) {
+                    if (haplotype[lastHapID][index] != haplotype[firstHapID][index]) break;
+                }
+                newD = index + 1;
+            }
+            //fill in newD
+            for (int j = 0; j < (int) clusterMembership[i].size(); ++j) {
+                if (removeMembership.find(clusterMembership[i][j]) != removeMembership.end()) {
+                    tmpD.push_back(0);//all newly merged into this state replace with 0
+                } else if (j == 0 && newD != -1) {//first element but not a follow up
+                    tmpD.push_back(newD);
+                    newD = -1;
+                } else {// newD==-1 means no new D value, use the old d value
+                    tmpD.push_back(d[clusterMembership[i][j]]);
+                }
+                tmpA.push_back(a[clusterMembership[i][j]]);
+            }
+            prevValidState = i;
+        }
+    }
+
+//    std::copy(tmpD.begin(), tmpD.end(), d);
+//    std::copy(tmpA.begin(), tmpA.end(), a);
+    d.assign(tmpD.begin(), tmpD.end());
+    a.assign(tmpA.begin(), tmpA.end());
+
+//    fprintf(stderr,"after d:\n");
+//    for (int k = 0; k <M ; ++k) {
+//        fprintf(stderr,"%d\t",forwardCursor->d[k]);
+//    }
+//    fprintf(stderr,"\n");
+//    fprintf(stderr,"after a:\n");
+//    for (int k = 0; k <M ; ++k) {
+//        fprintf(stderr,"%d\t",forwardCursor->a[k]);
+//    }
+//    fprintf(stderr,"\n");
+//    for (int j = 0; j < (int)tmpA.size(); ++j) {
+//        aMap[site][forwardCursor->a[j]] = j;//at site k, hapID a[k] is stored at jth row/rank
+//    }
+    return 0;
+
 }
 
 
-int PBWTWrapper::SetHaps(char **haps, int CopyStart, int CopyEnd, char **sampledHaps, int CopyStart2, int CopyEnd2, float* rate) {
-//    phased = nPhase;
-//    nSampledCopy = nCopy;
-    recomRate.assign(rate,rate+nMarkers-1);
-//    for (int k = 0; k <nMarkers-1 ; ++k) {
-//        std::cerr<<"marker "<<k+1<<":"<<recomRate[k]<<std::endl;
-//    }
+int PBWTWrapper::SetHaps(char **haps, int copyStart, int copyEnd, char **sampledHaps, int copyStart2, int copyEnd2,
+                         float *rate, int phased) {
+
+    if (rate)
+        recomRate.assign(rate, rate + nMarkers - 1);
+
+    if (copyEnd == 0) return 0;//meaning this was called from reading graph, not need to proceed.
+
     haplotype = new char *[M];
-//    int unphased = (nSamples - phased) / (nSampledCopy + 1);
-//    int nonCoppiedIndividuals = unphased + phased;//nSampledCopy additional copies, the original one not included
-    int i=0;
-    for (int j = CopyStart; i<M && j < CopyEnd; ++i,++j) {
-        //TODO:implement '0' checking
+    int i = 0;
+    //TODO:confirm M and CopyEnd; the very index CopyEnd not included
+    for (int j = copyStart; i < M && j < copyEnd; ++i, ++j) {
         haplotype[i] = haps[j];
     }
+    //only shuffle phased ref panel
+    int totalCopied = copyEnd - copyStart;
+//    std::cerr << "CopyStart:" << copyStart << "\tCopyEnd:" << copyEnd << "\tphased:" << phased << std::endl;
+    copyStart = copyStart > (totalCopied - phased * 2) ? copyStart : (totalCopied - phased * 2);
+    //std::random_shuffle(haplotype + copyStart, haplotype + totalCopied);
+    if (sampledHaps)
+        for (int j = copyStart2; i < M && j < copyEnd2; ++i, ++j) {
+            haplotype[i] = sampledHaps[j];
+        }
 
-    for ( int j = CopyStart2; i < M && j < CopyEnd2; ++i, ++j) {
-        haplotype[i] = sampledHaps[j];
-    }
     return 0;
 }
 
@@ -1651,83 +1378,11 @@ int PBWTWrapper::PrintSummary() {
 //    }
     meanEdges = (float) totalEdges / (N - 1);
 
-    printf("mean nodes/level = %f\tmax nodes/level = %d\tnodes = %d\n", meanNodes, maxNodes, totalNodes);
-    printf("mean edges/level = %f\tmax edges/level = %d\tedges = %d\n", meanEdges, maxEdges, totalEdges);
-    printf("mean edges/node = %f\tmean count/node = %f\n", (float) totalEdges / totalNodes,
-           (float) (M) * (N) / totalNodes);
+    fprintf(stderr, "mean nodes/level = %f\tmax nodes/level = %d\tnodes = %d\n", meanNodes, maxNodes, totalNodes);
+    fprintf(stderr, "mean edges/level = %f\tmax edges/level = %d\tedges = %d\n", meanEdges, maxEdges, totalEdges);
+    fprintf(stderr, "mean edges/node = %f\tmean count/node = %f\n", (float) totalEdges / totalNodes,
+            (float) (M) * (N) / totalNodes);
 
     return 0;
 }
-
-int PBWTWrapper::MoveSegment(const std::unordered_map<int, int> &mergedMembership, int site) {
-//    fprintf(stderr,"before d:\n");
-//    for (int k = 0; k <M ; ++k) {
-//        fprintf(stderr,"%d\t",forwardCursor->d[k]);
-//    }
-//    fprintf(stderr,"\n");
-//    fprintf(stderr,"before a:\n");
-//    for (int k = 0; k <M ; ++k) {
-//        fprintf(stderr,"%d\t",forwardCursor->a[k]);
-//    }
-//    fprintf(stderr,"\n");
-
-    std::vector<int> tmpD, tmpA;
-    int prevState(0), newD(-1);
-    int lastHapID;
-    int firstHapID;
-    int index;
-    for (int i = 0; i < (int)clusterMembership.size(); ++i) {
-        if (clusterMembership[i].size() != 0) {
-            if (prevState == 0 && clusterMembership[prevState].size() == 0) {
-                newD = site + 1;
-            }
-            else if (i != 0 && prevState != int(i -
-                                             1)) {//if current state is not the first state, and prevState is not the immediate preious state
-                //fprintf(stderr,"site:%d\tclusterSize:%d\ti:%d\tprevState:%d\tprev Size:%d\n",site,clusterMembership[i].size(),i,prevState,clusterMembership[prevState].size());
-                lastHapID = GetHapIDFromFwd(site, clusterMembership[prevState].back());//lastHap of previous state
-                firstHapID = GetHapIDFromFwd(site, clusterMembership[i].front());//firstHap of current state
-                index = site;
-                while (index--) {
-                    if (haplotype[lastHapID][index] != haplotype[firstHapID][index]) break;
-                }
-                newD = index;
-            }
-
-            for (int j = 0; j < (int)clusterMembership[i].size(); ++j) {
-                if (mergedMembership.find(clusterMembership[i][j]) != mergedMembership.end()) {
-                    tmpD.push_back(0);
-                }
-                else if (j == 0 && newD != -1) {
-                    tmpD.push_back(newD);
-                    newD = -1;
-                }
-                else {// newD==-1 means no new D value, use the old d value
-                    tmpD.push_back(forwardCursor->d[clusterMembership[i][j]]);
-                }
-                tmpA.push_back(forwardCursor->a[clusterMembership[i][j]]);
-            }
-            prevState = i;
-        }
-    }
-
-    std::copy(tmpD.begin(), tmpD.end(), forwardCursor->d);
-    std::copy(tmpA.begin(), tmpA.end(), forwardCursor->a);
-
-//    fprintf(stderr,"after d:\n");
-//    for (int k = 0; k <M ; ++k) {
-//        fprintf(stderr,"%d\t",forwardCursor->d[k]);
-//    }
-//    fprintf(stderr,"\n");
-//    fprintf(stderr,"after a:\n");
-//    for (int k = 0; k <M ; ++k) {
-//        fprintf(stderr,"%d\t",forwardCursor->a[k]);
-//    }
-//    fprintf(stderr,"\n");
-    for (int j = 0; j < (int)tmpA.size(); ++j) {
-        aMap[site][forwardCursor->a[j]] = j;//at site k, hapID a[k] is stored at jth row/rank
-    }
-    return 0;
-
-}
-
 

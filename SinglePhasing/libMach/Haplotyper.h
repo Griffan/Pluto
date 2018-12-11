@@ -22,6 +22,7 @@
 #include "StringBasics.h"
 #include "ErrorRate.h"
 #include "MergeHaplotypes.h"
+#include "Pedigree.h"
 
 #ifdef   __DOUBLE_HAPLOTYPING__
 #define  float double

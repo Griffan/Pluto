@@ -6,14 +6,13 @@
 */
 
 
-#include <math.h>
+#include <cmath>
 #include <stdlib.h>
-#include "ks.h"
-#include "pbwt/utils.h"
+#include "KSTest.h"
 #include <cstdlib>
 #include <string>
 #include <iostream>
-#include <limits>
+#include <climits>
 #include <algorithm>
 #define NA_INTEGER INT_MIN
 double KS_PosInf = INFINITY;
@@ -57,7 +56,7 @@ int R_finite(double x)
 #ifdef HAVE_WORKING_ISFINITE
     return isfinite(x);
 #else
-    return (!isnan(x) & (x != KS_PosInf ) & (x != KS_NegInf));
+    return (!std::isnan(x) & (x != KS_PosInf ) & (x != KS_NegInf));
 #endif
 }
 static double R_pow_di(double x, int n)
@@ -65,13 +64,13 @@ static double R_pow_di(double x, int n)
     const double  NA_REAL = R_ValueOfNA();
     double xn = 1.0;
 
-    if (isnan(x)) return x;
+    if (std::isnan(x)) return x;
     if (n == NA_INTEGER) return NA_REAL;
 
     if (n != 0) {
         if (!R_finite(x)) return pow(x, (double)n);
 
-        BOOL is_neg = (n < 0);
+        bool is_neg = (n < 0);
         if(is_neg) n = -n;
         for(;;) {
             if(n & 01) xn *= x;
@@ -322,8 +321,8 @@ double pkstwo_wrapper(int n, double* statistic, double tol) {
 
     std::vector<double> p;
     std::vector<int> index;
-    for (int i = 0; i <n; ++i) {
-        if(isnan(statistic[i]))
+    for (int i = 0; i < n; ++i) {
+        if(std::isnan(statistic[i]))
             continue;
         else if(statistic[i]>0) {
             index.push_back(i);
@@ -352,8 +351,8 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v) {
 
 double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
     std::vector<int> tmpx;
-    for (int i = 0; i < x.size(); ++i) {
-        if (!isnan(x[i]))
+    for (size_t i = 0; i < x.size(); ++i) {
+        if (!std::isnan(x[i]))
             tmpx.push_back(x[i]);
     }
     x = tmpx;
@@ -366,8 +365,8 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
     double STATISTIC=-1.0;
     /*if (isdigit(y[0]))*/ {
         tmpx.clear();
-        for (int i = 0; i < y.size(); ++i) {
-            if (!isnan(y[i]))
+        for (size_t i = 0; i < y.size(); ++i) {
+            if (!std::isnan(y[i]))
                 tmpx.push_back(y[i]);
         }
         y = tmpx;
@@ -382,7 +381,7 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
         }
 
         std::string METHOD("Two-sample Kolmogorov-Smirnov test");
-        bool TIES = FALSE;
+        bool TIES = false;
         n = nx * ny / (nx + ny);
 
         std::vector<int> w(x);
@@ -398,7 +397,7 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
 //        int decline_cycle=0;
 //        int previous_sign=0;
 //        int num_switch=0;
-        for (int j = 0; j <wOrder.size() ; ++j) {
+        for (size_t j = 0; j <wOrder.size() ; ++j) {
 //            if(j==0)
 //            {
 //                if(wOrder[j]+1 <= nx) {
@@ -472,14 +471,14 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
             }
             else fprintf(stderr,"[Waring]p-value will be approximate in the presence of ties\n");
             std::vector<double> tmp;
-            for (int i = 0; i <w.size()-1; ++i) {
+            for (size_t i = 0; i <w.size()-1; ++i) {
                 if((w[i+1]-w[i])!=0)
                     tmp.push_back(z[i]);
             }
             tmp.push_back(z[nx+ny-1]);
             z=tmp;
 
-            TIES =TRUE;
+            TIES =true;
         }
 
         /*STATISTIC < -
@@ -492,7 +491,7 @@ double ks_test(std::vector<int> &x, std::vector<int> &y, int EXACT) {
                 PVAL < -1 - .Call(C_pSmirnov2x, STATISTIC, n.x, n.y)*/
         //here we only consider two-sided(equal to)
 
-        for (int k = 0; k < z.size(); ++k) {
+        for (size_t k = 0; k < z.size(); ++k) {
             if(STATISTIC < fabs(z[k]))
                 STATISTIC=fabs(z[k]);
         }
