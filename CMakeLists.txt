@@ -23,7 +23,7 @@ if(NOT LIBSTATGEN)
             SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen
             CONFIGURE_COMMAND ""
             BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen
-            BUILD_COMMAND make opt CFLAGS="-fpermissive" CXX="/usr/local/bin/g++-7" CC="/usr/local/bin/g++-7"
+            BUILD_COMMAND make opt CFLAGS="-fpermissive"# CXX="/usr/local/bin/g++-7" CC="/usr/local/bin/g++-7"
             INSTALL_COMMAND ""
             )
     set(LIBSTATGEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen/include/)
@@ -42,9 +42,9 @@ if (OPENMP_FOUND)
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
-
-add_subdirectory(pbwtWrapper)
 add_subdirectory(SinglePhasing)
+add_subdirectory(pbwtWrapper)
+
 #add_subdirectory(TestUnit)
 
 set(SOURCE_FILES main.cpp)
