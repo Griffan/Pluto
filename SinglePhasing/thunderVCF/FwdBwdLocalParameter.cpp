@@ -3,8 +3,10 @@
 //
 
 #include "FwdBwdLocalParameter.h"
+#include <iostream>
 
-FwdBwdLocalParameter::FwdBwdLocalParameter(int nmarkers) {
+FwdBwdLocalParameter::FwdBwdLocalParameter(int nmarkers)
+{
 
     states = -1;
     markers = nmarkers;
@@ -21,27 +23,24 @@ FwdBwdLocalParameter::FwdBwdLocalParameter(int nmarkers) {
     dummy3.reserve(HASH_RESERVE);
     megaFwdVec.assign(markers, dummy3);
 
-    viableStatePair.assign(markers, std::vector<NodePair >());
-
+    viableStatePair.assign(markers, std::vector<NodePair>());
 }
 
- NodePair FwdBwdLocalParameter::MakePair(StateIndex first, StateIndex second) {
-    return static_cast<NodePair>(first) << 32 |  static_cast<NodePair>(second);
+StateIndex FwdBwdLocalParameter::GetFirst(NodePair pair)
+{
+    return (StateIndex)(pair >> 32);
 }
 
- StateIndex FwdBwdLocalParameter::GetFirst(NodePair pair) {
-    return (StateIndex) (pair >> 32);
+StateIndex FwdBwdLocalParameter::GetSecond(NodePair pair)
+{
+    return (StateIndex)(pair & 0xffff);
 }
 
- StateIndex FwdBwdLocalParameter::GetSecond(NodePair pair) {
-    return (StateIndex) (pair & 0xffff);
-}
-
- int FwdBwdLocalParameter::FillParentsNodeVec(int i, StateIndex childNode1, StateIndex childNode2, StateIndex parentNode1,
-                              StateIndex parentNode2, float tmpFwdValue) {
+int FwdBwdLocalParameter::FillParentsNodeVec(int i, StateIndex childNode1, StateIndex childNode2, StateIndex parentNode1,
+    StateIndex parentNode2, float tmpFwdValue)
+{
     int index;
-    if (parentsNodeVec[i].find(MakePair(childNode1, childNode2)) !=
-        parentsNodeVec[i].end())//Dest already exists
+    if (parentsNodeVec[i].find(MakePair(childNode1, childNode2)) != parentsNodeVec[i].end()) //Dest already exists
     {
         index = parentsNodeVec[i][MakePair(childNode1, childNode2)];
         megaFwdVec[i][index].push_back(tmpFwdValue);
@@ -61,7 +60,8 @@ FwdBwdLocalParameter::FwdBwdLocalParameter(int nmarkers) {
     return 0;
 }
 
- int FwdBwdLocalParameter::ClearParentsNodeVec(int i) {
+int FwdBwdLocalParameter::ClearParentsNodeVec(int i)
+{
 
     parentsNodeVec[i].clear();
     megaFwdVec[i].clear();
@@ -76,7 +76,8 @@ int FwdBwdLocalParameter::ResetParentsNodeVec()
     }
     return 0;
 }
- FwdVec &FwdBwdLocalParameter::GetFwdVec(int i, int destIndex) {
+FwdVec& FwdBwdLocalParameter::GetFwdVec(int i, int destIndex)
+{
     return megaFwdVec[i][destIndex];
 }
 
@@ -84,45 +85,55 @@ int FwdBwdLocalParameter::ResetParentsNodeVec()
 //    return finalBwdValue[MakePair(A, B)];
 //}
 
- FwdVec &FwdBwdLocalParameter::GetFwdVec(int i, StateIndex A, StateIndex B) {
+FwdVec& FwdBwdLocalParameter::GetFwdVec(int i, StateIndex A, StateIndex B)
+{
     return GetFwdVec(i, parentsNodeVec[i][MakePair(A, B)]);
 }
 
- float FwdBwdLocalParameter::GetFwd(int i, int destIndex, int sourceIndex) {
+float FwdBwdLocalParameter::GetFwd(int i, int destIndex, int sourceIndex)
+{
     return megaFwdVec[i][destIndex][sourceIndex];
 }
 
- SourceVec &FwdBwdLocalParameter::GetSourceVec(int i, int destIndex) {
+SourceVec& FwdBwdLocalParameter::GetSourceVec(int i, int destIndex)
+{
     return megaSourceVec[i][destIndex];
 }
 
- SourceVec &FwdBwdLocalParameter::GetSourceVec(int i, StateIndex A, StateIndex B) {
+SourceVec& FwdBwdLocalParameter::GetSourceVec(int i, StateIndex A, StateIndex B)
+{
     return GetSourceVec(i, parentsNodeVec[i][MakePair(A, B)]);
 }
 
- int FwdBwdLocalParameter::GetDestIndex(int i, StateIndex A, StateIndex B) {
+int FwdBwdLocalParameter::GetDestIndex(int i, StateIndex A, StateIndex B)
+{
     return parentsNodeVec[i][MakePair(A, B)];
 }
 
- NodePair FwdBwdLocalParameter::GetSource(int i, int destIndex, int sourceIndex) {
+NodePair FwdBwdLocalParameter::GetSource(int i, int destIndex, int sourceIndex)
+{
     return megaSourceVec[i][destIndex][sourceIndex];
 }
 
- NodePair FwdBwdLocalParameter::GetSource(int i, StateIndex A, StateIndex B, int sourceIndex) {
+NodePair FwdBwdLocalParameter::GetSource(int i, StateIndex A, StateIndex B, int sourceIndex)
+{
     return megaSourceVec[i][GetDestIndex(i, A, B)][sourceIndex];
 }
 
 //template <class valueVec>
- float FwdBwdLocalParameter::GetSumValueFromContainer(FwdVec &a) {
-    if (a.size() == 0) return 0.f;
+float FwdBwdLocalParameter::GetSumValueFromContainer(FwdVec& a)
+{
+    if (a.size() == 0)
+        return 0.f;
     float sum(0.f);
-    for (auto kv:a) {
+    for (auto kv : a) {
         sum += kv;
     }
     return sum;
 }
 
- float FwdBwdLocalParameter::GetSumFwdValueFrom(int i, StateIndex A, StateIndex B) {
+float FwdBwdLocalParameter::GetSumFwdValueFrom(int i, StateIndex A, StateIndex B)
+{
     return GetSumValueFromContainer(GetFwdVec(i, A, B));
 }
 

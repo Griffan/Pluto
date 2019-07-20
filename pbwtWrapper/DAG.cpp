@@ -6,101 +6,111 @@
 #include <fstream>
 #include <unordered_map>
 
-int StateNode::WriteNode(std::ofstream &fout) {
+int StateNode::WriteNode(std::ofstream& fout)
+{
     int totalSize = 0;
-    fout.write((char *) &allele, sizeof(uchar));
+    fout.write((char*)&allele, sizeof(uchar));
     totalSize += 2 * sizeof(uchar);
-    fout.write((char *) &childNode, 2 * sizeof(StateIndex));
+    fout.write((char*)&childNode, 2 * sizeof(StateIndex));
     totalSize += 2 * sizeof(StateIndex);
-    fout.write((char *) &numHap, 2 * sizeof(float));
+    fout.write((char*)&numHap, 2 * sizeof(float));
     totalSize += 2 * sizeof(float);
     unsigned long sizeOfSet = parentNodeSet.size();
-    fout.write((char *) &sizeOfSet, sizeof(unsigned long));
+    fout.write((char*)&sizeOfSet, sizeof(unsigned long));
     totalSize += sizeof(unsigned long);
-    for (auto k:parentNodeSet) {
-        fout.write((char *) &k, sizeof(StateIndex));
+    for (auto k : parentNodeSet) {
+        fout.write((char*)&k, sizeof(StateIndex));
         totalSize += sizeof(StateIndex);
     }
     return totalSize;
 }
 
-int StateNode::ReadNode(std::ifstream &fin) {
-    fin.read((char *) &allele, sizeof(uchar));
-    fin.read((char *) &childNode, 2 * sizeof(StateIndex));
-    fin.read((char *) &numHap, 2 * sizeof(float));
+int StateNode::ReadNode(std::ifstream& fin)
+{
+    fin.read((char*)&allele, sizeof(uchar));
+    fin.read((char*)&childNode, 2 * sizeof(StateIndex));
+    fin.read((char*)&numHap, 2 * sizeof(float));
     unsigned long sizeOfSet;
-    fin.read((char *) &sizeOfSet, sizeof(unsigned long));
+    fin.read((char*)&sizeOfSet, sizeof(unsigned long));
     StateIndex k;
     for (unsigned long i = 0; i != sizeOfSet; i++) {
-        fin.read((char *) &k, sizeof(StateIndex));
+        fin.read((char*)&k, sizeof(StateIndex));
         AddParentNode(k);
     }
     return 0;
 }
 
-DAG::DAG(DAG &A) {
+DAG::DAG(DAG& A)
+{
     nsnps = A.nsnps;
     nhaps = A.nhaps;
     StateNodeMat = A.StateNodeMat;
-//        tmpNodeVec=A.tmpNodeVec;
+    //        tmpNodeVec=A.tmpNodeVec;
 }
 
-DAG::DAG() {
+DAG::DAG()
+{
     nsnps = 0;
     nhaps = 0;
 }
 
-DAG::~DAG() {
-    for (auto &vec:StateNodeMat) {
-        for (auto &node:vec) {
+DAG::~DAG()
+{
+    for (auto& vec : StateNodeMat) {
+        for (auto& node : vec) {
             delete node;
         }
         vec.clear();
     }
 }
 
-DAG::DAG(int nmarkers, int nHaps) : nsnps(nmarkers), nhaps(nHaps),
-                                    StateNodeMat(nmarkers, std::vector<StateNode *>(0, new StateNode(0))) {
+DAG::DAG(int nmarkers, int nHaps)
+    : nsnps(nmarkers)
+    , nhaps(nHaps)
+    , StateNodeMat(nmarkers, std::vector<StateNode*>(0, new StateNode(0)))
+{
 }
 
-int DAG::JoinNodes(int marker, StateIndex indexRetain, StateIndex indexRemove) {
-    StateNodeMat[marker][indexRetain]->SetNumHap(0, StateNodeMat[marker][indexRetain]->GetNumHap(0) +
-                                                    StateNodeMat[marker][indexRemove]->GetNumHap(0));
-    StateNodeMat[marker][indexRetain]->SetNumHap(1, StateNodeMat[marker][indexRetain]->GetNumHap(1) +
-                                                    StateNodeMat[marker][indexRemove]->GetNumHap(1));
+int DAG::JoinNodes(int marker, StateIndex indexRetain, StateIndex indexRemove)
+{
+    StateNodeMat[marker][indexRetain]->SetNumHap(0, StateNodeMat[marker][indexRetain]->GetNumHap(0) + StateNodeMat[marker][indexRemove]->GetNumHap(0));
+    StateNodeMat[marker][indexRetain]->SetNumHap(1, StateNodeMat[marker][indexRetain]->GetNumHap(1) + StateNodeMat[marker][indexRemove]->GetNumHap(1));
 
-    for (auto kv:StateNodeMat[marker][indexRemove]->GetParentIndexSet()) {
+    for (auto kv : StateNodeMat[marker][indexRemove]->GetParentIndexSet()) {
         StateNodeMat[marker][indexRetain]->AddParentNode(kv);
-        if (StateNodeMat[marker][indexRemove]->GetAllele() == 0)//Remove has 0 allele
+        if (StateNodeMat[marker][indexRemove]->GetAllele() == 0) //Remove has 0 allele
         {
             StateNodeMat[marker - 1][kv]->SetChildNodeIndex(0, indexRetain);
-        } else if (StateNodeMat[marker][indexRemove]->GetAllele() == 1)//Remove has 1 allele
+        } else if (StateNodeMat[marker][indexRemove]->GetAllele() == 1) //Remove has 1 allele
         {
             StateNodeMat[marker - 1][kv]->SetChildNodeIndex(1, indexRetain);
         } else {
             fprintf(stderr, "roar from StateNode operator+=!!!!\n%d and %d: %d\n",
-                    StateNodeMat[marker - 1][kv]->GetChildNodeIndex(0),
-                    StateNodeMat[marker - 1][kv]->GetChildNodeIndex(1), indexRemove);
+                StateNodeMat[marker - 1][kv]->GetChildNodeIndex(0),
+                StateNodeMat[marker - 1][kv]->GetChildNodeIndex(1), indexRemove);
             exit(EXIT_FAILURE);
         }
     }
     return 0;
 }
 
-void DAG::UpdateChildNodeIndex(int marker, StateIndex parentIndex, StateIndex newChildIndex, char allele) {
+void DAG::UpdateChildNodeIndex(int marker, StateIndex parentIndex, StateIndex newChildIndex, char allele)
+{
     StateNodeMat[marker][parentIndex]->SetChildNodeIndex(allele, newChildIndex);
 }
 
-float DAG::GetProbToCurrentNodeConditionalOnParentNode(int marker, StateIndex parentIndex, char allele) {
-    return StateNodeMat[marker][parentIndex]->GetNumHap(allele) /
-           (StateNodeMat[marker][parentIndex]->GetNumHap(0) + StateNodeMat[marker][parentIndex]->GetNumHap(1));
+float DAG::GetProbToCurrentNodeConditionalOnParentNode(int marker, StateIndex parentIndex, char allele)
+{
+    return StateNodeMat[marker][parentIndex]->GetNumHap(allele) / (StateNodeMat[marker][parentIndex]->GetNumHap(0) + StateNodeMat[marker][parentIndex]->GetNumHap(1));
 }
 
- float DAG::GetEdgeProbFromParentNode(int marker, StateIndex parentIndex, char allele) {
+float DAG::GetEdgeProbFromParentNode(int marker, StateIndex parentIndex, char allele)
+{
     return StateNodeMat[marker][parentIndex]->GetNumHap(allele) / nhaps;
 }
 
-int DAG::WriteDAG(const std::string &fileName) {
+int DAG::WriteDAG(const std::string& fileName)
+{
     int totalSize = 0;
     std::ofstream fout(fileName, std::ifstream::binary);
 
@@ -108,13 +118,13 @@ int DAG::WriteDAG(const std::string &fileName) {
         std::cerr << "open file " << fileName << " failed!" << std::endl;
         exit(EXIT_FAILURE);
     }
-    fout.write((char *) &nhaps, sizeof(int));
+    fout.write((char*)&nhaps, sizeof(int));
     totalSize += sizeof(int);
-    fout.write((char *) &nsnps, sizeof(int));
+    fout.write((char*)&nsnps, sizeof(int));
     totalSize += sizeof(int);
     for (int i = 0; i < nsnps; ++i) {
         unsigned long currentSiteNodeNum = StateNodeMat[i].size();
-        fout.write((char *) &currentSiteNodeNum, sizeof(unsigned long));
+        fout.write((char*)&currentSiteNodeNum, sizeof(unsigned long));
         totalSize += sizeof(unsigned long);
         for (unsigned long j = 0; j < currentSiteNodeNum; ++j) {
             totalSize += StateNodeMat[i][j]->WriteNode(fout);
@@ -122,23 +132,24 @@ int DAG::WriteDAG(const std::string &fileName) {
     }
     fout.close();
 
-//        std::ofstream fout2(fileName+".txt");
-//        fout2<<"nhaps:"<<nhaps<<std::endl;
-//        fout2<<"nsnps"<<nsnps<<std::endl;
-//        for (int i = 0; i <nsnps ; ++i) {
-//            fout2<<i<<"th snp nodeVec size:"<<StateNodeMat[i].size()<<std::endl;
-//            for (int j = 0; j <StateNodeMat[i].size(); ++j) {
-//                fout2<<j<<"th node:"<<StateNodeMat[i][j]->ToString()<<std::endl;
-//            }
-//        }
-//        fout2<<std::endl;
-//        fout2<<std::endl;
-//        fout2.close();
+    //        std::ofstream fout2(fileName+".txt");
+    //        fout2<<"nhaps:"<<nhaps<<std::endl;
+    //        fout2<<"nsnps"<<nsnps<<std::endl;
+    //        for (int i = 0; i <nsnps ; ++i) {
+    //            fout2<<i<<"th snp nodeVec size:"<<StateNodeMat[i].size()<<std::endl;
+    //            for (int j = 0; j <StateNodeMat[i].size(); ++j) {
+    //                fout2<<j<<"th node:"<<StateNodeMat[i][j]->ToString()<<std::endl;
+    //            }
+    //        }
+    //        fout2<<std::endl;
+    //        fout2<<std::endl;
+    //        fout2.close();
 
     return totalSize;
 }
 
-int DAG::ReadDAG(const std::string &fileName) {
+int DAG::ReadDAG(const std::string& fileName)
+{
     std::cerr << "Reading graph from [ReadDAG]..." << std::endl;
     std::ifstream fin(fileName, std::ifstream::binary);
 
@@ -146,31 +157,31 @@ int DAG::ReadDAG(const std::string &fileName) {
         std::cerr << "open file " << fileName << " failed!" << std::endl;
         exit(EXIT_FAILURE);
     }
-    fin.read((char *) &nhaps, sizeof(int));
-    fin.read((char *) &nsnps, sizeof(int));
+    fin.read((char*)&nhaps, sizeof(int));
+    fin.read((char*)&nsnps, sizeof(int));
     for (int i = 0; i < nsnps; ++i) {
         unsigned long currentSiteNodeNum(0);
-        fin.read((char *) &currentSiteNodeNum, sizeof(unsigned long));
+        fin.read((char*)&currentSiteNodeNum, sizeof(unsigned long));
         for (unsigned long j = 0; j < currentSiteNodeNum; ++j) {
-            StateNode *tmpNode = new StateNode(-1);
+            StateNode* tmpNode = new StateNode(-1);
             tmpNode->ReadNode(fin);
             StateNodeMat[i].push_back(tmpNode);
         }
     }
     fin.close();
 
-//        std::ofstream fout2(fileName+".txt");
-//        fout2<<"nhaps:"<<nhaps<<std::endl;
-//        fout2<<"nsnps"<<nsnps<<std::endl;
-//        for (int i = 0; i <nsnps ; ++i) {
-//            fout2<<i<<"th snp node size:"<<StateNodeMat[i].size()<<std::endl;
-//            for (int j = 0; j <StateNodeMat[i].size(); ++j) {
-//                fout2<<j<<"th node:"<<StateNodeMat[i][j]->ToString()<<std::endl;
-//            }
-//        }
-//        fout2<<std::endl;
-//        fout2<<std::endl;
-//        fout2.close();
+    //        std::ofstream fout2(fileName+".txt");
+    //        fout2<<"nhaps:"<<nhaps<<std::endl;
+    //        fout2<<"nsnps"<<nsnps<<std::endl;
+    //        for (int i = 0; i <nsnps ; ++i) {
+    //            fout2<<i<<"th snp node size:"<<StateNodeMat[i].size()<<std::endl;
+    //            for (int j = 0; j <StateNodeMat[i].size(); ++j) {
+    //                fout2<<j<<"th node:"<<StateNodeMat[i][j]->ToString()<<std::endl;
+    //            }
+    //        }
+    //        fout2<<std::endl;
+    //        fout2<<std::endl;
+    //        fout2.close();
     return 0;
 }
 
@@ -196,7 +207,8 @@ int DAG::ReadDAG(const std::string &fileName) {
 ]
 }
  */
-int DAG::ToJson(const std::string &fileName) {
+int DAG::ToJson(const std::string& fileName)
+{
     int minorIndex = 0;
     int majorIndex = 0;
     std::ofstream fout(fileName);
@@ -208,20 +220,20 @@ int DAG::ToJson(const std::string &fileName) {
     int nMarkers = nsnps;
     fout << "{\n"
          << "  \"nodes\": [" << std::endl;
-    for (int i = 0; i </*nsnps*/nMarkers; ++i) {
+    for (int i = 0; i < /*nsnps*/ nMarkers; ++i) {
         unsigned long currentSiteNodeNum = StateNodeMat[i].size();
         for (unsigned long j = 0; j < currentSiteNodeNum; ++j) {
             if (i == nMarkers - 1 and j == currentSiteNodeNum - 1)
-                fout << "{\"name\": \"" << i << "." << j <<":"<<int(StateNodeMat[i][j]->GetAllele())<<":"<<StateNodeMat[i][j]->GetNumHap(0)+StateNodeMat[i][j]->GetNumHap(1)<< "\"}"
+                fout << "{\"name\": \"" << i << "." << j << ":" << int(StateNodeMat[i][j]->GetAllele()) << ":" << StateNodeMat[i][j]->GetNumHap(0) + StateNodeMat[i][j]->GetNumHap(1) << "\"}"
                      << std::endl;
             else
-                fout << "{\"name\": \"" << i << "." << j <<":"<<int(StateNodeMat[i][j]->GetAllele())<<":"<<StateNodeMat[i][j]->GetNumHap(0)+StateNodeMat[i][j]->GetNumHap(1)<< "\"},"
+                fout << "{\"name\": \"" << i << "." << j << ":" << int(StateNodeMat[i][j]->GetAllele()) << ":" << StateNodeMat[i][j]->GetNumHap(0) + StateNodeMat[i][j]->GetNumHap(1) << "\"},"
                      << std::endl;
         }
     }
     fout << "  ]," << std::endl;
     fout << "  \"links\": [" << std::endl;
-    for (int i = 0; i </*nsnps-1*/nMarkers - 1; ++i) {
+    for (int i = 0; i < /*nsnps-1*/ nMarkers - 1; ++i) {
         unsigned long currentSiteNodeNum = StateNodeMat[i].size();
         majorIndex += currentSiteNodeNum;
         for (unsigned long j = 0; j < currentSiteNodeNum; ++j) {
@@ -252,7 +264,8 @@ int DAG::ToJson(const std::string &fileName) {
     return minorIndex;
 }
 
-int DAG::FromJson(const std::string &fileName) {
+int DAG::FromJson(const std::string& fileName)
+{
     std::cerr << "Reading graph from [FromJson]..." << std::endl;
     std::ifstream fin(fileName);
 
@@ -261,8 +274,8 @@ int DAG::FromJson(const std::string &fileName) {
         exit(EXIT_FAILURE);
     }
     std::string line;
-    std::getline(fin, line);//fin<<"{\n"
-    std::getline(fin, line);//<<"  \"nodes\": ["<<std::endl;
+    std::getline(fin, line); //fin<<"{\n"
+    std::getline(fin, line); //<<"  \"nodes\": ["<<std::endl;
     /*
     for (int i = 0; i <nMarkers; ++i) {
         unsigned long currentSiteNodeNum = StateNodeMat[i].size();
@@ -273,7 +286,7 @@ int DAG::FromJson(const std::string &fileName) {
                 fin<<"{\"name\": \""<<i<<"."<<j<<":"<<(int)StateNodeMat[i][j]->GetAllele()<<"\"},"<<std::endl;
         }
     }*/
-    std::vector<std::tuple<long,StateIndex, StateNode *> > nodeVec;
+    std::vector<std::tuple<long, StateIndex, StateNode*>> nodeVec;
     long curMarker(0);
     StateIndex curIndex(0);
     unsigned long pivot(0);
@@ -285,16 +298,15 @@ int DAG::FromJson(const std::string &fileName) {
         curMarker = std::stol(line.substr(pivot + 3, len));
         pivot = line.find('.', pivot + 1);
         len = line.find(':', pivot + 1) - (pivot + 1);
-        curIndex = static_cast<StateIndex >(std::stoi(line.substr(pivot + 1, len)));
+        curIndex = static_cast<StateIndex>(std::stoi(line.substr(pivot + 1, len)));
 
-        StateNode *tmpNode = new StateNode(-1);
+        StateNode* tmpNode = new StateNode(-1);
         nodeVec.emplace_back(curMarker, curIndex, tmpNode);
-//        assert(curIndex == StateNodeMat[curMarker].size());
+        //        assert(curIndex == StateNodeMat[curMarker].size());
         StateNodeMat[curMarker].push_back(tmpNode);
-
     }
-//    std::getline(fin, line);//fin<<"  ],"<<std::endl;
-    std::getline(fin, line);//fin<<"  \"links\": ["<<std::endl;
+    //    std::getline(fin, line);//fin<<"  ],"<<std::endl;
+    std::getline(fin, line); //fin<<"  \"links\": ["<<std::endl;
 
     long sourceNodeIndex(-1);
     long targetNodeIndex(-1);
@@ -317,86 +329,77 @@ int DAG::FromJson(const std::string &fileName) {
         allele = std::stoi(line.substr(pivot + 1, len));
         if (sourceNodeIndex >= 0) {
             curMarker = std::get<0>(nodeVec[targetNodeIndex]);
-            if(curMarker != prevMarker)//new marker
+            if (curMarker != prevMarker) //new marker
             {
-                sourceConflictedPair =  targetConflictPair;
+                sourceConflictedPair = targetConflictPair;
                 targetConflictPair.clear();
                 prevMarker = curMarker;
             }
-            StateNode *sourcePtr = std::get<2>(nodeVec[sourceNodeIndex]);
-            StateNode *targetPtr = std::get<2>(nodeVec[targetNodeIndex]);
+            StateNode* sourcePtr = std::get<2>(nodeVec[sourceNodeIndex]);
+            StateNode* targetPtr = std::get<2>(nodeVec[targetNodeIndex]);
             StateIndex sourceIdx = std::get<1>(nodeVec[sourceNodeIndex]);
             StateIndex targetIdx = std::get<1>(nodeVec[targetNodeIndex]);
 
-            if (targetPtr->GetAllele() == -1 or targetPtr->GetAllele() == allele)/*not visited or visited but not conflicted*/
+            if (targetPtr->GetAllele() == -1 or targetPtr->GetAllele() == allele) /*not visited or visited but not conflicted*/
             {
                 sourcePtr->SetChildNodeIndex(allele, targetIdx);
-                if(sourceConflictedPair.find(sourceIdx)!= sourceConflictedPair.end())
-                {
+                if (sourceConflictedPair.find(sourceIdx) != sourceConflictedPair.end()) {
                     long conflictMarker = curMarker - 1;
                     StateIndex conflictSourceIdx = sourceConflictedPair[sourceIdx];
-                    StateNode *tmpNodePtr = StateNodeMat[conflictMarker][conflictSourceIdx];
+                    StateNode* tmpNodePtr = StateNodeMat[conflictMarker][conflictSourceIdx];
                     tmpNodePtr->SetChildNodeIndex(allele, targetIdx);
-                    tmpNodePtr->SetNumHap(allele, weight/2.);
-                    sourcePtr->SetNumHap(allele, weight/2.);
+                    tmpNodePtr->SetNumHap(allele, weight / 2.);
+                    sourcePtr->SetNumHap(allele, weight / 2.);
                     targetPtr->AddParentNode(conflictSourceIdx);
-                }
-                else
+                } else
                     sourcePtr->SetNumHap(allele, weight);
 
                 targetPtr->AddParentNode(sourceIdx);
                 targetPtr->SetAllele(allele);
-            }
-            else if(targetConflictPair.find(targetIdx) == targetConflictPair.end())//conflicted, not visited
+            } else if (targetConflictPair.find(targetIdx) == targetConflictPair.end()) //conflicted, not visited
             {
-                    StateNode *tmpTargetNodePtr = new StateNode(-1);
-                    StateNodeMat[curMarker].push_back(tmpTargetNodePtr);
-                    curIndex = StateNodeMat[curMarker].size() - 1;
+                StateNode* tmpTargetNodePtr = new StateNode(-1);
+                StateNodeMat[curMarker].push_back(tmpTargetNodePtr);
+                curIndex = StateNodeMat[curMarker].size() - 1;
 
-                    sourcePtr->SetChildNodeIndex(allele, curIndex);
-                    if(sourceConflictedPair.find(sourceIdx)!= sourceConflictedPair.end())
-                    {
-                        long conflictMarker = curMarker - 1;
-                        StateIndex conflictSourceIdx = sourceConflictedPair[sourceIdx];
-                        StateNode *tmpSourceNodePtr = StateNodeMat[conflictMarker][conflictSourceIdx];
-                        tmpSourceNodePtr->SetChildNodeIndex(allele, curIndex);
-                        tmpSourceNodePtr->SetNumHap(allele, weight/2.);
-                        sourcePtr->SetNumHap(allele, weight/2.);
-                        tmpTargetNodePtr->AddParentNode(conflictSourceIdx);
-                    }
-                    else
-                        sourcePtr->SetNumHap(allele, weight);
+                sourcePtr->SetChildNodeIndex(allele, curIndex);
+                if (sourceConflictedPair.find(sourceIdx) != sourceConflictedPair.end()) {
+                    long conflictMarker = curMarker - 1;
+                    StateIndex conflictSourceIdx = sourceConflictedPair[sourceIdx];
+                    StateNode* tmpSourceNodePtr = StateNodeMat[conflictMarker][conflictSourceIdx];
+                    tmpSourceNodePtr->SetChildNodeIndex(allele, curIndex);
+                    tmpSourceNodePtr->SetNumHap(allele, weight / 2.);
+                    sourcePtr->SetNumHap(allele, weight / 2.);
+                    tmpTargetNodePtr->AddParentNode(conflictSourceIdx);
+                } else
+                    sourcePtr->SetNumHap(allele, weight);
 
-                    tmpTargetNodePtr->AddParentNode(sourceIdx);
-                    tmpTargetNodePtr->SetAllele(allele);
-                    targetConflictPair[targetIdx] = curIndex;
+                tmpTargetNodePtr->AddParentNode(sourceIdx);
+                tmpTargetNodePtr->SetAllele(allele);
+                targetConflictPair[targetIdx] = curIndex;
 
-            }
-            else//conflicted, visited
+            } else //conflicted, visited
             {
                 long conflictMarker = curMarker;
                 StateIndex conflictTargetIdx = targetConflictPair[targetIdx];
-                StateNode *tmpTargetNodePtr = StateNodeMat[conflictMarker][conflictTargetIdx];
+                StateNode* tmpTargetNodePtr = StateNodeMat[conflictMarker][conflictTargetIdx];
                 sourcePtr->SetChildNodeIndex(allele, conflictTargetIdx);
-                if(sourceConflictedPair.find(sourceIdx)!= sourceConflictedPair.end())
-                {
+                if (sourceConflictedPair.find(sourceIdx) != sourceConflictedPair.end()) {
                     long conflictMarker = curMarker - 1;
                     StateIndex conflictSourceIdx = sourceConflictedPair[sourceIdx];
-                    StateNode *tmpSourceNodePtr = StateNodeMat[conflictMarker][conflictSourceIdx];
+                    StateNode* tmpSourceNodePtr = StateNodeMat[conflictMarker][conflictSourceIdx];
                     tmpSourceNodePtr->SetChildNodeIndex(allele, conflictTargetIdx);
-                    tmpSourceNodePtr->SetNumHap(allele, weight/2.);
-                    sourcePtr->SetNumHap(allele, weight/2.);
+                    tmpSourceNodePtr->SetNumHap(allele, weight / 2.);
+                    sourcePtr->SetNumHap(allele, weight / 2.);
                     tmpTargetNodePtr->AddParentNode(conflictSourceIdx);
-                }
-                else
+                } else
                     sourcePtr->SetNumHap(allele, weight);
                 tmpTargetNodePtr->AddParentNode(sourceIdx);
             }
-        }
-        else
-            std::get<2>(nodeVec[targetNodeIndex])->SetAllele(allele);//first marker
+        } else
+            std::get<2>(nodeVec[targetNodeIndex])->SetAllele(allele); //first marker
     }
-    std::getline(fin, line);//fin<<"  ]\n}"<<std::endl;
+    std::getline(fin, line); //fin<<"  ]\n}"<<std::endl;
     fin.close();
     return 0;
 }
