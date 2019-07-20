@@ -98,26 +98,26 @@ public:
 
     bool GetOnlyGT() { return onlyGT; }
 
-    void FillGenotypeLikelihood(long Phred11, long Phred12, long Phred22, int idv, int genoIndex)
+    void FillGenotypeLikelihood(long Phred11, long Phred12, long Phred22, int idv, int genoIndex)//assuming PL scale
     {
-        long minValue = 127;
-        long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
-        if( (Phred11 - minPhred) > 30) Phred11 = minValue;
-        else if((Phred12 - minPhred) > 30) Phred12 = minValue;
-        else if((Phred22 - minPhred) > 30) Phred22 = minValue;
-
-        if(Phred11 > minValue) Phred11 =minValue;
-        if(Phred12 > minValue) Phred12 =minValue;
-        if(Phred22 > minValue) Phred22 =minValue;
-
+//        long minValue = 127;
 //        long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
-//        if (minPhred == Phred12) {
-//            if ((Phred11 - minPhred) > 30) Phred11 = 127;
-//            if ((Phred22 - minPhred) > 30) Phred22 = 127;
-//        } else {
-//            if (Phred11 == minPhred) Phred22 = 127;
-//            if (Phred22 == minPhred) Phred11 = 127;
-//        }
+//        if( (Phred11 - minPhred) > 30) Phred11 = minValue;
+//        else if((Phred12 - minPhred) > 30) Phred12 = minValue;
+//        else if((Phred22 - minPhred) > 30) Phred22 = minValue;
+//
+//        if(Phred11 > minValue) Phred11 =minValue;
+//        if(Phred12 > minValue) Phred12 =minValue;
+//        if(Phred22 > minValue) Phred22 =minValue;
+
+        long minPhred = std::min(Phred11, std::min(Phred12, Phred22));
+        if (minPhred == Phred12) {
+            if ((Phred11 - minPhred) > 30) Phred11 = 127;
+            if ((Phred22 - minPhred) > 30) Phred22 = 127;
+        } else {
+            if (Phred11 == minPhred) Phred22 = 127;
+            if (Phred22 == minPhred) Phred11 = 127;
+        }
         genotypes[idv][genoIndex] = static_cast<char>(Phred11);
         genotypes[idv][genoIndex + 1] = static_cast<char>(Phred12);
         genotypes[idv][genoIndex + 2] = static_cast<char>(Phred22);

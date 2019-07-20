@@ -3,52 +3,58 @@
 //
 
 #include "PBWTViewer.h"
-#include <fstream>
 #include "KSTest.h"
+#include <fstream>
 #define prefixLength 1200
 #define ROUND 10
-PBWTViewer::PBWTViewer(int a, int b):PBWTWrapper(a,b),clusterAllele(b, std::vector<uchar>()) {
-    numRight=0;
-    numAltRight=0;
+PBWTViewer::PBWTViewer(int a, int b)
+    : PBWTWrapper(a, b)
+    , clusterAllele(b, std::vector<uchar>())
+{
+    numRight = 0;
+    numAltRight = 0;
 }
 
-int PBWTViewer::MergeCluster(int site, Index2ID& MAP1, ID2POP& MAP2) {
+int PBWTViewer::MergeCluster(int site, Index2ID& MAP1, ID2POP& MAP2)
+{
     int ret(0);
     int oldNumCluster = GetNumStates(site);
     int numHaps = haplotypeCluster[site].size();
-    int indexToPut=4000;
+    int indexToPut = 4000;
 
-    if(site%1000==0)fprintf(stderr,"processing site:%d\n",site);
-    if(site%5==0&&site>=indexToPut-50&&site<indexToPut+50) {
+    if (site % 1000 == 0)
+        fprintf(stderr, "processing site:%d\n", site);
+    if (site % 5 == 0 && site >= indexToPut - 50 && site < indexToPut + 50) {
 
-        std::ofstream fout("/Users/fanzhang/Downloads/PlutoTest/scatter.txt",std::iostream::app);
-        if(!fout.is_open()){fprintf(stderr,"open scatter.txt failed\n");exit(EXIT_FAILURE);}
+        std::ofstream fout("/Users/fanzhang/Downloads/PlutoTest/scatter.txt", std::iostream::app);
+        if (!fout.is_open()) {
+            fprintf(stderr, "open scatter.txt failed\n");
+            exit(EXIT_FAILURE);
+        }
 
         int ID;
-        int TotalNum=0;
-        int leftD=0;
-        int rightD=0;
-        std::vector<std::vector<int> > tmpRank(clusterMembership.size(), std::vector<int>());
+        int TotalNum = 0;
+        int leftD = 0;
+        int rightD = 0;
+        std::vector<std::vector<int>> tmpRank(clusterMembership.size(), std::vector<int>());
 
         for (int k = 0; k < clusterMembership.size(); ++k) {
-            TotalNum+=clusterMembership[k].size();
+            TotalNum += clusterMembership[k].size();
             for (int j = 0; j < clusterMembership[k].size(); ++j) {
-                ID=a[site][clusterMembership[k][j]];
-                leftD=d[site][clusterMembership[k][j]];
-                rightD=delta[site][alphaMap[site ][ID]];
-                fout << site<<"\t"<<ID<<"\t"<<clusterMembership[k][j] << "\t" << alphaMap[site][ID] <<"\t"<<leftD<<"\t"<<rightD<<"\t"<<3<<"\t"<<site-indexToPut<<"\t"<<MAP1[ID/2]<<"\t";
-                if(MAP2.find(MAP1[ID/2])!=MAP2.end()) {
+                ID = a[site][clusterMembership[k][j]];
+                leftD = d[site][clusterMembership[k][j]];
+                rightD = delta[site][alphaMap[site][ID]];
+                fout << site << "\t" << ID << "\t" << clusterMembership[k][j] << "\t" << alphaMap[site][ID] << "\t" << leftD << "\t" << rightD << "\t" << 3 << "\t" << site - indexToPut << "\t" << MAP1[ID / 2] << "\t";
+                if (MAP2.find(MAP1[ID / 2]) != MAP2.end()) {
                     fout << MAP2[MAP1[ID / 2]] << std::endl;
-                }
-                else
-                    fout<< "NA"<<std::endl;
+                } else
+                    fout << "NA" << std::endl;
             }
         }
         fout.close();
     }
 
-
-    return 0;//debug
+    return 0; //debug
 }
 
 //int PBWTViewer::CursorForwards(RESULT* result) {//so far only implemented for test purpose
@@ -386,123 +392,108 @@ int PBWTViewer::MergeCluster(int site, Index2ID& MAP1, ID2POP& MAP2) {
 //}
 //
 
-int PBWTViewer::ConfidentOrNot(char** individual, int siteA, int siteB) {
-    if(siteA>siteB) swap(siteA,siteB);
+int PBWTViewer::ConfidentOrNot(char** individual, int siteA, int siteB)
+{
+    if (siteA > siteB)
+        swap(siteA, siteB);
     //find maximal length of shared prefix
-    int length=siteB+1;
+    int length = siteB + 1;
     char* haps[2];
-    haps[0] = new char [length];//start from 0, hence siteB is length of prefix
+    haps[0] = new char[length]; //start from 0, hence siteB is length of prefix
 
-    memcpy(haps[0],individual[0],length);
+    memcpy(haps[0], individual[0], length);
 
     char* altHaps[2];
-    altHaps[0] = new char [length];
+    altHaps[0] = new char[length];
     //altHaps[1] = new char [length];
-    memcpy(altHaps[0],individual[0],length);
+    memcpy(altHaps[0], individual[0], length);
 
-    altHaps[0][siteA]=individual[1][siteA];
+    altHaps[0][siteA] = individual[1][siteA];
 
-    int leftLengthA=FindLengthOfPrefix(haps[0],siteB);
+    int leftLengthA = FindLengthOfPrefix(haps[0], siteB);
 
-    int altLeftLengthA=FindLengthOfPrefix(altHaps[0],siteB);
+    int altLeftLengthA = FindLengthOfPrefix(altHaps[0], siteB);
 
     delete haps[0];
 
     delete altHaps[0];
 
     //find maximal length of shared suffix
-    length=N-siteA;
-    haps[0] = new char [length];//start from 0, hence siteB is length of prefix
+    length = N - siteA;
+    haps[0] = new char[length]; //start from 0, hence siteB is length of prefix
 
-    memcpy(haps[0],individual[0]+siteA,length);
+    memcpy(haps[0], individual[0] + siteA, length);
 
-    altHaps[0] = new char [length];
+    altHaps[0] = new char[length];
 
-    memcpy(altHaps[0],&individual[0][siteA],length);
+    memcpy(altHaps[0], &individual[0][siteA], length);
 
-    altHaps[0][siteB-siteA] = individual[1][siteB];
-    int rightLengthA=FindLengthOfSuffix(haps[0],siteA);
+    altHaps[0][siteB - siteA] = individual[1][siteB];
+    int rightLengthA = FindLengthOfSuffix(haps[0], siteA);
 
-    int altRightLengthA=FindLengthOfSuffix(altHaps[0],siteA);
-
+    int altRightLengthA = FindLengthOfSuffix(altHaps[0], siteA);
 
     int ret(0);
-//    if(leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA) {/*numRight++; cerr<<"so far numRight:"<<numRight<<endl;*/ ret|=0x11;}//confident and right
-//    if(altLeftLengthA > leftLengthA && altRightLengthA > rightLengthA) {/*numAltRight++;cerr<<"so far numAltRight:"<<numAltRight<<endl;*/ ret|=0x1;}//confident  and wrong
-//    if(leftLengthA * rightLengthA >= altLeftLengthA*altRightLengthA) ret|=0x1100;//ambiguous and right
-//    if(altLeftLengthA * altRightLengthA > leftLengthA * rightLengthA) ret|=0x100;//ambiguous and wrong
+    //    if(leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA) {/*numRight++; cerr<<"so far numRight:"<<numRight<<endl;*/ ret|=0x11;}//confident and right
+    //    if(altLeftLengthA > leftLengthA && altRightLengthA > rightLengthA) {/*numAltRight++;cerr<<"so far numAltRight:"<<numAltRight<<endl;*/ ret|=0x1;}//confident  and wrong
+    //    if(leftLengthA * rightLengthA >= altLeftLengthA*altRightLengthA) ret|=0x1100;//ambiguous and right
+    //    if(altLeftLengthA * altRightLengthA > leftLengthA * rightLengthA) ret|=0x100;//ambiguous and wrong
     //cerr<<siteA<<"\t"<<siteB<<"\t"<<leftLengthA<<"\t"<<altLeftLengthA<<"\t"<<rightLengthA<<"\t"<<altRightLengthA<<endl;
-    if (leftLengthA == altLeftLengthA && rightLengthA == altRightLengthA)
-    {
-        ret=rand()%2;
-        if(ret)
-        {
-            ret=0;
-            ret|=0x11;
-        }
-        else
-        {
-            ret=0;
-            ret|=0x1;
+    if (leftLengthA == altLeftLengthA && rightLengthA == altRightLengthA) {
+        ret = rand() % 2;
+        if (ret) {
+            ret = 0;
+            ret |= 0x11;
+        } else {
+            ret = 0;
+            ret |= 0x1;
         }
     } //then it is ambiguous and use random guess or fractional counts
-    else if (leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA)
-    {
-        if((haps[0][siteA-siteA]==this->haplotype[M][siteA]&&haps[0][siteB-siteA]==this->haplotype[M][siteB])||(haps[0][siteA-siteA]==this->haplotype[M+1][siteA]&&haps[0][siteB-siteA]==this->haplotype[M+1][siteB]))//haps is the same with ref
+    else if (leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA) {
+        if ((haps[0][siteA - siteA] == this->haplotype[M][siteA] && haps[0][siteB - siteA] == this->haplotype[M][siteB]) || (haps[0][siteA - siteA] == this->haplotype[M + 1][siteA] && haps[0][siteB - siteA] == this->haplotype[M + 1][siteB])) //haps is the same with ref
         {
-            ret|=0x11;
+            ret |= 0x11;
             //cerr<<siteA<<"\t"<<siteB<<"\tphasing via hap"<<endl;
-        }//confident right
+        } //confident right
         else
-            ret|=0x1;//confident wrong
-    }
-    else if (leftLengthA <= altLeftLengthA && rightLengthA <= altRightLengthA)
-    {
-        if((altHaps[0][siteA-siteA]==this->haplotype[M][siteA]&&altHaps[0][siteB-siteA]==this->haplotype[M][siteB])||(altHaps[0][siteA-siteA]==this->haplotype[M+1][siteA]&&altHaps[0][siteB-siteA]==this->haplotype[M+1][siteB]))
-        {
-            ret|=0x11;
+            ret |= 0x1; //confident wrong
+    } else if (leftLengthA <= altLeftLengthA && rightLengthA <= altRightLengthA) {
+        if ((altHaps[0][siteA - siteA] == this->haplotype[M][siteA] && altHaps[0][siteB - siteA] == this->haplotype[M][siteB]) || (altHaps[0][siteA - siteA] == this->haplotype[M + 1][siteA] && altHaps[0][siteB - siteA] == this->haplotype[M + 1][siteB])) {
+            ret |= 0x11;
             //cerr<<siteA<<"\t"<<siteB<<"\tphasing via althap"<<endl;
 
-        }//confident right
+        } //confident right
         else
-            ret|=0x1;//confident wrong
-    }
-    else if (leftLengthA * rightLengthA == altLeftLengthA * altRightLengthA )
-    {
-        ret=rand()%2;
-        if(ret)
-        {
-            ret=0;
-            ret|=0x1100;
+            ret |= 0x1; //confident wrong
+    } else if (leftLengthA * rightLengthA == altLeftLengthA * altRightLengthA) {
+        ret = rand() % 2;
+        if (ret) {
+            ret = 0;
+            ret |= 0x1100;
+        } else {
+            ret = 0;
+            ret |= 0x100;
         }
-        else
-        {
-            ret=0;
-            ret|=0x100;
-        }
-    }//then it is ambiguous and use random guess or fractional counts
-    else if (leftLengthA * rightLengthA > altLeftLengthA * altRightLengthA)
-    {
-        if((haps[0][siteA-siteA]==this->haplotype[M][siteA]&&haps[0][siteB-siteA]==this->haplotype[M][siteB])||(haps[0][siteA-siteA]==this->haplotype[M+1][siteA]&&haps[0][siteB-siteA]==this->haplotype[M+1][siteB]))//haps is the same with ref
-        {
-            ret|=0x1100;
-            //cerr<<siteA<<"\t"<<siteB<<"\tphasing via ambiguous hap"<<endl;
-        }
-        else
-            ret|=0x100;
-    }// then it is ambiguous right
-    else if (leftLengthA * rightLengthA < altLeftLengthA * altRightLengthA)
-    {
-        if((altHaps[0][siteA-siteA]==this->haplotype[M][siteA]&&altHaps[0][siteB-siteA]==this->haplotype[M][siteB])||(altHaps[0][siteA-siteA]==this->haplotype[M+1][siteA]&&altHaps[0][siteB-siteA]==this->haplotype[M+1][siteB]))
+    } //then it is ambiguous and use random guess or fractional counts
+    else if (leftLengthA * rightLengthA > altLeftLengthA * altRightLengthA) {
+        if ((haps[0][siteA - siteA] == this->haplotype[M][siteA] && haps[0][siteB - siteA] == this->haplotype[M][siteB]) || (haps[0][siteA - siteA] == this->haplotype[M + 1][siteA] && haps[0][siteB - siteA] == this->haplotype[M + 1][siteB])) //haps is the same with ref
         {
             ret |= 0x1100;
+            //cerr<<siteA<<"\t"<<siteB<<"\tphasing via ambiguous hap"<<endl;
+        } else
+            ret |= 0x100;
+    } // then it is ambiguous right
+    else if (leftLengthA * rightLengthA < altLeftLengthA * altRightLengthA) {
+        if ((altHaps[0][siteA - siteA] == this->haplotype[M][siteA] && altHaps[0][siteB - siteA] == this->haplotype[M][siteB]) || (altHaps[0][siteA - siteA] == this->haplotype[M + 1][siteA] && altHaps[0][siteB - siteA] == this->haplotype[M + 1][siteB])) {
+            ret |= 0x1100;
             //cerr<<siteA<<"\t"<<siteB<<"\tphasing via ambiguous althap"<<endl;
-        }
-        else
-            ret|=0x100;
-    }// then it is ambiguous wrong
-    else { std::cerr<<"matching length error"<<std::endl;exit(EXIT_FAILURE);}//spit error message.
-
+        } else
+            ret |= 0x100;
+    } // then it is ambiguous wrong
+    else {
+        std::cerr << "matching length error" << std::endl;
+        exit(EXIT_FAILURE);
+    } //spit error message.
 
     delete haps[0];
 
@@ -511,88 +502,82 @@ int PBWTViewer::ConfidentOrNot(char** individual, int siteA, int siteB) {
     return ret;
 }
 
-
-int PBWTViewer::Phase(char** individual, int siteA, int siteB) {
-    if(siteA>siteB) swap(siteA,siteB);
+int PBWTViewer::Phase(char** individual, int siteA, int siteB)
+{
+    if (siteA > siteB)
+        swap(siteA, siteB);
     //find maximal length of shared prefix
-    int length=siteB+1;
+    int length = siteB + 1;
     char* haps[2];
-    haps[0] = new char [length];//start from 0, hence siteB is length of prefix
+    haps[0] = new char[length]; //start from 0, hence siteB is length of prefix
 
-    memcpy(haps[0],individual[0],length);
+    memcpy(haps[0], individual[0], length);
 
     char* altHaps[2];
-    altHaps[0] = new char [length];
+    altHaps[0] = new char[length];
     //altHaps[1] = new char [length];
-    memcpy(altHaps[0],individual[0],length);
+    memcpy(altHaps[0], individual[0], length);
 
-    altHaps[0][siteA]=individual[1][siteA];
+    altHaps[0][siteA] = individual[1][siteA];
 
-    int leftLengthA=FindLengthOfPrefix(haps[0],siteB);
+    int leftLengthA = FindLengthOfPrefix(haps[0], siteB);
 
-    int altLeftLengthA=FindLengthOfPrefix(altHaps[0],siteB);
+    int altLeftLengthA = FindLengthOfPrefix(altHaps[0], siteB);
 
     delete haps[0];
 
     delete altHaps[0];
 
     //find maximal length of shared suffix
-    length=N-siteA;
-    haps[0] = new char [length];//start from 0, hence siteB is length of prefix
+    length = N - siteA;
+    haps[0] = new char[length]; //start from 0, hence siteB is length of prefix
 
-    memcpy(haps[0],individual[0]+siteA,length);
+    memcpy(haps[0], individual[0] + siteA, length);
 
-    altHaps[0] = new char [length];
+    altHaps[0] = new char[length];
 
-    memcpy(altHaps[0],&individual[0][siteA],length);
+    memcpy(altHaps[0], &individual[0][siteA], length);
 
-    altHaps[0][siteB-siteA] = individual[1][siteB];
-    int rightLengthA=FindLengthOfSuffix(haps[0],siteA);
+    altHaps[0][siteB - siteA] = individual[1][siteB];
+    int rightLengthA = FindLengthOfSuffix(haps[0], siteA);
 
-    int altRightLengthA=FindLengthOfSuffix(altHaps[0],siteA);
-
+    int altRightLengthA = FindLengthOfSuffix(altHaps[0], siteA);
 
     int ret(0);
-//    if(leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA) {/*numRight++; cerr<<"so far numRight:"<<numRight<<endl;*/ ret|=0x11;}//confident and right
-//    if(altLeftLengthA > leftLengthA && altRightLengthA > rightLengthA) {/*numAltRight++;cerr<<"so far numAltRight:"<<numAltRight<<endl;*/ ret|=0x1;}//confident  and wrong
-//    if(leftLengthA * rightLengthA >= altLeftLengthA*altRightLengthA) ret|=0x1100;//ambiguous and right
-//    if(altLeftLengthA * altRightLengthA > leftLengthA * rightLengthA) ret|=0x100;//ambiguous and wrong
+    //    if(leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA) {/*numRight++; cerr<<"so far numRight:"<<numRight<<endl;*/ ret|=0x11;}//confident and right
+    //    if(altLeftLengthA > leftLengthA && altRightLengthA > rightLengthA) {/*numAltRight++;cerr<<"so far numAltRight:"<<numAltRight<<endl;*/ ret|=0x1;}//confident  and wrong
+    //    if(leftLengthA * rightLengthA >= altLeftLengthA*altRightLengthA) ret|=0x1100;//ambiguous and right
+    //    if(altLeftLengthA * altRightLengthA > leftLengthA * rightLengthA) ret|=0x100;//ambiguous and wrong
 
-    if (leftLengthA == altLeftLengthA && rightLengthA == altRightLengthA)
-    {
+    if (leftLengthA == altLeftLengthA && rightLengthA == altRightLengthA) {
 
     } //then it is ambiguous and use random guess or fractional counts
-    else if (leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA)
-    {
+    else if (leftLengthA >= altLeftLengthA && rightLengthA >= altRightLengthA) {
 
-            ret|=0x11;
+        ret |= 0x11;
 
-    }
-    else if (leftLengthA <= altLeftLengthA && rightLengthA <= altRightLengthA)
-    {
+    } else if (leftLengthA <= altLeftLengthA && rightLengthA <= altRightLengthA) {
 
-            swap(individual[1][siteB],individual[0][siteB]);
+        swap(individual[1][siteB], individual[0][siteB]);
 
-            ret|=0x1;//confident wrong
-    }
-    else if (leftLengthA * rightLengthA == altLeftLengthA * altRightLengthA )
-    {
+        ret |= 0x1; //confident wrong
+    } else if (leftLengthA * rightLengthA == altLeftLengthA * altRightLengthA) {
 
-    }//then it is ambiguous and use random guess or fractional counts
-    else if (leftLengthA * rightLengthA > altLeftLengthA * altRightLengthA)
-    {
+    } //then it is ambiguous and use random guess or fractional counts
+    else if (leftLengthA * rightLengthA > altLeftLengthA * altRightLengthA) {
 
-            ret|=0x1100;
+        ret |= 0x1100;
 
-    }// then it is ambiguous right
-    else if (leftLengthA * rightLengthA < altLeftLengthA * altRightLengthA)
-    {
+    } // then it is ambiguous right
+    else if (leftLengthA * rightLengthA < altLeftLengthA * altRightLengthA) {
 
-            swap(individual[1][siteB],individual[0][siteB]);
-            ret|=0x100;
-    }// then it is ambiguous wrong
-    else { std::cerr<<"matching length error"<<std::endl;exit(EXIT_FAILURE);}//spit error message.
-
+        swap(individual[1][siteB], individual[0][siteB]);
+        ret |= 0x100;
+    } // then it is ambiguous wrong
+    else {
+        std::cerr << "matching length error" << std::endl;
+        exit(EXIT_FAILURE);
+    } //spit error message.
 
     delete haps[0];
 
@@ -601,58 +586,59 @@ int PBWTViewer::Phase(char** individual, int siteA, int siteB) {
     return ret;
 }
 
-int PBWTViewer::FindLengthOfSuffix(char *haplotypeX,int siteA) {
+int PBWTViewer::FindLengthOfSuffix(char* haplotypeX, int siteA)
+{
 
-    int maxLen(0);
-
-    /* match query in turn */
-
-
-        int f = 0;
-        int g = M-1;
-
-
-        int f1 = 0;
-        int g1 = M-1;
-
-        for (int k = siteA; k < N; ++k) {               /* use classic FM updates to extend [f,g) interval to next position */
-            f1 = haplotypeX[k-siteA] ? c[k] + (f - u[k][f]) : u[k][f];
-            g1 = haplotypeX[k-siteA] ? c[k] + (g - u[k][g]) : u[k][g];
-            //cerr<<"suffix->k:"<<k<<"\tg:"<<g<<endl;
-            //if(k>=c.size()||k<0) cerr<<"c size:"<<c.size()<<"\tk:"<<k<<endl;
-            /*if(k>u.size()||f>u[k].size()||g1>u[k].size())*/
-            //cerr<<"M:"<<M<<"\tSuffix->k:"<<k<<"\t"<<u[k].size()<<"\tf:"<<f<<"\tg1:"<<g1<<"\tg:"<<g<<"\t1st:"<<c[k]<<"\t2st:"<<u[k][g]<<endl;
-            if(f1<0) f1=0;
-            if(g1>M-1) g1=M-1;
-            /* if the interval is non-zero we can just proceed */
-            if (g1 > f1) {
-                f = f1;
-                g = g1;
-            } /* no change to e */
-            else        /* we have reached a maximum - need to report and update e, f*,g* */
-            {
-                break;
-            }
-            maxLen++;
-        }
-
-    return maxLen;
-}
-
-int PBWTViewer::FindLengthOfPrefix(char *haplotypeX, int siteB) {
     int maxLen(0);
 
     /* match query in turn */
 
     int f = 0;
-    int g = M-1;
+    int g = M - 1;
+
+    int f1 = 0;
+    int g1 = M - 1;
+
+    for (int k = siteA; k < N; ++k) { /* use classic FM updates to extend [f,g) interval to next position */
+        f1 = haplotypeX[k - siteA] ? c[k] + (f - u[k][f]) : u[k][f];
+        g1 = haplotypeX[k - siteA] ? c[k] + (g - u[k][g]) : u[k][g];
+        //cerr<<"suffix->k:"<<k<<"\tg:"<<g<<endl;
+        //if(k>=c.size()||k<0) cerr<<"c size:"<<c.size()<<"\tk:"<<k<<endl;
+        /*if(k>u.size()||f>u[k].size()||g1>u[k].size())*/
+        //cerr<<"M:"<<M<<"\tSuffix->k:"<<k<<"\t"<<u[k].size()<<"\tf:"<<f<<"\tg1:"<<g1<<"\tg:"<<g<<"\t1st:"<<c[k]<<"\t2st:"<<u[k][g]<<endl;
+        if (f1 < 0)
+            f1 = 0;
+        if (g1 > M - 1)
+            g1 = M - 1;
+        /* if the interval is non-zero we can just proceed */
+        if (g1 > f1) {
+            f = f1;
+            g = g1;
+        } /* no change to e */
+        else /* we have reached a maximum - need to report and update e, f*,g* */
+        {
+            break;
+        }
+        maxLen++;
+    }
+
+    return maxLen;
+}
+
+int PBWTViewer::FindLengthOfPrefix(char* haplotypeX, int siteB)
+{
+    int maxLen(0);
+
+    /* match query in turn */
+
+    int f = 0;
+    int g = M - 1;
 
     //cerr<<"in DebugWraooer M:"<<M<<endl;
     int f1 = 0;
-    int g1 = M-1;
+    int g1 = M - 1;
 
-
-    for (int k = siteB; k > -1; --k) {               /* use classic FM updates to extend [f,g) interval to next position */
+    for (int k = siteB; k > -1; --k) { /* use classic FM updates to extend [f,g) interval to next position */
         f1 = haplotypeX[k] ? celta[k] + (f - ultra[k][f]) : ultra[k][f];
         g1 = haplotypeX[k] ? celta[k] + (g - ultra[k][g]) : ultra[k][g];
         //cerr<<"prefix->k:"<<k<<"\tg:"<<g<<endl;
@@ -661,61 +647,64 @@ int PBWTViewer::FindLengthOfPrefix(char *haplotypeX, int siteB) {
         /*if(k>ultra.size()||f>ultra[k].size()||g1>ultra[k].size())*/
         //cerr<<"M"<<M<<"Prefix->k:"<<k<<"\t"<<ultra[k].size()<<"\tf:"<<f<<"\tg:"<<g<<"\tg1:"<<g1<<"\t1st:"<<celta[k]<<"\t2nd:"<<ultra[k][g]<<endl;
         //if(f1<0||g1>M-1) continue;
-        if(f1<0) f1=0;
-        if(g1>M-1) g1=M-1;
+        if (f1 < 0)
+            f1 = 0;
+        if (g1 > M - 1)
+            g1 = M - 1;
         /* if the interval is non-zero we can just proceed */
         if (g1 > f1) {
             f = f1;
             g = g1;
         } /* no change to e */
-        else        /* we have reached a maximum - need to report and update e, f*,g* */
+        else /* we have reached a maximum - need to report and update e, f*,g* */
         {
             break;
         }
 
         maxLen++;
-
     }
 
     return maxLen;
 }
 
-char **PBWTViewer::ExtractSubset(int individual) {
-    char* tmpHapA,*tmpHapB;
-    tmpHapA = this->haplotype[individual*2];
-    tmpHapB = this->haplotype[individual*2+1];
-    this->haplotype[individual*2] = this->haplotype[M-2];
-    this->haplotype[individual*2+1] = this->haplotype[M-1];
-    this->haplotype[M-2] = tmpHapA;
-    this->haplotype[M-1] = tmpHapB;
+char** PBWTViewer::ExtractSubset(int individual)
+{
+    char *tmpHapA, *tmpHapB;
+    tmpHapA = this->haplotype[individual * 2];
+    tmpHapB = this->haplotype[individual * 2 + 1];
+    this->haplotype[individual * 2] = this->haplotype[M - 2];
+    this->haplotype[individual * 2 + 1] = this->haplotype[M - 1];
+    this->haplotype[M - 2] = tmpHapA;
+    this->haplotype[M - 1] = tmpHapB;
     char** haplotypeX = new char*[2];
     //haplotypeX[0] = tmpHapA;
     //haplotypeX[1] = tmpHapB;
-    haplotypeX[0]=new char [N];
-    haplotypeX[1]=new char [N];
-    memcpy(haplotypeX[0],this->haplotype[M-2],N);
-    memcpy(haplotypeX[1],this->haplotype[M-1],N);
+    haplotypeX[0] = new char[N];
+    haplotypeX[1] = new char[N];
+    memcpy(haplotypeX[0], this->haplotype[M - 2], N);
+    memcpy(haplotypeX[1], this->haplotype[M - 1], N);
 
-//    srand(time(NULL));
-//    for (int i = 0; i <N ; ++i) {
-//        if(rand()%2==1)
-//        swap(haplotypeX[0][i],haplotypeX[1][i]);
-//    }
-    M-=2;
+    //    srand(time(NULL));
+    //    for (int i = 0; i <N ; ++i) {
+    //        if(rand()%2==1)
+    //        swap(haplotypeX[0][i],haplotypeX[1][i]);
+    //    }
+    M -= 2;
     ResetWrapper();
     return haplotypeX;
 }
 
-int PBWTViewer::SubsetResume(char **haplotypeX, int individual) {
+int PBWTViewer::SubsetResume(char** haplotypeX, int individual)
+{
 
-    M+=2;
-    char* tmpHapA,*tmpHapB;
-    tmpHapA = this->haplotype[individual*2];
-    tmpHapB = this->haplotype[individual*2+1];
-    this->haplotype[individual*2] = this->haplotype[M-2];
-    this->haplotype[individual*2+1] = this->haplotype[M-1];
-    this->haplotype[M-2] = tmpHapA;
-    this->haplotype[M-1] = tmpHapB;
+    M += 2;
+    char *tmpHapA, *tmpHapB;
+    tmpHapA = this->haplotype[individual * 2];
+    tmpHapB = this->haplotype[individual * 2 + 1];
+    this->haplotype[individual * 2] = this->haplotype[M - 2];
+    this->haplotype[individual * 2 + 1] = this->haplotype[M - 1];
+    this->haplotype[M - 2] = tmpHapA;
+    this->haplotype[M - 1] = tmpHapB;
     delete haplotypeX[0];
     delete haplotypeX[1];
     delete haplotypeX;
@@ -723,218 +712,191 @@ int PBWTViewer::SubsetResume(char **haplotypeX, int individual) {
     return 0;
 }
 
-struct CONRE
-{
+struct CONRE {
     int confidentRight;
     int ambiguousRight;
     int confidentTotal;
     int ambiguousTotal;
     CONRE()
     {
-        confidentRight=0;
-        ambiguousRight=0;
-        confidentTotal=0;
-        ambiguousTotal=0;
+        confidentRight = 0;
+        ambiguousRight = 0;
+        confidentTotal = 0;
+        ambiguousTotal = 0;
     }
 };
 
+int PBWTViewer::Process(int nMarkers, int nSamples, char** haps)
+{
 
-int PBWTViewer::Process(int nMarkers, int nSamples, char** haps) {
+    std::vector<CONRE> conreIndividual(nSamples, CONRE());
+    std::unordered_map<int, CONRE> conreSNP;
+    char* hapInUse[2];
+    hapInUse[0] = new char[N];
+    hapInUse[1] = new char[N];
 
-    std::vector<CONRE> conreIndividual(nSamples,CONRE());
-    std::unordered_map<int,CONRE> conreSNP;
-    char*hapInUse[2];
-    hapInUse[0]= new char [N];
-    hapInUse[1]= new char [N];
+    for (int individual = 0; individual < 5 /*nSamples*/; ++individual) {
 
-    for (int individual = 0; individual < 5/*nSamples*/; ++individual) {
+        char** haplotypeX = ExtractSubset(individual);
 
-            char **haplotypeX = ExtractSubset(individual);
-
-            fprintf(stderr, "finished initializing graph\n");
+        fprintf(stderr, "finished initializing graph\n");
 
         CursorBackwards();
-            fprintf(stderr, "finished backward procedure\n");
+        fprintf(stderr, "finished backward procedure\n");
         PBWTWrapper::CursorForwards(true);
-            fprintf(stderr, "finished forward procedure\n");
+        fprintf(stderr, "finished forward procedure\n");
 
-            std::vector<int> heterIndex;
-            for (int i = 0; i < N; ++i) {
-                if (haplotypeX[0][i] != haplotypeX[1][i]) heterIndex.push_back(i);
-            }
-            fprintf(stderr, "number of heterozygous site for individual %d :%d\n", individual, heterIndex.size());
+        std::vector<int> heterIndex;
+        for (int i = 0; i < N; ++i) {
+            if (haplotypeX[0][i] != haplotypeX[1][i])
+                heterIndex.push_back(i);
+        }
+        fprintf(stderr, "number of heterozygous site for individual %d :%d\n", individual, heterIndex.size());
 
         //phasing multiple rounds
-        char*** voteHapVec = new char** [ROUND];
-        int seed=time(NULL);
+        char*** voteHapVec = new char**[ROUND];
+        int seed = time(NULL);
         srand(seed);
         //std::cerr<<"Seed:"<<seed<<std::endl;
-        for (int k = 0; k <ROUND; ++k) {//phasing round
-            voteHapVec[k]=new char* [2];
-            voteHapVec[k][0]=new char [N];
-            voteHapVec[k][1]=new char [N];
+        for (int k = 0; k < ROUND; ++k) { //phasing round
+            voteHapVec[k] = new char*[2];
+            voteHapVec[k][0] = new char[N];
+            voteHapVec[k][1] = new char[N];
 
             memcpy(hapInUse[0], haplotypeX[0], N);
             memcpy(hapInUse[1], haplotypeX[1], N);
 
-            for (int i = 0; i <N ; ++i) {
-                if(rand()%2==1)
-                    swap(hapInUse[0][i],hapInUse[1][i]);
+            for (int i = 0; i < N; ++i) {
+                if (rand() % 2 == 1)
+                    swap(hapInUse[0][i], hapInUse[1][i]);
             }
             for (int j = 0; j < heterIndex.size() - 1; ++j) {
                 Phase(hapInUse, heterIndex[j], heterIndex[j + 1]);
             }
-            memcpy(voteHapVec[k][0],hapInUse[0],N);
-            memcpy(voteHapVec[k][1],hapInUse[1],N);
+            memcpy(voteHapVec[k][0], hapInUse[0], N);
+            memcpy(voteHapVec[k][1], hapInUse[1], N);
         }
-////iterative updating
-//        for (int i = 0; i <N ; ++i) {
-//                if(rand()%2==1)
-//                    swap(haplotypeX[0][i],haplotypeX[1][i]);
-//        }
-//        for (int k = 0; k <ROUND; ++k) {//phasing round
-//            voteHapVec[k]=new char* [2];
-//            voteHapVec[k][0]=new char [N];
-//            voteHapVec[k][1]=new char [N];
-//
-//            for (int j = 0; j < heterIndex.size() - 1; ++j) {
-//                Phase(haplotypeX, heterIndex[j], heterIndex[j + 1]);
-//            }
-//            memcpy(voteHapVec[k][0],haplotypeX[0],N);
-//            memcpy(voteHapVec[k][1],haplotypeX[1],N);
-//        }
+        ////iterative updating
+        //        for (int i = 0; i <N ; ++i) {
+        //                if(rand()%2==1)
+        //                    swap(haplotypeX[0][i],haplotypeX[1][i]);
+        //        }
+        //        for (int k = 0; k <ROUND; ++k) {//phasing round
+        //            voteHapVec[k]=new char* [2];
+        //            voteHapVec[k][0]=new char [N];
+        //            voteHapVec[k][1]=new char [N];
+        //
+        //            for (int j = 0; j < heterIndex.size() - 1; ++j) {
+        //                Phase(haplotypeX, heterIndex[j], heterIndex[j + 1]);
+        //            }
+        //            memcpy(voteHapVec[k][0],haplotypeX[0],N);
+        //            memcpy(voteHapVec[k][1],haplotypeX[1],N);
+        //        }
         //major voting
-        MajorVoting(haplotypeX,voteHapVec,ROUND,heterIndex);
+        MajorVoting(haplotypeX, voteHapVec, ROUND, heterIndex);
 
         for (int l = 0; l < ROUND; ++l) {
-            delete [] voteHapVec[l][0];
-            delete [] voteHapVec[l][1];
+            delete[] voteHapVec[l][0];
+            delete[] voteHapVec[l][1];
         }
 
-        for (int j = 0; j < heterIndex.size()-1; ++j) {
-            int ret = ConfidentOrNot(haplotypeX,heterIndex[j],heterIndex[j+1]);
-            if((ret&0x10)&&(ret&0x1))
-            {
-                conreIndividual[individual].confidentTotal+=1;
-                conreIndividual[individual].confidentRight+=1;
-                if(conreSNP.find(heterIndex[j])!=conreSNP.end())
-                {
-                    conreSNP[heterIndex[j]].confidentTotal+=1;
-                    conreSNP[heterIndex[j]].confidentRight+=1;
-                }
-                else
-                {
+        for (int j = 0; j < heterIndex.size() - 1; ++j) {
+            int ret = ConfidentOrNot(haplotypeX, heterIndex[j], heterIndex[j + 1]);
+            if ((ret & 0x10) && (ret & 0x1)) {
+                conreIndividual[individual].confidentTotal += 1;
+                conreIndividual[individual].confidentRight += 1;
+                if (conreSNP.find(heterIndex[j]) != conreSNP.end()) {
+                    conreSNP[heterIndex[j]].confidentTotal += 1;
+                    conreSNP[heterIndex[j]].confidentRight += 1;
+                } else {
                     CONRE conre;
-                    conre.confidentTotal=1;
-                    conre.confidentRight=1;
-                    conreSNP.insert(make_pair(heterIndex[j],conre));
+                    conre.confidentTotal = 1;
+                    conre.confidentRight = 1;
+                    conreSNP.insert(make_pair(heterIndex[j], conre));
+                }
+            } else if (ret & 0x1) {
+                conreIndividual[individual].confidentTotal += 1;
+                if (conreSNP.find(heterIndex[j]) != conreSNP.end()) {
+                    conreSNP[heterIndex[j]].confidentTotal += 1;
+                } else {
+                    CONRE conre;
+                    conre.confidentTotal = 1;
+                    conreSNP.insert(make_pair(heterIndex[j], conre));
                 }
             }
-            else if(ret&0x1)
-            {
-                conreIndividual[individual].confidentTotal+=1;
-                if(conreSNP.find(heterIndex[j])!=conreSNP.end())
-                {
-                    conreSNP[heterIndex[j]].confidentTotal+=1;
-                }
-                else
-                {
+            if ((ret & 0x1000) && (ret & 0x100)) {
+                conreIndividual[individual].ambiguousRight += 1;
+                conreIndividual[individual].ambiguousTotal += 1;
+                if (conreSNP.find(heterIndex[j]) != conreSNP.end()) {
+                    conreSNP[heterIndex[j]].ambiguousRight += 1;
+                    conreSNP[heterIndex[j]].ambiguousTotal += 1;
+                } else {
                     CONRE conre;
-                    conre.confidentTotal=1;
-                    conreSNP.insert(make_pair(heterIndex[j],conre));
+                    conre.ambiguousRight = 1;
+                    conre.ambiguousTotal = 1;
+                    conreSNP.insert(make_pair(heterIndex[j], conre));
+                }
+            } else if (ret & 0x100) {
+                conreIndividual[individual].ambiguousTotal += 1;
+                if (conreSNP.find(heterIndex[j]) != conreSNP.end()) {
+                    conreSNP[heterIndex[j]].ambiguousTotal += 1;
+                } else {
+                    CONRE conre;
+                    conre.ambiguousTotal = 1;
+                    conreSNP.insert(make_pair(heterIndex[j], conre));
                 }
             }
-            if((ret&0x1000)&&(ret&0x100))
-            {
-                conreIndividual[individual].ambiguousRight+=1;
-                conreIndividual[individual].ambiguousTotal+=1;
-                if(conreSNP.find(heterIndex[j])!=conreSNP.end())
-                {
-                    conreSNP[heterIndex[j]].ambiguousRight+=1;
-                    conreSNP[heterIndex[j]].ambiguousTotal+=1;
-                }
-                else
-                {
-                    CONRE conre;
-                    conre.ambiguousRight=1;
-                    conre.ambiguousTotal=1;
-                    conreSNP.insert(make_pair(heterIndex[j],conre));
-                }
-            }
-            else if(ret&0x100)
-            {
-                conreIndividual[individual].ambiguousTotal+=1;
-                if(conreSNP.find(heterIndex[j])!=conreSNP.end())
-                {
-                    conreSNP[heterIndex[j]].ambiguousTotal+=1;
-                }
-                else
-                {
-                    CONRE conre;
-                    conre.ambiguousTotal=1;
-                    conreSNP.insert(make_pair(heterIndex[j],conre));
-                }
-            }
-
         }
 
-        SubsetResume(haplotypeX,individual);
-
+        SubsetResume(haplotypeX, individual);
     }
 
     ofstream indvOUT("/Users/fanzhang/Downloads/PlutoTest/individual.out");
     ofstream SNPOUT("/Users/fanzhang/Downloads/PlutoTest/snp.out");
-    for (int k = 0; k <nSamples ; ++k) {
-        indvOUT<<k<<"\t"<<conreIndividual[k].confidentTotal<<"\t"<<conreIndividual[k].confidentRight<<"\t"<<conreIndividual[k].ambiguousTotal<<"\t"<<conreIndividual[k].ambiguousRight<<std::endl;
+    for (int k = 0; k < nSamples; ++k) {
+        indvOUT << k << "\t" << conreIndividual[k].confidentTotal << "\t" << conreIndividual[k].confidentRight << "\t" << conreIndividual[k].ambiguousTotal << "\t" << conreIndividual[k].ambiguousRight << std::endl;
     }
-    for (std::unordered_map<int,CONRE>::iterator iter = conreSNP.begin(); iter!=conreSNP.end(); ++iter) {
-        SNPOUT<<iter->first<<"\t"<<iter->second.confidentTotal<<"\t"<<iter->second.confidentRight<<"\t"<<iter->second.ambiguousTotal<<"\t"<<iter->second.ambiguousRight<<endl;
+    for (std::unordered_map<int, CONRE>::iterator iter = conreSNP.begin(); iter != conreSNP.end(); ++iter) {
+        SNPOUT << iter->first << "\t" << iter->second.confidentTotal << "\t" << iter->second.confidentRight << "\t" << iter->second.ambiguousTotal << "\t" << iter->second.ambiguousRight << endl;
     }
 
     conreSNP.clear();
-    delete [] hapInUse[0];
-    delete [] hapInUse[1];
+    delete[] hapInUse[0];
+    delete[] hapInUse[1];
     return 0;
 }
 
-int PBWTViewer::MajorVoting(char **individual, char ***voteHapVec, int round,std::vector<int>& heterIndex) {
-    std::cerr<<"Enter Major Voting..."<<std::endl;
+int PBWTViewer::MajorVoting(char** individual, char*** voteHapVec, int round, std::vector<int>& heterIndex)
+{
+    std::cerr << "Enter Major Voting..." << std::endl;
     int vote(0);
-    int tmp1(0),tmp2(0);
-    for (int j = 0; j <heterIndex.size()-1; ++j) {
-        vote=0;
+    int tmp1(0), tmp2(0);
+    for (int j = 0; j < heterIndex.size() - 1; ++j) {
+        vote = 0;
         for (int i = 0; i < round; ++i) {
-           // std::cerr<<"Site:"<<heterIndex[j]<<"\ttmp1-tmp2:"<<tmp1<<tmp2<<"\tRound:"<<i<<"\t hap1:"<<(int)voteHapVec[i][0][heterIndex[j]]<<(int)voteHapVec[i][0][heterIndex[j+1]]<<"\thap2:"<<(int)voteHapVec[i][1][heterIndex[j]]<<(int)voteHapVec[i][1][heterIndex[j+1]]<<"\tvote:"<<vote<<std::endl;
-            if(i==0)
-            {
-                tmp1=voteHapVec[i][0][heterIndex[j]];
-                tmp2=voteHapVec[i][0][heterIndex[j+1]];
-                vote=1;
-            }
-            else if(tmp1==voteHapVec[i][0][heterIndex[j]] && tmp2==voteHapVec[i][0][heterIndex[j+1]])
-            {
+            // std::cerr<<"Site:"<<heterIndex[j]<<"\ttmp1-tmp2:"<<tmp1<<tmp2<<"\tRound:"<<i<<"\t hap1:"<<(int)voteHapVec[i][0][heterIndex[j]]<<(int)voteHapVec[i][0][heterIndex[j+1]]<<"\thap2:"<<(int)voteHapVec[i][1][heterIndex[j]]<<(int)voteHapVec[i][1][heterIndex[j+1]]<<"\tvote:"<<vote<<std::endl;
+            if (i == 0) {
+                tmp1 = voteHapVec[i][0][heterIndex[j]];
+                tmp2 = voteHapVec[i][0][heterIndex[j + 1]];
+                vote = 1;
+            } else if (tmp1 == voteHapVec[i][0][heterIndex[j]] && tmp2 == voteHapVec[i][0][heterIndex[j + 1]]) {
                 vote++;
-            }
-            else if(tmp1==voteHapVec[i][1][heterIndex[j]] && tmp2==voteHapVec[i][1][heterIndex[j+1]])
-            {
+            } else if (tmp1 == voteHapVec[i][1][heterIndex[j]] && tmp2 == voteHapVec[i][1][heterIndex[j + 1]]) {
                 vote++;
             }
         }
         //std::cerr<<"vote:"<<vote<<"\tM/2:"<<round/2<<std::endl;
-        if(vote > round/2)
-        {
+        if (vote > round / 2) {
             //std::cerr<<"voting success at site "<<heterIndex[j]<<std::endl;
-            individual[0][heterIndex[j]]=voteHapVec[0][0][heterIndex[j]];
-            individual[0][heterIndex[j+1]]=voteHapVec[0][0][heterIndex[j+1]];
-            individual[1][heterIndex[j]]=voteHapVec[0][1][heterIndex[j]];
-            individual[1][heterIndex[j+1]]=voteHapVec[0][1][heterIndex[j+1]];
-        }
-        else
-        {
-            individual[0][heterIndex[j]]=voteHapVec[0][0][heterIndex[j]];
-            individual[0][heterIndex[j+1]]=voteHapVec[0][1][heterIndex[j+1]];
-            individual[1][heterIndex[j]]=voteHapVec[0][0][heterIndex[j]];
-            individual[1][heterIndex[j+1]]=voteHapVec[0][1][heterIndex[j+1]];
+            individual[0][heterIndex[j]] = voteHapVec[0][0][heterIndex[j]];
+            individual[0][heterIndex[j + 1]] = voteHapVec[0][0][heterIndex[j + 1]];
+            individual[1][heterIndex[j]] = voteHapVec[0][1][heterIndex[j]];
+            individual[1][heterIndex[j + 1]] = voteHapVec[0][1][heterIndex[j + 1]];
+        } else {
+            individual[0][heterIndex[j]] = voteHapVec[0][0][heterIndex[j]];
+            individual[0][heterIndex[j + 1]] = voteHapVec[0][1][heterIndex[j + 1]];
+            individual[1][heterIndex[j]] = voteHapVec[0][0][heterIndex[j]];
+            individual[1][heterIndex[j + 1]] = voteHapVec[0][1][heterIndex[j + 1]];
         }
     }
     return 0;

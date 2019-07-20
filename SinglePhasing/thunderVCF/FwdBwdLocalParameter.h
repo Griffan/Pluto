@@ -12,7 +12,7 @@
 
 #include <cstdint>
 #include <vector>
-#include "../sparsepp/spp.h"
+#include "../../abseil-cpp/absl/container/flat_hash_map.h"
 
 typedef int16_t StateIndex;
 typedef uint64_t NodePair;
@@ -27,8 +27,8 @@ typedef std::vector<BwdVec> Index2BwdVec;//associated via index with Index2Sourc
 
 
 //typedef std::unordered_map<NodePair, int> Dest2SourceVecIndex;//NodePair -> StorageIndex
-using spp::sparse_hash_map;
-typedef sparse_hash_map<NodePair, int> Dest2SourceVecIndex;//NodePair -> StorageIndex
+
+typedef absl::flat_hash_map<NodePair, int> Dest2SourceVecIndex;//NodePair -> StorageIndex
 
 #define HASH_RESERVE 4096
 
@@ -43,21 +43,23 @@ public:
 
     std::vector<Index2FwdVec> megaFwdVec;//StorageIndex -> FwdVec
     std::vector<float> fwdValueSum;
-    std::vector<sparse_hash_map<int, float> > fwdValueNode1Sum;
-    std::vector<sparse_hash_map<int, float> > fwdValueNode2Sum;
+    std::vector<absl::flat_hash_map<int, float> > fwdValueNode1Sum;
+    std::vector<absl::flat_hash_map<int, float> > fwdValueNode2Sum;
     std::vector<bool> isRec;
 
     //backward value
-    sparse_hash_map<NodePair, float> finalBwdValue;//current marker -> next marker -> bwdValue
+    absl::flat_hash_map<NodePair, float> finalBwdValue;//current marker -> next marker -> bwdValue
     float bwdValueSum;
-    sparse_hash_map<int, float> bwdValueNode1Sum;
-    sparse_hash_map<int, float> bwdValueNode2Sum;
-    sparse_hash_map<NodePair, float> bwdValue;
+    absl::flat_hash_map<int, float> bwdValueNode1Sum;
+    absl::flat_hash_map<int, float> bwdValueNode2Sum;
+    absl::flat_hash_map<NodePair, float> bwdValue;
 
 
     explicit FwdBwdLocalParameter(int markers);
 
-    NodePair MakePair(StateIndex first, StateIndex second);
+    inline NodePair MakePair(StateIndex first, StateIndex second) {
+        return static_cast<NodePair>(first) << 32 |  static_cast<NodePair>(second);
+    }
 
     StateIndex GetFirst(NodePair pair);
 
@@ -108,6 +110,7 @@ public:
 
 
     int ResetBwdValue();
+
 };
 
 

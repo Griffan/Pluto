@@ -1,14 +1,17 @@
 cmake_minimum_required(VERSION 2.8.4)
 project(Pluto)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wall -g -O3 -std=c++11 -Wextra -Wno-char-subscripts -Wno-unused-parameter -Wno-unused-value")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wall -g -O3 -Wextra -Wno-char-subscripts -Wno-unused-parameter -Wno-unused-value -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer ")
+set (CMAKE_CXX_STANDARD 11)
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
 #SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 #SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 
 add_definitions(-D__ZLIB_AVAILABLE__)
+add_definitions(-DBUILD_TESTING=OFF)
 
-#find_library(LIBSTATGEN NAMES libStatGen StatGen)
+find_library(LIBSTATGEN NAMES libStatGen StatGen)
 if(NOT LIBSTATGEN)
     message(STATUS "libStatGen not found")
     include(ExternalProject)
@@ -28,6 +31,7 @@ if(NOT LIBSTATGEN)
             )
     set(LIBSTATGEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen/include/)
     set(LIBSTATGEN_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SinglePhasing/libStatGen/)
+    set(LIBSTATGEN {LIBSTATGEN_LIB_DIR}/libStatGen.a)
 else()
     message(STATUS "libStatGen found: " ${LIBSTATGEN})
     get_filename_component(LIBSTATGEN_INCLUDE_PARENT_DIR ${LIBSTATGEN} DIRECTORY)
@@ -42,11 +46,16 @@ if (OPENMP_FOUND)
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/abseil-cpp/)
+
+add_subdirectory(abseil-cpp)
 add_subdirectory(SinglePhasing)
 add_subdirectory(pbwtWrapper)
 
 #add_subdirectory(TestUnit)
 
+
 set(SOURCE_FILES main.cpp)
 add_executable(Pluto ${SOURCE_FILES})
-target_link_libraries(Pluto  PBWTWrapper thunderVCF)
+target_link_libraries(Pluto  PBWTWrapper thunderVCF absl::base absl::flat_hash_map absl::flat_hash_set ${ZLIB_LIBRARIES})

@@ -5,16 +5,20 @@
 #ifndef PLUTO_DAG_H
 #define PLUTO_DAG_H
 
-#include <unordered_set>
+//#include <unordered_set>
 #include <string>
 #include <vector>
 #include <iostream>
 
+#include "../abseil-cpp/absl/container/flat_hash_set.h"
+
 typedef int16_t StateIndex;
 typedef unsigned char uchar;
-typedef std::unordered_set<StateIndex> ParentSet;
-//typedef std::vector<StateIndex> ParentSet;
 
+typedef absl::flat_hash_set<StateIndex> ParentSet;
+//typedef std::unordered_set<StateIndex> ParentSet;
+//typedef std::vector<StateIndex> ParentSet;
+//#define SET_RESERVE 4096
 class StateNode
 {
 private:
@@ -30,6 +34,7 @@ private:
         numHap[1]=0;
         childNode[0]= -1;
         childNode[1]= -1;
+        //parentNodeSet.reserve(SET_RESERVE);
     }
 
 public:
@@ -40,6 +45,7 @@ public:
         numHap[1] = 0;
         childNode[0] = -1;
         childNode[1] = -1;
+        //parentNodeSet.reserve(SET_RESERVE);
     }
 
     ~StateNode()
@@ -49,10 +55,23 @@ public:
 
     StateNode & operator=(const StateNode& A)
     {
+        if(this == &A) return *this;
         numHap[0]=A.numHap[0];
         numHap[1]=A.numHap[1];
         allele=A.allele;
         parentNodeSet=A.parentNodeSet;
+        childNode[0]=A.childNode[0];
+        childNode[1]=A.childNode[1];
+        return *this;
+    }
+
+    StateNode & operator=(StateNode&& A)
+    {
+        if(this == &A) return *this;
+        numHap[0]=A.numHap[0];
+        numHap[1]=A.numHap[1];
+        allele=A.allele;
+        parentNodeSet=std::move(A.parentNodeSet);
         childNode[0]=A.childNode[0];
         childNode[1]=A.childNode[1];
         return *this;
